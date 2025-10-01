@@ -14,7 +14,7 @@ class ConfigManager:
     with caching for efficiency and default configuration management.
     """
     # Application version
-    VERSION = "v1.2.8.5"
+    VERSION = "v1.2.8.6"
     # Directory where the update files are stored
     UPDATE_DIRECTORY = os.path.expanduser(r'~\AppData\Local\Requests\ItsJesewe\Update')
     # Directory where the offsets files are stored
@@ -62,9 +62,7 @@ class ConfigManager:
             "use_transliteration": False,
             "draw_nicknames": True,
             "draw_teammates": False,
-            "teammate_color_hex": "#00FFFF",
-            "enable_minimap": True,
-            "minimap_size": 200
+            "teammate_color_hex": "#00FFFF"
         },
         "Bunnyhop": {
             "JumpKey": "space",

@@ -162,17 +162,7 @@ class CS2Overlay:
         self.draw_nicknames = settings['draw_nicknames']
         self.draw_teammates = settings['draw_teammates']
         self.teammate_color_hex = settings['teammate_color_hex']
-        self.enable_minimap = settings['enable_minimap']
-        self.minimap_size = settings['minimap_size']
         self.target_fps = int(settings['target_fps'])
-        # Default minimap position
-        self.minimap_position = "top_left"  # Options: top_left, top_right, bottom_left, bottom_right
-        self.minimap_positions = {
-            "top_left": (10, 10),
-            "top_right": (self.screen_width - self.minimap_size - 10, 10),
-            "bottom_left": (10, self.screen_height - self.minimap_size - 10),
-            "bottom_right": (self.screen_width - self.minimap_size - 10, self.screen_height - self.minimap_size - 10)
-        }
 
     def update_config(self, config: dict) -> None:
         """Update the configuration settings."""
@@ -356,30 +346,6 @@ class CS2Overlay:
         except Exception as e:
             logger.error(f"Error drawing entity: {e}")
 
-    def draw_minimap(self, entities: list[Entity], view_matrix: list) -> None:
-        """Render the minimap overlay."""
-        if not self.enable_minimap:
-            return
-
-        map_min = {"x": -4000, "y": -4000}
-        map_max = {"x": 4000, "y": 4000}
-        map_size = {"x": map_max["x"] - map_min["x"], "y": map_max["y"] - map_min["y"]}
-
-        minimap_size = self.minimap_size
-        minimap_x, minimap_y = self.minimap_positions[self.minimap_position]
-
-        overlay.draw_rectangle(minimap_x, minimap_y, minimap_size, minimap_size, Colors.grey)
-        overlay.draw_rectangle_lines(minimap_x, minimap_y, minimap_size, minimap_size, Colors.black, 2)
-
-        for entity in entities:
-            if entity.health <= 0 or entity.dormant:
-                continue
-            pos = entity.pos
-            map_x = ((pos["x"] - map_min["x"]) / map_size["x"]) * minimap_size + minimap_x
-            map_y = ((map_max["y"] - pos["y"]) / map_size["y"]) * minimap_size + minimap_y
-            color = Colors.cyan if entity.team == self.local_team else Colors.red
-            overlay.draw_circle(map_x, map_y, 3, color)
-
     def start(self) -> None:
         """Start the Overlay."""
         self.is_running = True
@@ -422,8 +388,6 @@ class CS2Overlay:
                 if overlay.overlay_loop():
                     overlay.begin_drawing()
                     overlay.draw_fps(0, 0)
-                    
-                    self.draw_minimap(entities, view_matrix)
                     
                     for entity in entities:
                         is_teammate = self.local_team is not None and entity.team == self.local_team

@@ -44,7 +44,6 @@ def populate_overlay_settings(main_window, frame):
     create_text_section(main_window, settings)
     create_player_info_section(main_window, settings)
     create_team_section(main_window, settings)
-    create_minimap_section(main_window, settings)
 
 def create_bounding_box_section(main_window, parent):
     """Create bounding box configuration section with related settings."""
@@ -295,58 +294,6 @@ def create_team_section(main_window, parent):
     settings_list = [
         ("Draw Teammates", "checkbox", "draw_teammates", "Show teammates on the overlay"),
         ("Teammate Color", "combo", "teammate_color_hex", "Select color for teammates")
-    ]
-
-    # Create each setting item
-    for i, (label_text, widget_type, key, description) in enumerate(settings_list):
-        create_setting_item(
-            section,
-            label_text,
-            description,
-            widget_type,
-            key,
-            main_window,
-            is_last=(i == len(settings_list) - 1)
-        )
-
-def create_minimap_section(main_window, parent):
-    """Create minimap configuration section with related settings."""
-    # Section frame with modern styling
-    section = ctk.CTkFrame(
-        parent,
-        corner_radius=20,
-        fg_color=("#ffffff", "#1a1b23"),
-        border_width=2,
-        border_color=("#e2e8f0", "#2d3748")
-    )
-    section.pack(fill="x", pady=(0, 30))
-
-    # Header frame for section title and description
-    header = ctk.CTkFrame(section, fg_color="transparent")
-    header.pack(fill="x", padx=40, pady=(40, 30))
-
-    # Section title with icon
-    ctk.CTkLabel(
-        header,
-        text="🌍  Minimap Configuration",
-        font=("Chivo", 24, "bold"),
-        text_color=("#1f2937", "#ffffff"),
-        anchor="w"
-    ).pack(side="left")
-
-    # Description of section purpose
-    ctk.CTkLabel(
-        header,
-        text="Settings for the minimap display",
-        font=("Gambetta", 14),
-        text_color=("#64748b", "#94a3b8"),
-        anchor="e"
-    ).pack(side="right")
-
-    # List of settings for minimap configuration
-    settings_list = [
-        ("Enable Minimap", "checkbox", "enable_minimap", "Toggle minimap visibility"),
-        ("Minimap Size", "entry", "minimap_size", "Set minimap size (100-500)")
     ]
 
     # Create each setting item

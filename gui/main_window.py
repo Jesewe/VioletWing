@@ -865,15 +865,6 @@ del "%~f0" 2>nul
             overlay_settings["draw_teammates"] = self.draw_teammates_var.get()
         if hasattr(self, 'teammate_color_hex_combo'):
             overlay_settings["teammate_color_hex"] = COLOR_CHOICES.get(self.teammate_color_hex_combo.get(), "#00FFFF")
-        if hasattr(self, 'enable_minimap_var'):
-            overlay_settings["enable_minimap"] = self.enable_minimap_var.get()
-        if hasattr(self, 'minimap_size_entry'):
-            try:
-                minimap_size = int(self.minimap_size_entry.get())
-                if 100 <= minimap_size <= 500:
-                    overlay_settings["minimap_size"] = minimap_size
-            except ValueError:
-                pass
         if hasattr(self, 'target_fps_slider'):
             overlay_settings["target_fps"] = self.target_fps_slider.get()
 
@@ -931,15 +922,7 @@ del "%~f0" 2>nul
             if post_delay < 0:
                 raise ValueError("Post-shot delay must be non-negative.")
 
-        # Validate Overlay settings
-        if hasattr(self, 'minimap_size_entry'):
-            try:
-                minimap_size = int(self.minimap_size_entry.get())
-                if not (100 <= minimap_size <= 500):
-                    raise ValueError("Minimap size must be between 100 and 500.")
-            except ValueError:
-                raise ValueError("Minimap size must be a valid integer.")
-            
+
         if hasattr(self, 'target_fps_slider'):
             try:
                 target_fps = float(self.target_fps_slider.get())
@@ -1052,11 +1035,6 @@ del "%~f0" 2>nul
             self.draw_teammates_var.set(overlay_settings["draw_teammates"])
         if hasattr(self, 'teammate_color_hex_combo'):
             self.teammate_color_hex_combo.set(Utility.get_color_name_from_hex(overlay_settings["teammate_color_hex"]))
-        if hasattr(self, 'enable_minimap_var'):
-            self.enable_minimap_var.set(overlay_settings["enable_minimap"])
-        if hasattr(self, 'minimap_size_entry'):
-            self.minimap_size_entry.delete(0, "end")
-            self.minimap_size_entry.insert(0, str(overlay_settings["minimap_size"]))
         if hasattr(self, 'target_fps_slider'):
             self.target_fps_slider.set(overlay_settings["target_fps"])
             if hasattr(self, 'target_fps_value_label'):

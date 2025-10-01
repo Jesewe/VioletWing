@@ -24,10 +24,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12.10"
 
@@ -35,11 +35,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-
-      - name: Install PyMeow
-        run: |
-          curl -LO https://github.com/qb-0/pyMeow/releases/download/1.73.42/pyMeow-1.73.42.zip
-          pip install pyMeow-1.73.42.zip
 
       - name: Install PyInstaller
         run: pip install pyinstaller
@@ -60,7 +55,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Download Build Artifact
         uses: actions/download-artifact@v4
@@ -78,7 +73,7 @@ jobs:
           fi
 
       - name: Create release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
