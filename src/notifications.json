@@ -40,5 +40,12 @@
     "url": "https://github.com/Jesewe/VioletWing?tab=readme-ov-file#disclaimer",
     "timestamp": "2025-09-26",
     "message": "VACNet, the anti-cheat system for Counter-Strike 2, has been significantly improved. Using VioletWing or similar tools may result in detection and bans. Proceed with caution and use at your own risk."
-  }
+  },
+  {
+    "number": "7",
+    "title": "Important VACNet Anti-Cheat Update Notice",
+    "url": "https://github.com/Jesewe/VioletWing/issues/119",
+    "timestamp": "2025-10-03",
+    "message": "Attention Counter-Strike 2 players: The recent VACNet anti-cheat update has enhanced detection capabilities. Continuous use of trigger bots or similar tools, including VioletWing, from start to finish in matches may lead to detection, resulting in account restrictions of 20 hours or more. There is no issue with the tools themselves, but aggressive use increases the risk of detection. Please play cautiously and at your own risk to avoid bans."
+}
 ]
