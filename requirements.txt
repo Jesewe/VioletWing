@@ -10,5 +10,5 @@ watchdog==6.0.0
 PyGetWindow==0.0.9
 orjson==3.11.3
 customtkinter==5.2.2
-pillow==11.3.0
+pillow==12.0.0
 pyMeow @ https://github.com/qb-0/pyMeow/releases/download/1.73.42/pyMeow-1.73.42.zip
