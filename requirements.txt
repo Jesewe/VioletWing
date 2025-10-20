@@ -1,6 +1,6 @@
 keyboard==0.13.5
 packaging==25.0
-psutil==7.1.0
+psutil==7.1.1
 pymem==1.14.0
 pynput==1.8.1
 python_dateutil==2.9.0.post0
