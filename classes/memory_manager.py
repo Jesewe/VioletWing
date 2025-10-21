@@ -123,7 +123,7 @@ class MemoryManager:
             # Use cached entity list pointer
             list_offset = 0x8 * (index >> 9)
             ent_entry = self.read_longlong(self.ent_list + list_offset + 0x10)
-            entity_offset = 120 * (index & 0x1FF)
+            entity_offset = 112 * (index & 0x1FF)
             return self.read_longlong(ent_entry + entity_offset)
         except Exception as e:
             logger.error(f"Error reading entity: {e}")
@@ -172,7 +172,7 @@ class MemoryManager:
             list_entry = self.read_longlong(self.ent_list + 8 * ((weapon_id & 0x7FFF) >> 9) + 16)
             if not list_entry: return "Rifles"
 
-            weapon_entity_ptr = self.read_longlong(list_entry + 120 * (weapon_id & 0x1FF))
+            weapon_entity_ptr = self.read_longlong(list_entry + 112 * (weapon_id & 0x1FF))
             if not weapon_entity_ptr: return "Rifles"
 
             attribute_manager_ptr = self.read_longlong(weapon_entity_ptr + self.m_AttributeManager)

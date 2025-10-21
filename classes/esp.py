@@ -18,7 +18,7 @@ MAIN_LOOP_SLEEP = 0.05
 # Number of entities to iterate over
 ENTITY_COUNT = 64
 # Size of each entity entry in memory
-ENTITY_ENTRY_SIZE = 120
+ENTITY_ENTRY_SIZE = 112
 
 SKELETON_BONES = {
     6: [5],

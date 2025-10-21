@@ -5,304 +5,181 @@ import orjson
 from pathlib import Path
 from tkinter import filedialog, messagebox
 from classes.config_manager import ConfigManager
+from gui import theme
+
+# --- Constants ---
+FEATURE_SETTINGS = [
+    ("Enable Trigger", "checkbox", "Trigger", "Toggle the trigger bot feature"),
+    ("Enable Overlay", "checkbox", "Overlay", "Toggle the ESP overlay feature"),
+    ("Enable Bunnyhop", "checkbox", "Bunnyhop", "Toggle the bunnyhop feature"),
+    ("Enable Noflash", "checkbox", "Noflash", "Toggle the noflash feature")
+]
+
+OFFSET_FILES = [
+    ("Offsets File", "offsets.json", "Select offsets.json file", "OffsetsFile"),
+    ("Client DLL File", "client.dll.json", "Select client.dll.json file", "ClientDLLFile"),
+    ("Buttons File", "buttons.json", "Select buttons.json file", "ButtonsFile")
+]
+
+def create_section_header(parent, title, subtitle):
+    """Creates a standardized section header."""
+    header = ctk.CTkFrame(parent, fg_color="transparent")
+    header.pack(fill="x", padx=40, pady=(40, 30))
+
+    ctk.CTkLabel(
+        header,
+        text=title,
+        font=(theme.FONT_FAMILY_BOLD[0], theme.FONT_SIZE_H2, theme.FONT_FAMILY_BOLD[2]),
+        text_color=theme.COLOR_TEXT_PRIMARY,
+        anchor="w"
+    ).pack(side="left")
+
+    ctk.CTkLabel(
+        header,
+        text=subtitle,
+        font=(theme.FONT_FAMILY_REGULAR[0], theme.FONT_SIZE_H4),
+        text_color=theme.COLOR_TEXT_SECONDARY,
+        anchor="e"
+    ).pack(side="right")
+    
+    return header
 
 def populate_general_settings(main_window, frame):
     """
     Populates the General Settings tab with UI elements for configuring main application features.
-    All changes are saved in real-time to the configuration.
     """
-    # Create a scrollable container for settings
-    settings = ctk.CTkScrollableFrame(
-        frame,
-        fg_color="transparent"
-    )
+    settings = ctk.CTkScrollableFrame(frame, fg_color="transparent")
     settings.pack(fill="both", expand=True, padx=40, pady=40)
 
-    # Frame for page title and subtitle
     title_frame = ctk.CTkFrame(settings, fg_color="transparent")
     title_frame.pack(fill="x", pady=(0, 40))
 
-    # Settings title with an icon
-    title_label = ctk.CTkLabel(
+    ctk.CTkLabel(
         title_frame,
         text="⚙️  General Settings",
-        font=("Chivo", 36, "bold"),
-        text_color=("#1f2937", "#ffffff"),
+        font=(theme.FONT_FAMILY_BOLD[0], theme.FONT_SIZE_H1, theme.FONT_FAMILY_BOLD[2]),
+        text_color=theme.COLOR_TEXT_PRIMARY,
         anchor="w"
-    )
-    title_label.pack(side="left")
+    ).pack(side="left")
 
-    # Subtitle providing context
-    subtitle_label = ctk.CTkLabel(
+    ctk.CTkLabel(
         title_frame,
         text="Configure main application features",
-        font=("Gambetta", 16),
-        text_color=("#64748b", "#94a3b8"),
+        font=(theme.FONT_FAMILY_REGULAR[0], theme.FONT_SIZE_H3),
+        text_color=theme.COLOR_TEXT_SECONDARY,
         anchor="w"
-    )
-    subtitle_label.pack(side="left", padx=(20, 0), pady=(10, 0))
+    ).pack(side="left", padx=(20, 0), pady=(10, 0))
 
-    # Create section for general feature settings
     create_features_section(main_window, settings)
-    # Create section for offset configuration
     create_offsets_section(main_window, settings)
     create_reset_section(main_window, settings)
 
 def create_reset_section(main_window, parent):
     """Create section for resetting all settings to default."""
-    section = ctk.CTkFrame(
-        parent,
-        corner_radius=20,
-        fg_color=("#ffffff", "#1a1b23"),
-        border_width=2,
-        border_color=("#e2e8f0", "#2d3748")
-    )
+    section = ctk.CTkFrame(parent, **theme.SECTION_STYLE)
     section.pack(fill="x", pady=(0, 30))
 
-    header = ctk.CTkFrame(section, fg_color="transparent")
-    header.pack(fill="x", padx=40, pady=(40, 30))
-
-    ctk.CTkLabel(
-        header,
-        text="⚙️  Configuration Management",
-        font=("Chivo", 24, "bold"),
-        text_color=("#1f2937", "#ffffff"),
-        anchor="w"
-    ).pack(side="left")
-
-    ctk.CTkLabel(
-        header,
-        text="Manage configuration files and settings",
-        font=("Gambetta", 14),
-        text_color=("#64748b", "#94a3b8"),
-        anchor="e"
-    ).pack(side="right")
+    create_section_header(section, "⚙️  Configuration Management", "Manage configuration files and settings")
 
     button_frame = ctk.CTkFrame(section, fg_color="transparent")
     button_frame.pack(fill="x", padx=40, pady=(0, 40))
 
-    open_config_button = ctk.CTkButton(
+    ctk.CTkButton(
         button_frame,
         text="📁  Open Config Directory",
-        font=("Chivo", 16, "bold"),
-        corner_radius=16,
-        fg_color=("#0d9488", "#14b8a6"),
-        hover_color=("#0f766e", "#0d9488"),
-        border_width=2,
-        border_color=("#a7f3d0", "#134e4a"),
-        text_color="#ffffff",
         width=280,
-        height=56,
-        command=main_window.open_config_directory
-    )
-    open_config_button.pack(side="left", padx=(0, 20))
+        command=main_window.open_config_directory,
+        **theme.BUTTON_STYLE_PRIMARY
+    ).pack(side="left", padx=(0, 20))
 
-    reset_button = ctk.CTkButton(
+    ctk.CTkButton(
         button_frame,
         text="🔄  Reset All Settings",
-        font=("Chivo", 16, "bold"),
-        corner_radius=16,
-        fg_color=("#dc2626", "#ef4444"),
-        hover_color=("#b91c1c", "#dc2626"),
-        border_width=2,
-        border_color=("#fecaca", "#7f1d1d"),
-        text_color="#ffffff",
         width=280,
-        height=56,
-        command=main_window.reset_to_default_settings
-    )
-    reset_button.pack(side="left")
+        command=main_window.reset_to_default_settings,
+        **theme.BUTTON_STYLE_DANGER
+    ).pack(side="left")
 
 def create_features_section(main_window, parent):
     """Create section for configuring main application features."""
-    # Section frame with modern styling
-    section = ctk.CTkFrame(
-        parent,
-        corner_radius=20,
-        fg_color=("#ffffff", "#1a1b23"),
-        border_width=2,
-        border_color=("#e2e8f0", "#2d3748")
-    )
+    section = ctk.CTkFrame(parent, **theme.SECTION_STYLE)
     section.pack(fill="x", pady=(0, 30))
 
-    # Header frame for section title and description
-    header = ctk.CTkFrame(section, fg_color="transparent")
-    header.pack(fill="x", padx=40, pady=(40, 30))
+    create_section_header(section, "🔧  Feature Configuration", "Enable or disable main application features")
 
-    # Section title with icon
-    ctk.CTkLabel(
-        header,
-        text="🔧  Feature Configuration",
-        font=("Chivo", 24, "bold"),
-        text_color=("#1f2937", "#ffffff"),
-        anchor="w"
-    ).pack(side="left")
-
-    # Description of section purpose
-    ctk.CTkLabel(
-        header,
-        text="Enable or disable main application features",
-        font=("Gambetta", 14),
-        text_color=("#64748b", "#94a3b8"),
-        anchor="e"
-    ).pack(side="right")
-
-    # List of settings for feature configuration
-    settings_list = [
-        ("Enable Trigger", "checkbox", "Trigger", "Toggle the trigger bot feature"),
-        ("Enable Overlay", "checkbox", "Overlay", "Toggle the ESP overlay feature"),
-        ("Enable Bunnyhop", "checkbox", "Bunnyhop", "Toggle the bunnyhop feature"),
-        ("Enable Noflash", "checkbox", "Noflash", "Toggle the noflash feature")
-    ]
-
-    # Create each setting item
-    for i, (label_text, widget_type, key, description) in enumerate(settings_list):
+    for i, (label, widget, key, desc) in enumerate(FEATURE_SETTINGS):
         create_setting_item(
-            section,
-            label_text,
-            description,
-            widget_type,
-            key,
-            main_window,
-            is_last=(i == len(settings_list) - 1)
+            parent=section,
+            label_text=label,
+            description=desc,
+            widget_type=widget,
+            key=key,
+            main_window=main_window,
+            is_last=(i == len(FEATURE_SETTINGS) - 1)
         )
 
 def load_dynamic_offset_sources():
     """Load available offset sources from remote JSON file."""
     try:
-        response = requests.get(
-            'https://raw.githubusercontent.com/Jesewe/VioletWing/refs/heads/main/src/offsets.json',
-            timeout=10
-        )
+        response = requests.get('https://raw.githubusercontent.com/Jesewe/VioletWing/refs/heads/main/src/offsets.json', timeout=10)
         response.raise_for_status()
         sources_data = orjson.loads(response.content)
         
-        # Validate structure and create display names
-        valid_sources = {}
-        for source_id, source_config in sources_data.items():
-            required_keys = ["name", "author", "repository", "offsets_url", "client_dll_url", "buttons_url"]
-            if all(key in source_config for key in required_keys):
-                valid_sources[source_id] = source_config
-        
+        valid_sources = {
+            sid: config for sid, config in sources_data.items()
+            if all(k in config for k in ["name", "author", "repository", "offsets_url", "client_dll_url", "buttons_url"])
+        }
         return valid_sources
-    except Exception:
-        # Return default sources if remote fetch fails
+    except (requests.RequestException, orjson.JSONDecodeError):
         return {
-            "a2x": {
-                "name": "a2x Source",
-                "author": "a2x",
-                "repository": "a2x/cs2-dumper"
-            },
-            "jesewe": {
-                "name": "Jesewe Source", 
-                "author": "Jesewe",
-                "repository": "Jesewe/cs2-dumper"
-            }
+            "a2x": {"name": "a2x Source", "author": "a2x", "repository": "a2x/cs2-dumper"},
+            "jesewe": {"name": "Jesewe Source", "author": "Jesewe", "repository": "Jesewe/cs2-dumper"}
         }
 
 def create_offsets_section(main_window, parent):
     """Create section for configuring offset source and local file selection."""
-    # Section frame with modern styling
-    section = ctk.CTkFrame(
-        parent,
-        corner_radius=20,
-        fg_color=("#ffffff", "#1a1b23"),
-        border_width=2,
-        border_color=("#e2e8f0", "#2d3748")
-    )
+    section = ctk.CTkFrame(parent, **theme.SECTION_STYLE)
     section.pack(fill="x", pady=(0, 30))
 
-    # Header frame for section title and description
-    header = ctk.CTkFrame(section, fg_color="transparent")
-    header.pack(fill="x", padx=40, pady=(40, 30))
+    header = create_section_header(section, "📡  Offsets Configuration", "Configure offset source and local files")
 
-    # Section title with icon
-    ctk.CTkLabel(
-        header,
-        text="📡  Offsets Configuration",
-        font=("Chivo", 24, "bold"),
-        text_color=("#1f2937", "#ffffff"),
-        anchor="w"
-    ).pack(side="left")
-
-    # Description of section purpose
-    ctk.CTkLabel(
-        header,
-        text="Configure offset source and local files",
-        font=("Gambetta", 14),
-        text_color=("#64748b", "#94a3b8"),
-        anchor="e"
-    ).pack(side="right")
-
-    # Load available sources dynamically
     available_sources = load_dynamic_offset_sources()
-    
-    # Create dropdown values with proper display names
-    dropdown_values = []
-    source_mapping = {}  # Maps display names to source IDs
-    
-    for source_id, source_config in available_sources.items():
-        display_name = f"{source_config['name']} ({source_config['author']})"
-        dropdown_values.append(display_name)
-        source_mapping[display_name] = source_id
-    
-    # Add local option
-    dropdown_values.append("Local Files")
+    source_mapping = {f"{cfg['name']} ({cfg['author']})": sid for sid, cfg in available_sources.items()}
     source_mapping["Local Files"] = "local"
+    
+    dropdown_values = list(source_mapping.keys())
 
-    # Get current source and find its display name
     current_source = main_window.triggerbot.config["General"].get("OffsetSource", "a2x")
-    current_display = "Local Files" if current_source == "local" else next(
-        (f"{config['name']} ({config['author']})" 
-         for sid, config in available_sources.items() if sid == current_source),
-        f"{available_sources.get('a2x', {}).get('name', 'a2x Source')} (a2x)"
-    )
+    current_display = next((name for name, sid in source_mapping.items() if sid == current_source), "Local Files")
 
-    # Offset source dropdown
     main_window.offset_source_var = ctk.StringVar(value=current_display)
-    offset_dropdown = ctk.CTkOptionMenu(
+    ctk.CTkOptionMenu(
         header,
         variable=main_window.offset_source_var,
         values=dropdown_values,
-        command=lambda display_name: update_offset_source(main_window, source_mapping[display_name]),
-        font=("Chivo", 14),
-        dropdown_font=("Chivo", 14),
+        command=lambda dn: update_offset_source(main_window, source_mapping[dn]),
+        font=(theme.FONT_FAMILY_REGULAR[0], theme.FONT_SIZE_H4),
+        dropdown_font=(theme.FONT_FAMILY_REGULAR[0], theme.FONT_SIZE_H4),
         corner_radius=12,
-        fg_color=("#D5006D", "#E91E63"),
-        button_color=("#B8004A", "#C2185B"),
-        button_hover_color=("#9F003D", "#A6144E")
-    )
-    offset_dropdown.pack(side="right", padx=(0, 10))
+        fg_color=theme.COLOR_ACCENT_FG,
+        button_color=theme.COLOR_ACCENT_BUTTON,
+        button_hover_color=theme.COLOR_ACCENT_BUTTON_HOVER
+    ).pack(side="right", padx=(0, 10))
 
-    # Frame for local file selection (hidden by default)
     main_window.local_files_frame = ctk.CTkFrame(section, fg_color="transparent")
     if current_source == "local":
         main_window.local_files_frame.pack(fill="x", padx=40, pady=(0, 40))
 
-    # List of files for selection
-    files = [
-        ("Offsets File", "offsets.json", "Select offsets.json file"),
-        ("Client DLL File", "client_dll.json", "Select client_dll.json file"),
-        ("Buttons File", "buttons.json", "Select buttons.json file")
-    ]
-
-    # Store file paths in main_window
     main_window.local_file_paths = {}
-    for label_text, filename, description in files:
-        create_file_selector(main_window, main_window.local_files_frame, label_text, filename, description)
+    for label, filename, desc, config_key in OFFSET_FILES:
+        create_file_selector(main_window, main_window.local_files_frame, label, filename, desc, config_key)
 
-def create_file_selector(main_window, parent, label_text, filename, description):
+def create_file_selector(main_window, parent, label_text, filename, description, config_key):
     """Create a file selector for a specific offset file."""
     item_frame = ctk.CTkFrame(parent, fg_color="transparent")
     item_frame.pack(fill="x", padx=0, pady=(0, 10))
     
-    container = ctk.CTkFrame(
-        item_frame,
-        corner_radius=12,
-        fg_color=("#f8fafc", "#252830"),
-        border_width=1,
-        border_color=("#e2e8f0", "#374151")
-    )
+    container = ctk.CTkFrame(item_frame, **theme.SETTING_ITEM_STYLE)
     container.pack(fill="x")
 
     content_frame = ctk.CTkFrame(container, fg_color="transparent")
@@ -314,16 +191,16 @@ def create_file_selector(main_window, parent, label_text, filename, description)
     ctk.CTkLabel(
         label_frame,
         text=label_text,
-        font=("Chivo", 16, "bold"),
-        text_color=("#1f2937", "#ffffff"),
+        font=(theme.FONT_FAMILY_BOLD[0], theme.FONT_SIZE_H3, theme.FONT_FAMILY_BOLD[2]),
+        text_color=theme.COLOR_TEXT_PRIMARY,
         anchor="w"
     ).pack(fill="x", pady=(0, 4))
 
     ctk.CTkLabel(
         label_frame,
         text=description,
-        font=("Gambetta", 13),
-        text_color=("#64748b", "#94a3b8"),
+        font=(theme.FONT_FAMILY_REGULAR[0], theme.FONT_SIZE_P),
+        text_color=theme.COLOR_TEXT_SECONDARY,
         anchor="w",
         wraplength=400
     ).pack(fill="x")
@@ -339,32 +216,19 @@ def create_file_selector(main_window, parent, label_text, filename, description)
         if file_path:
             main_window.local_file_paths[filename] = file_path
             file_button.configure(text=f"Selected: {os.path.basename(file_path)}")
-            # Update config with selected file path
-            config_key = {
-                "offsets.json": "OffsetsFile",
-                "client_dll.json": "ClientDLLFile",
-                "buttons.json": "ButtonsFile"
-            }[filename]
             main_window.triggerbot.config["General"][config_key] = file_path
             main_window.save_settings(show_message=False)
 
-    # Check if file is already selected and show it
-    config_key = {
-        "offsets.json": "OffsetsFile",
-        "client_dll.json": "ClientDLLFile",
-        "buttons.json": "ButtonsFile"
-    }[filename]
-    
     current_file = main_window.triggerbot.config["General"].get(config_key, "")
     button_text = f"Selected: {os.path.basename(current_file)}" if current_file and os.path.exists(current_file) else f"Select {filename}"
 
     file_button = ctk.CTkButton(
         button_frame,
         text=button_text,
-        font=("Chivo", 14),
+        font=(theme.FONT_FAMILY_REGULAR[0], theme.FONT_SIZE_H4),
         corner_radius=10,
-        fg_color=("#D5006D", "#E91E63"),
-        hover_color=("#9F003D", "#A6144E"),
+        fg_color=theme.COLOR_ACCENT_FG,
+        hover_color=theme.COLOR_ACCENT_HOVER,
         command=select_file
     )
     file_button.pack()
@@ -374,30 +238,23 @@ def update_offset_source(main_window, selected_source_id):
     main_window.triggerbot.config["General"]["OffsetSource"] = selected_source_id
     main_window.save_settings(show_message=False)
 
-    # Show messagebox to inform user about restart requirement
     messagebox.showwarning(
         "Restart Required", 
-        "Offset source has been changed. Please restart the application for the changes to take effect and ensure proper functionality."
+        "Offset source has been changed. Please restart the application for the changes to take effect."
     )
 
-    # Show/hide local files frame
     if selected_source_id == "local":
         main_window.local_files_frame.pack(fill="x", padx=40, pady=(0, 40))
     else:
         main_window.local_files_frame.pack_forget()
 
 def create_setting_item(parent, label_text, description, widget_type, key, main_window, is_last=False):
+    """Creates a generic setting item with a label, description, and a widget."""
     item_frame = ctk.CTkFrame(parent, fg_color="transparent")
     item_frame.pack(fill="x", padx=40, pady=(0, 30 if not is_last else 40))
     
-    container = ctk.CTkFrame(
-        item_frame,
-        corner_radius=12,
-        fg_color=("#f8fafc", "#252830"),
-        border_width=1,
-        border_color=("#e2e8f0", "#374151")
-    )
-    container.pack(fill="x", pady=(0, 0))
+    container = ctk.CTkFrame(item_frame, **theme.SETTING_ITEM_STYLE)
+    container.pack(fill="x")
     
     content_frame = ctk.CTkFrame(container, fg_color="transparent")
     content_frame.pack(fill="x", padx=25, pady=25)
@@ -408,16 +265,16 @@ def create_setting_item(parent, label_text, description, widget_type, key, main_
     ctk.CTkLabel(
         label_frame,
         text=label_text,
-        font=("Chivo", 16, "bold"),
-        text_color=("#1f2937", "#ffffff"),
+        font=(theme.FONT_FAMILY_BOLD[0], theme.FONT_SIZE_H3, theme.FONT_FAMILY_BOLD[2]),
+        text_color=theme.COLOR_TEXT_PRIMARY,
         anchor="w"
     ).pack(fill="x", pady=(0, 4))
     
     ctk.CTkLabel(
         label_frame,
         text=description,
-        font=("Gambetta", 13),
-        text_color=("#64748b", "#94a3b8"),
+        font=(theme.FONT_FAMILY_REGULAR[0], theme.FONT_SIZE_P),
+        text_color=theme.COLOR_TEXT_SECONDARY,
         anchor="w",
         wraplength=400
     ).pack(fill="x")
@@ -426,10 +283,9 @@ def create_setting_item(parent, label_text, description, widget_type, key, main_
     widget_frame.pack(side="right", padx=(30, 0))
     
     if widget_type == "checkbox":
-        # Create a BooleanVar with the current config value
         var = ctk.BooleanVar(value=main_window.triggerbot.config["General"].get(key, False))
-        # Create the checkbox widget
-        widget = ctk.CTkCheckBox(
+        
+        ctk.CTkCheckBox(
             widget_frame,
             text="",
             variable=var,
@@ -437,23 +293,12 @@ def create_setting_item(parent, label_text, description, widget_type, key, main_
             height=30,
             corner_radius=8,
             border_width=2,
-            fg_color=("#D5006D", "#E91E63"),
-            hover_color=("#B8004A", "#C2185B"),
+            fg_color=theme.COLOR_ACCENT_FG,
+            hover_color=theme.COLOR_ACCENT_HOVER,
             checkmark_color="#ffffff",
             command=lambda: main_window.save_settings(show_message=False)
-        )
-        # Assign the BooleanVar to the appropriate main_window attribute
-        if key == "Trigger":
-            main_window.trigger_var = var
-        elif key == "Overlay":
-            main_window.overlay_var = var
-        elif key == "Bunnyhop":
-            main_window.bunnyhop_var = var
-        elif key == "Noflash":
-            main_window.noflash_var = var
-        widget.pack()
-    
+        ).pack()
+        
+        setattr(main_window, f"{key.lower()}_var", var)
     else:
         raise ValueError(f"Unsupported widget type: {widget_type}")
-    
-    return item_frame

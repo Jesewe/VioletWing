@@ -110,12 +110,19 @@ class MainWindow:
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
 
     def initialize_features(self):
-        """Initialize all feature instances with the shared MemoryManager."""
+        """Initialize all feature instances and create a centralized feature registry."""
         try:
             self.triggerbot = CS2TriggerBot(self.memory_manager)
             self.overlay = CS2Overlay(self.memory_manager)
             self.bunnyhop = CS2Bunnyhop(self.memory_manager)
             self.noflash = CS2NoFlash(self.memory_manager)
+
+            self.features = {
+                "Trigger": {"name": "TriggerBot", "instance": self.triggerbot, "class": CS2TriggerBot},
+                "Overlay": {"name": "Overlay", "instance": self.overlay, "class": CS2Overlay},
+                "Bunnyhop": {"name": "Bunnyhop", "instance": self.bunnyhop, "class": CS2Bunnyhop},
+                "Noflash": {"name": "Noflash", "instance": self.noflash, "class": CS2NoFlash},
+            }
             logger.info("All features initialized successfully.")
         except Exception as e:
             logger.error(f"Failed to initialize features: {e}")
@@ -343,64 +350,45 @@ del "%~f0" 2>nul
             messagebox.showerror("Update Error", f"Failed to update: {str(e)}")
 
     def create_main_content(self):
-        """Create the main content area with modern layout."""
-        # Main container for content and sidebar
+        """Create the main content area with a modern layout."""
         main_container = ctk.CTkFrame(self.root, fg_color="transparent")
-        main_container.grid(row=1, column=0, sticky="nsew", padx=0, pady=0)
+        main_container.grid(row=1, column=0, sticky="nsew")
         main_container.grid_columnconfigure(1, weight=1)
         main_container.grid_rowconfigure(0, weight=1)
-        
-        # Create sidebar navigation
-        self.create_sidebar(main_container)
-        
-        # Content area frame
-        self.content_frame = ctk.CTkFrame(
-            main_container,
-            corner_radius=0,
-            fg_color=("#f8fafc", "#161b22")
-        )
-        self.content_frame.grid(row=0, column=1, sticky="nsew", padx=0, pady=0)
-        
-        # Frames for each tab
-        self.dashboard_frame = ctk.CTkFrame(self.content_frame, fg_color="transparent")
-        self.general_settings_frame = ctk.CTkFrame(self.content_frame, fg_color="transparent")
-        self.trigger_settings_frame = ctk.CTkFrame(self.content_frame, fg_color="transparent")
-        self.overlay_settings_frame = ctk.CTkFrame(self.content_frame, fg_color="transparent")
-        self.additional_settings_frame = ctk.CTkFrame(self.content_frame, fg_color="transparent")
-        self.logs_frame = ctk.CTkFrame(self.content_frame, fg_color="transparent")
-        self.faq_frame = ctk.CTkFrame(self.content_frame, fg_color="transparent")
-        self.notifications_frame = ctk.CTkFrame(self.content_frame, fg_color="transparent")
-        self.supporters_frame = ctk.CTkFrame(self.content_frame, fg_color="transparent")
 
-        # Populate tab frames once during initialization
-        self.populate_dashboard()
-        self.populate_general_settings()
-        self.populate_trigger_settings()
-        self.populate_overlay_settings()
-        self.populate_additional_settings()
-        self.populate_logs()
-        self.populate_faq()
-        self.populate_notifications()
-        self.populate_supporters()
-        
-        # Show dashboard as the default view
-        self.dashboard_frame.pack(fill="both", expand=True)
-        self.current_view = "dashboard"
+        self.create_sidebar(main_container)
+
+        self.content_frame = ctk.CTkFrame(main_container, corner_radius=0, fg_color=("#f8fafc", "#161b22"))
+        self.content_frame.grid(row=0, column=1, sticky="nsew")
+
+        self.tab_views = {
+            "dashboard": self.populate_dashboard,
+            "general_settings": self.populate_general_settings,
+            "trigger_settings": self.populate_trigger_settings,
+            "overlay_settings": self.populate_overlay_settings,
+            "additional_settings": self.populate_additional_settings,
+            "logs": self.populate_logs,
+            "faq": self.populate_faq,
+            "notifications": self.populate_notifications,
+            "supporters": self.populate_supporters,
+        }
+
+        self.tab_frames = {}
+        for key, populate_func in self.tab_views.items():
+            frame = ctk.CTkFrame(self.content_frame, fg_color="transparent")
+            self.tab_frames[key] = frame
+            populate_func(frame)
+
+        self.current_view = None
+        self.switch_view("dashboard")
 
     def create_sidebar(self, parent):
         """Create modern sidebar navigation."""
-        # Sidebar frame with fixed width
-        sidebar = ctk.CTkFrame(
-            parent,
-            width=280,
-            corner_radius=0,
-            fg_color=("#ffffff", "#0d1117")
-        )
-        sidebar.grid(row=0, column=0, sticky="nsew", padx=0, pady=0)
+        sidebar = ctk.CTkFrame(parent, width=280, corner_radius=0, fg_color=("#ffffff", "#0d1117"))
+        sidebar.grid(row=0, column=0, sticky="nsew")
         sidebar.grid_propagate(False)
-        
-        # Navigation items with icons and labels
-        nav_items = [
+
+        self.nav_items = [
             ("Dashboard", "dashboard", "🏠"),
             ("General Settings", "general_settings", "⚙️"),
             ("Trigger Settings", "trigger_settings", "🔫"),
@@ -409,17 +397,13 @@ del "%~f0" 2>nul
             ("Logs", "logs", "📋"),
             ("FAQ", "faq", "❓"),
             ("Notifications", "notifications", "🔔"),
-            ("Supporters", "supporters", "🤝")
+            ("Supporters", "supporters", "🤝"),
         ]
-        
-        # Dictionary to store navigation buttons
+
         self.nav_buttons = {}
-        
-        # Add padding at the top of the sidebar
         ctk.CTkFrame(sidebar, height=30, fg_color="transparent").pack(fill="x")
-        
-        # Create navigation buttons
-        for name, key, icon in nav_items:
+
+        for name, key, icon in self.nav_items:
             btn = ctk.CTkButton(
                 sidebar,
                 text=f"{icon}  {name}",
@@ -431,12 +415,11 @@ del "%~f0" 2>nul
                 hover_color=("#e5e7eb", "#21262d"),
                 text_color=("#374151", "#d1d5db"),
                 font=("Chivo", 16),
-                anchor="w"
+                anchor="w",
             )
             btn.pack(pady=(0, 8), padx=20, fill="x")
             self.nav_buttons[key] = btn
-        
-        # Set the dashboard button as active by default
+
         self.set_active_nav("dashboard")
 
     def set_active_nav(self, active_key):
@@ -457,78 +440,53 @@ del "%~f0" 2>nul
 
     def switch_view(self, view_key):
         """Switch between different views by showing the appropriate frame."""
-        # Avoid redundant switches
         if self.current_view == view_key:
             return
+
+        if self.current_view and self.current_view in self.tab_frames:
+            self.tab_frames[self.current_view].pack_forget()
+
         self.current_view = view_key
         self.set_active_nav(view_key)
-        
-        # Hide all frames
-        self.dashboard_frame.pack_forget()
-        self.general_settings_frame.pack_forget()
-        self.trigger_settings_frame.pack_forget()
-        self.overlay_settings_frame.pack_forget()
-        self.additional_settings_frame.pack_forget()
-        self.logs_frame.pack_forget()
-        self.faq_frame.pack_forget()
-        self.notifications_frame.pack_forget()
-        self.supporters_frame.pack_forget()
-        
-        # Show the selected frame and update if necessary
-        if view_key == "dashboard":
-            self.dashboard_frame.pack(fill="both", expand=True)
-        elif view_key == "general_settings":
-            self.general_settings_frame.pack(fill="both", expand=True)
-        elif view_key == "trigger_settings":
-            self.trigger_settings_frame.pack(fill="both", expand=True)
-        elif view_key == "overlay_settings":
-            self.overlay_settings_frame.pack(fill="both", expand=True)
-        elif view_key == "additional_settings":
-            self.additional_settings_frame.pack(fill="both", expand=True)
-        elif view_key == "logs":
-            self.logs_frame.pack(fill="both", expand=True)
-        elif view_key == "faq":
-            self.faq_frame.pack(fill="both", expand=True)
-        elif view_key == "notifications":
-            self.notifications_frame.pack(fill="both", expand=True)
-        elif view_key == "supporters":
-            self.supporters_frame.pack(fill="both", expand=True)
 
-    def populate_dashboard(self):
+        if view_key in self.tab_frames:
+            self.tab_frames[view_key].pack(fill="both", expand=True)
+
+    def populate_dashboard(self, frame):
         """Populate the dashboard frame with controls and stats."""
-        populate_dashboard(self, self.dashboard_frame)
+        populate_dashboard(self, frame)
 
-    def populate_general_settings(self):
+    def populate_general_settings(self, frame):
         """Populate the general settings frame with configuration options."""
-        populate_general_settings(self, self.general_settings_frame)
+        populate_general_settings(self, frame)
 
-    def populate_trigger_settings(self):
+    def populate_trigger_settings(self, frame):
         """Populate the trigger settings frame with configuration options."""
-        populate_trigger_settings(self, self.trigger_settings_frame)
+        populate_trigger_settings(self, frame)
 
-    def populate_overlay_settings(self):
+    def populate_overlay_settings(self, frame):
         """Populate the overlay settings frame with configuration options."""
-        populate_overlay_settings(self, self.overlay_settings_frame)
+        populate_overlay_settings(self, frame)
 
-    def populate_additional_settings(self):
+    def populate_additional_settings(self, frame):
         """Populate the additional settings frame with configuration options for Bunnyhop and NoFlash."""
-        populate_additional_settings(self, self.additional_settings_frame)
+        populate_additional_settings(self, frame)
 
-    def populate_logs(self):
+    def populate_logs(self, frame):
         """Populate the logs frame with log display."""
-        populate_logs(self, self.logs_frame)
+        populate_logs(self, frame)
 
-    def populate_faq(self):
+    def populate_faq(self, frame):
         """Populate the FAQ frame with questions and answers."""
-        populate_faq(self, self.faq_frame)
+        populate_faq(self, frame)
     
-    def populate_notifications(self):
+    def populate_notifications(self, frame):
         """Populate the notifications frame with notification settings."""
-        populate_notifications(self, self.notifications_frame)
+        populate_notifications(self, frame)
 
-    def populate_supporters(self):
+    def populate_supporters(self, frame):
         """Populate the supporters frame with supporter data."""
-        populate_supporters(self, self.supporters_frame)
+        populate_supporters(self, frame)
 
     def fetch_offsets_or_warn(self):
         """Attempt to fetch offsets; warn the user and return empty dictionaries on failure."""
@@ -612,18 +570,11 @@ del "%~f0" 2>nul
         config = ConfigManager.load_config()
         any_feature_started = False
 
-        # Define features to start
-        features = [
-            ("TriggerBot", "Trigger", self.triggerbot),
-            ("Overlay", "Overlay", self.overlay),
-            ("Bunnyhop", "Bunnyhop", self.bunnyhop),
-            ("NoFlash", "Noflash", self.noflash)
-        ]
-
         # Start features based on General settings
-        for feature_name, config_key, feature_obj in features:
+        for config_key, feature_data in self.features.items():
             if config["General"][config_key]:
-                # Check if feature is not already running
+                feature_name = feature_data["name"]
+                feature_obj = feature_data["instance"]
                 if not getattr(feature_obj, 'is_running', False):
                     if self._start_feature(feature_name, feature_obj, config):
                         any_feature_started = True
@@ -641,17 +592,9 @@ del "%~f0" 2>nul
         """Stop all running features and ensure threads are terminated."""
         features_stopped = False
 
-        # Define features to stop
-        features = [
-            ("TriggerBot", self.triggerbot),
-            ("Overlay", self.overlay),
-            ("Bunnyhop", self.bunnyhop),
-            ("NoFlash", self.noflash)
-        ]
-
         # Stop all features
-        for feature_name, feature_obj in features:
-            if self._stop_feature(feature_name, feature_obj):
+        for feature_data in self.features.values():
+            if self._stop_feature(feature_data["name"], feature_data["instance"]):
                 features_stopped = True
 
         if features_stopped:
@@ -683,46 +626,8 @@ del "%~f0" 2>nul
             new_config = self.triggerbot.config
             ConfigManager.save_config(new_config, log_info=False)
 
-            # Define features and their threads
-            features = {
-                "Trigger": (self.triggerbot, "TriggerBot"),
-                "Overlay": (self.overlay, "Overlay"),
-                "Bunnyhop": (self.bunnyhop, "Bunnyhop"),
-                "Noflash": (self.noflash, "NoFlash")
-            }
-
-            any_feature_running = False
-
-            # Handle enabling/disabling and config updates
-            for feature_key, (feature_obj, feature_name) in features.items():
-                old_enabled = old_config["General"].get(feature_key, False)
-                new_enabled = new_config["General"].get(feature_key, False)
-                is_running = getattr(feature_obj, 'is_running', False)
-
-                # Handle state changes only if game is running
-                if old_enabled != new_enabled:
-                    if new_enabled and not is_running:
-                        # Only try to start if game is running
-                        if Utility.is_game_running():
-                            # Initialize memory manager if not already done
-                            if not self.memory_manager.initialize():
-                                logger.error(f"Failed to initialize memory manager for {feature_name}")
-                                continue
-                            self._start_feature(feature_name, feature_obj, new_config)
-                        else:
-                            logger.warning(f"Cannot start {feature_name}: Game is not running")
-                    elif not new_enabled and is_running:
-                        self._stop_feature(feature_name, feature_obj)
-                
-                # Update config for running features
-                if is_running:
-                    feature_obj.update_config(new_config)
-                    logger.debug(f"Configuration updated for {feature_name}.")
-                    any_feature_running = True
-
-            # Update UI status
-            self.update_client_status("Active" if any_feature_running else "Inactive", 
-                                    "#22c55e" if any_feature_running else "#ef4444")
+            self.apply_feature_state_changes(old_config, new_config)
+            self.update_running_feature_configs(new_config)
 
             if show_message:
                 messagebox.showinfo("Settings Saved", "Configuration has been saved successfully.")
@@ -730,8 +635,45 @@ del "%~f0" 2>nul
             logger.error(f"Invalid input: {e}")
             messagebox.showerror("Invalid Input", str(e))
         except Exception as e:
-            logger.error(f"Unexpected error during save_settings: {e}")
-            messagebox.showerror("Error", f"Unexpected error: {str(e)}")
+            logger.error(f"Unexpected error during save_settings: {e}", exc_info=True)
+            messagebox.showerror("Error", f"An unexpected error occurred: {str(e)}")
+
+    def apply_feature_state_changes(self, old_config, new_config):
+        """Start or stop features based on configuration changes."""
+        game_running = Utility.is_game_running()
+
+        for key, feature_data in self.features.items():
+            old_enabled = old_config["General"].get(key, False)
+            new_enabled = new_config["General"].get(key, False)
+            is_running = getattr(feature_data["instance"], 'is_running', False)
+
+            if old_enabled == new_enabled:
+                continue
+
+            if new_enabled and not is_running:
+                if game_running:
+                    if self.memory_manager.initialize():
+                        self._start_feature(feature_data["name"], feature_data["instance"], new_config)
+                    else:
+                        logger.error(f"Failed to initialize memory manager for {feature_data['name']}")
+                else:
+                    logger.warning(f"Cannot start {feature_data['name']}: Game is not running")
+            elif not new_enabled and is_running:
+                self._stop_feature(feature_data["name"], feature_data["instance"])
+
+    def update_running_feature_configs(self, new_config):
+        """Update the configuration for all currently running features and update UI status."""
+        any_feature_running = False
+        for feature_data in self.features.values():
+            instance = feature_data["instance"]
+            if getattr(instance, 'is_running', False):
+                instance.update_config(new_config)
+                logger.debug(f"Configuration updated for {feature_data['name']}.")
+                any_feature_running = True
+        
+        status = "Active" if any_feature_running else "Inactive"
+        color = "#22c55e" if any_feature_running else "#ef4444"
+        self.update_client_status(status, color)
 
     def _restart_feature(self, feature_name, feature_obj, feature_class, config_section, new_config):
         """Helper method to restart a single feature."""
@@ -763,26 +705,18 @@ del "%~f0" 2>nul
         """Restart only features affected by configuration changes."""
         any_feature_running = False
 
-        # Helper to check if config section has changed
         def config_changed(section):
             return old_config.get(section, {}) != new_config.get(section, {})
 
-        # Define features with their classes and config sections
-        features = [
-            ("TriggerBot", self.triggerbot, "CS2TriggerBot", "Trigger"),
-            ("Overlay", self.overlay, "CS2Overlay", "Overlay"), 
-            ("Bunnyhop", self.bunnyhop, "CS2Bunnyhop", "Bunnyhop"),
-            ("NoFlash", self.noflash, "CS2NoFlash", "Noflash")
-        ]
-
         # Restart features if their config changed and they're running
-        for feature_name, feature_obj, class_name, config_section in features:
-            if (hasattr(feature_obj, 'is_running') and feature_obj.is_running and 
-                (config_changed(config_section) or config_changed("General"))):
+        for config_section, feature_data in self.features.items():
+            feature_obj = feature_data["instance"]
+            if hasattr(feature_obj, 'is_running') and feature_obj.is_running and \
+               (config_changed(config_section) or config_changed("General")):
                 
-                # Get the actual class from globals or import it
-                feature_class = globals().get(class_name)
-                if feature_class and self._restart_feature(feature_name, feature_obj, feature_class, config_section, new_config):
+                feature_name = feature_data["name"]
+                feature_class = feature_data["class"]
+                if self._restart_feature(feature_name, feature_obj, feature_class, config_section, new_config):
                     any_feature_running = True
 
         # Update UI status
@@ -792,96 +726,69 @@ del "%~f0" 2>nul
             self.update_client_status("Inactive", "#ef4444")
 
     def update_config_from_ui(self):
-        """Update the configuration from the UI elements."""
-        # Update General settings
-        general_settings = self.triggerbot.config["General"]
-        if hasattr(self, 'trigger_var'):
-            general_settings["Trigger"] = self.trigger_var.get()
-        if hasattr(self, 'overlay_var'):
-            general_settings["Overlay"] = self.overlay_var.get()
-        if hasattr(self, 'bunnyhop_var'):
-            general_settings["Bunnyhop"] = self.bunnyhop_var.get()
-        if hasattr(self, 'noflash_var'):
-            general_settings["Noflash"] = self.noflash_var.get()
+        """Update the configuration from the UI elements by calling granular update methods."""
+        self._update_general_config_from_ui()
+        self._update_trigger_config_from_ui()
+        self._update_overlay_config_from_ui()
+        self._update_additional_config_from_ui()
 
-        # Update Trigger settings
-        trigger_settings = self.triggerbot.config["Trigger"]
-        if hasattr(self, 'trigger_key_entry'):
-            trigger_settings["TriggerKey"] = self.trigger_key_entry.get().strip()
-        if hasattr(self, 'toggle_mode_var'):
-            trigger_settings["ToggleMode"] = self.toggle_mode_var.get()
-        if hasattr(self, 'attack_teammates_var'):
-            trigger_settings["AttackOnTeammates"] = self.attack_teammates_var.get()
-        if hasattr(self, 'min_delay_entry'):
-            try:
-                trigger_settings["ShotDelayMin"] = float(self.min_delay_entry.get())
-            except ValueError:
-                pass
-        if hasattr(self, 'max_delay_entry'):
-            try:
-                trigger_settings["ShotDelayMax"] = float(self.max_delay_entry.get())
-            except ValueError:
-                pass
-        if hasattr(self, 'post_shot_delay_entry'):
-            try:
-                trigger_settings["PostShotDelay"] = float(self.post_shot_delay_entry.get())
-            except ValueError:
-                pass
-        
+    def _update_general_config_from_ui(self):
+        """Update General settings from the UI."""
+        settings = self.triggerbot.config["General"]
+        if hasattr(self, 'trigger_var'): settings["Trigger"] = self.trigger_var.get()
+        if hasattr(self, 'overlay_var'): settings["Overlay"] = self.overlay_var.get()
+        if hasattr(self, 'bunnyhop_var'): settings["Bunnyhop"] = self.bunnyhop_var.get()
+        if hasattr(self, 'noflash_var'): settings["Noflash"] = self.noflash_var.get()
+
+    def _update_trigger_config_from_ui(self):
+        """Update Trigger settings from the UI."""
+        settings = self.triggerbot.config["Trigger"]
+        if hasattr(self, 'trigger_key_entry'): settings["TriggerKey"] = self.trigger_key_entry.get().strip()
+        if hasattr(self, 'toggle_mode_var'): settings["ToggleMode"] = self.toggle_mode_var.get()
+        if hasattr(self, 'attack_teammates_var'): settings["AttackOnTeammates"] = self.attack_teammates_var.get()
+
         if hasattr(self, 'active_weapon_type'):
             weapon_type = self.active_weapon_type.get()
-            trigger_settings['active_weapon_type'] = weapon_type
-            weapon_settings = trigger_settings['WeaponSettings'].get(weapon_type, {})
+            settings['active_weapon_type'] = weapon_type
+            weapon_settings = settings['WeaponSettings'].get(weapon_type, {})
             
-            if hasattr(self, 'min_delay_entry'): weapon_settings['ShotDelayMin'] = float(self.min_delay_entry.get())
-            if hasattr(self, 'max_delay_entry'): weapon_settings['ShotDelayMax'] = float(self.max_delay_entry.get())
-            if hasattr(self, 'post_shot_delay_entry'): weapon_settings['PostShotDelay'] = float(self.post_shot_delay_entry.get())
-            
-            trigger_settings['WeaponSettings'][weapon_type] = weapon_settings
-
-        # Update Overlay settings
-        overlay_settings = self.overlay.config["Overlay"]
-        if hasattr(self, 'enable_box_var'):
-            overlay_settings["enable_box"] = self.enable_box_var.get()
-        if hasattr(self, 'enable_skeleton_var'):
-            overlay_settings["enable_skeleton"] = self.enable_skeleton_var.get()
-        if hasattr(self, 'box_line_thickness_slider'):
-            overlay_settings["box_line_thickness"] = self.box_line_thickness_slider.get()
-        if hasattr(self, 'box_color_hex_combo'):
-            overlay_settings["box_color_hex"] = COLOR_CHOICES.get(self.box_color_hex_combo.get(), "#FFA500")
-        if hasattr(self, 'draw_snaplines_var'):
-            overlay_settings["draw_snaplines"] = self.draw_snaplines_var.get()
-        if hasattr(self, 'snaplines_color_hex_combo'):
-            overlay_settings["snaplines_color_hex"] = COLOR_CHOICES.get(self.snaplines_color_hex_combo.get(), "#FFFFFF")
-        if hasattr(self, 'text_color_hex_combo'):
-            overlay_settings["text_color_hex"] = COLOR_CHOICES.get(self.text_color_hex_combo.get(), "#FFFFFF")
-        if hasattr(self, 'draw_health_numbers_var'):
-            overlay_settings["draw_health_numbers"] = self.draw_health_numbers_var.get()
-        if hasattr(self, 'draw_nicknames_var'):
-            overlay_settings["draw_nicknames"] = self.draw_nicknames_var.get()
-        if hasattr(self, 'use_transliteration_var'):
-            overlay_settings["use_transliteration"] = self.use_transliteration_var.get()
-        if hasattr(self, 'draw_teammates_var'):
-            overlay_settings["draw_teammates"] = self.draw_teammates_var.get()
-        if hasattr(self, 'teammate_color_hex_combo'):
-            overlay_settings["teammate_color_hex"] = COLOR_CHOICES.get(self.teammate_color_hex_combo.get(), "#00FFFF")
-        if hasattr(self, 'target_fps_slider'):
-            overlay_settings["target_fps"] = self.target_fps_slider.get()
-
-        # Update Bunnyhop settings
-        bunnyhop_settings = self.bunnyhop.config.get("Bunnyhop", {})
-        if hasattr(self, 'jump_key_entry'):
-            bunnyhop_settings["JumpKey"] = self.jump_key_entry.get().strip()
-        if hasattr(self, 'jump_delay_entry'):
             try:
-                bunnyhop_settings["JumpDelay"] = float(self.jump_delay_entry.get())
+                if hasattr(self, 'min_delay_entry'): weapon_settings['ShotDelayMin'] = float(self.min_delay_entry.get())
+                if hasattr(self, 'max_delay_entry'): weapon_settings['ShotDelayMax'] = float(self.max_delay_entry.get())
+                if hasattr(self, 'post_shot_delay_entry'): weapon_settings['PostShotDelay'] = float(self.post_shot_delay_entry.get())
             except ValueError:
                 pass
+            
+            settings['WeaponSettings'][weapon_type] = weapon_settings
 
-        # Update NoFlash settings
+    def _update_overlay_config_from_ui(self):
+        """Update Overlay settings from the UI."""
+        settings = self.overlay.config["Overlay"]
+        if hasattr(self, 'enable_box_var'): settings["enable_box"] = self.enable_box_var.get()
+        if hasattr(self, 'enable_skeleton_var'): settings["enable_skeleton"] = self.enable_skeleton_var.get()
+        if hasattr(self, 'box_line_thickness_slider'): settings["box_line_thickness"] = self.box_line_thickness_slider.get()
+        if hasattr(self, 'box_color_hex_combo'): settings["box_color_hex"] = COLOR_CHOICES.get(self.box_color_hex_combo.get(), "#FFA500")
+        if hasattr(self, 'draw_snaplines_var'): settings["draw_snaplines"] = self.draw_snaplines_var.get()
+        if hasattr(self, 'snaplines_color_hex_combo'): settings["snaplines_color_hex"] = COLOR_CHOICES.get(self.snaplines_color_hex_combo.get(), "#FFFFFF")
+        if hasattr(self, 'text_color_hex_combo'): settings["text_color_hex"] = COLOR_CHOICES.get(self.text_color_hex_combo.get(), "#FFFFFF")
+        if hasattr(self, 'draw_health_numbers_var'): settings["draw_health_numbers"] = self.draw_health_numbers_var.get()
+        if hasattr(self, 'draw_nicknames_var'): settings["draw_nicknames"] = self.draw_nicknames_var.get()
+        if hasattr(self, 'use_transliteration_var'): settings["use_transliteration"] = self.use_transliteration_var.get()
+        if hasattr(self, 'draw_teammates_var'): settings["draw_teammates"] = self.draw_teammates_var.get()
+        if hasattr(self, 'teammate_color_hex_combo'): settings["teammate_color_hex"] = COLOR_CHOICES.get(self.teammate_color_hex_combo.get(), "#00FFFF")
+        if hasattr(self, 'target_fps_slider'): settings["target_fps"] = self.target_fps_slider.get()
+
+    def _update_additional_config_from_ui(self):
+        """Update Additional (Bunnyhop, NoFlash) settings from the UI."""
+        bunnyhop_settings = self.bunnyhop.config.get("Bunnyhop", {})
+        if hasattr(self, 'jump_key_entry'): bunnyhop_settings["JumpKey"] = self.jump_key_entry.get().strip()
+        try:
+            if hasattr(self, 'jump_delay_entry'): bunnyhop_settings["JumpDelay"] = float(self.jump_delay_entry.get())
+        except ValueError:
+            pass
+        
         noflash_settings = self.noflash.config.get("NoFlash", {})
-        if hasattr(self, 'FlashSuppressionStrength_slider'):
-            noflash_settings["FlashSuppressionStrength"] = self.FlashSuppressionStrength_slider.get()
+        if hasattr(self, 'FlashSuppressionStrength_slider'): noflash_settings["FlashSuppressionStrength"] = self.FlashSuppressionStrength_slider.get()
 
     def validate_inputs(self):
         """Validate user input fields."""
@@ -981,66 +888,55 @@ del "%~f0" 2>nul
             messagebox.showerror("Error", f"Failed to reset settings: {str(e)}")
 
     def update_ui_from_config(self):
-        """Update the UI elements from the configuration."""
-        # Update General settings UI
-        general_settings = self.triggerbot.config["General"]
-        if hasattr(self, 'trigger_var'):
-            self.trigger_var.set(general_settings["Trigger"])
-        if hasattr(self, 'overlay_var'):
-            self.overlay_var.set(general_settings["Overlay"])
-        if hasattr(self, 'bunnyhop_var'):
-            self.bunnyhop_var.set(general_settings["Bunnyhop"])
-        if hasattr(self, 'noflash_var'):
-            self.noflash_var.set(general_settings["Noflash"])
+        """Update the UI elements from the configuration by calling granular update methods."""
+        self._update_general_settings_ui_from_config()
+        self._update_trigger_settings_ui_from_config()
+        self._update_overlay_settings_ui_from_config()
+        self._update_additional_settings_ui_from_config()
 
-        # Update Trigger settings UI
-        trigger_settings = self.triggerbot.config["Trigger"]
+    def _update_general_settings_ui_from_config(self):
+        """Update General settings UI from the configuration."""
+        settings = self.triggerbot.config["General"]
+        if hasattr(self, 'trigger_var'): self.trigger_var.set(settings["Trigger"])
+        if hasattr(self, 'overlay_var'): self.overlay_var.set(settings["Overlay"])
+        if hasattr(self, 'bunnyhop_var'): self.bunnyhop_var.set(settings["Bunnyhop"])
+        if hasattr(self, 'noflash_var'): self.noflash_var.set(settings["Noflash"])
+
+    def _update_trigger_settings_ui_from_config(self):
+        """Update Trigger settings UI from the configuration."""
+        settings = self.triggerbot.config["Trigger"]
         if hasattr(self, 'trigger_key_entry'):
             self.trigger_key_entry.delete(0, "end")
-            self.trigger_key_entry.insert(0, trigger_settings["TriggerKey"])
-        if hasattr(self, 'toggle_mode_var'):
-            self.toggle_mode_var.set(trigger_settings["ToggleMode"])
-        if hasattr(self, 'attack_teammates_var'):
-            self.attack_teammates_var.set(trigger_settings["AttackOnTeammates"])
-
+            self.trigger_key_entry.insert(0, settings["TriggerKey"])
+        if hasattr(self, 'toggle_mode_var'): self.toggle_mode_var.set(settings["ToggleMode"])
+        if hasattr(self, 'attack_teammates_var'): self.attack_teammates_var.set(settings["AttackOnTeammates"])
         if hasattr(self, 'active_weapon_type'):
-            self.active_weapon_type.set(trigger_settings.get('active_weapon_type', 'Rifles'))
+            self.active_weapon_type.set(settings.get('active_weapon_type', 'Rifles'))
             self.update_weapon_settings_display()
 
-        # Update Overlay settings UI
-        overlay_settings = self.overlay.config["Overlay"]
-        if hasattr(self, 'enable_box_var'):
-            self.enable_box_var.set(overlay_settings["enable_box"])
-        if hasattr(self, 'enable_skeleton_var'):
-            self.enable_skeleton_var.set(overlay_settings.get("enable_skeleton", True))
+    def _update_overlay_settings_ui_from_config(self):
+        """Update Overlay settings UI from the configuration."""
+        settings = self.overlay.config["Overlay"]
+        if hasattr(self, 'enable_box_var'): self.enable_box_var.set(settings["enable_box"])
+        if hasattr(self, 'enable_skeleton_var'): self.enable_skeleton_var.set(settings.get("enable_skeleton", True))
         if hasattr(self, 'box_line_thickness_slider'):
-            self.box_line_thickness_slider.set(overlay_settings["box_line_thickness"])
-            if hasattr(self, 'box_line_thickness_value_label'):
-                self.box_line_thickness_value_label.configure(text=f"{overlay_settings['box_line_thickness']:.1f}")
-        if hasattr(self, 'box_color_hex_combo'):
-            self.box_color_hex_combo.set(Utility.get_color_name_from_hex(overlay_settings["box_color_hex"]))
-        if hasattr(self, 'draw_snaplines_var'):
-            self.draw_snaplines_var.set(overlay_settings["draw_snaplines"])
-        if hasattr(self, 'snaplines_color_hex_combo'):
-            self.snaplines_color_hex_combo.set(Utility.get_color_name_from_hex(overlay_settings["snaplines_color_hex"]))
-        if hasattr(self, 'text_color_hex_combo'):
-            self.text_color_hex_combo.set(Utility.get_color_name_from_hex(overlay_settings["text_color_hex"]))
-        if hasattr(self, 'draw_health_numbers_var'):
-            self.draw_health_numbers_var.set(overlay_settings["draw_health_numbers"])
-        if hasattr(self, 'draw_nicknames_var'):
-            self.draw_nicknames_var.set(overlay_settings["draw_nicknames"])
-        if hasattr(self, 'use_transliteration_var'):
-            self.use_transliteration_var.set(overlay_settings["use_transliteration"])
-        if hasattr(self, 'draw_teammates_var'):
-            self.draw_teammates_var.set(overlay_settings["draw_teammates"])
-        if hasattr(self, 'teammate_color_hex_combo'):
-            self.teammate_color_hex_combo.set(Utility.get_color_name_from_hex(overlay_settings["teammate_color_hex"]))
+            self.box_line_thickness_slider.set(settings["box_line_thickness"])
+            if hasattr(self, 'box_line_thickness_value_label'): self.box_line_thickness_value_label.configure(text=f"{settings['box_line_thickness']:.1f}")
+        if hasattr(self, 'box_color_hex_combo'): self.box_color_hex_combo.set(Utility.get_color_name_from_hex(settings["box_color_hex"]))
+        if hasattr(self, 'draw_snaplines_var'): self.draw_snaplines_var.set(settings["draw_snaplines"])
+        if hasattr(self, 'snaplines_color_hex_combo'): self.snaplines_color_hex_combo.set(Utility.get_color_name_from_hex(settings["snaplines_color_hex"]))
+        if hasattr(self, 'text_color_hex_combo'): self.text_color_hex_combo.set(Utility.get_color_name_from_hex(settings["text_color_hex"]))
+        if hasattr(self, 'draw_health_numbers_var'): self.draw_health_numbers_var.set(settings["draw_health_numbers"])
+        if hasattr(self, 'draw_nicknames_var'): self.draw_nicknames_var.set(settings["draw_nicknames"])
+        if hasattr(self, 'use_transliteration_var'): self.use_transliteration_var.set(settings["use_transliteration"])
+        if hasattr(self, 'draw_teammates_var'): self.draw_teammates_var.set(settings["draw_teammates"])
+        if hasattr(self, 'teammate_color_hex_combo'): self.teammate_color_hex_combo.set(Utility.get_color_name_from_hex(settings["teammate_color_hex"]))
         if hasattr(self, 'target_fps_slider'):
-            self.target_fps_slider.set(overlay_settings["target_fps"])
-            if hasattr(self, 'target_fps_value_label'):
-                self.target_fps_value_label.configure(text=f"{overlay_settings['target_fps']:.0f}")
+            self.target_fps_slider.set(settings["target_fps"])
+            if hasattr(self, 'target_fps_value_label'): self.target_fps_value_label.configure(text=f"{settings['target_fps']:.0f}")
 
-        # Update Bunnyhop settings UI
+    def _update_additional_settings_ui_from_config(self):
+        """Update Additional (Bunnyhop, NoFlash) settings UI from the configuration."""
         bunnyhop_settings = self.bunnyhop.config.get("Bunnyhop", {})
         if hasattr(self, 'jump_key_entry'):
             self.jump_key_entry.delete(0, "end")
@@ -1049,12 +945,10 @@ del "%~f0" 2>nul
             self.jump_delay_entry.delete(0, "end")
             self.jump_delay_entry.insert(0, str(bunnyhop_settings.get("JumpDelay", 0.01)))
 
-        # Update NoFlash settings UI
         noflash_settings = self.noflash.config.get("NoFlash", {})
         if hasattr(self, 'FlashSuppressionStrength_slider'):
             self.FlashSuppressionStrength_slider.set(noflash_settings.get("FlashSuppressionStrength", 0.0))
-            if hasattr(self, 'FlashSuppressionStrength_value_label'):
-                self.FlashSuppressionStrength_value_label.configure(text=f"{noflash_settings.get('FlashSuppressionStrength', 0.0):.2f}")
+            if hasattr(self, 'FlashSuppressionStrength_value_label'): self.FlashSuppressionStrength_value_label.configure(text=f"{noflash_settings.get('FlashSuppressionStrength', 0.0):.2f}")
 
     def open_config_directory(self):
         """Open the configuration directory in the file explorer."""
