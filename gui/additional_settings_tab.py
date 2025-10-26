@@ -1,4 +1,10 @@
 import customtkinter as ctk
+from gui.theme import (
+    FONT_TITLE, FONT_SUBTITLE, FONT_SECTION_TITLE, FONT_SECTION_DESCRIPTION,
+    FONT_ITEM_LABEL, FONT_ITEM_DESCRIPTION,
+    COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY,
+    SECTION_STYLE, SETTING_ITEM_STYLE, ENTRY_STYLE, SLIDER_STYLE
+)
 
 def populate_additional_settings(main_window, frame):
     """Populate the additional settings frame with configuration options for Bunnyhop and NoFlash."""
@@ -17,8 +23,8 @@ def populate_additional_settings(main_window, frame):
     title_label = ctk.CTkLabel(
         title_frame,
         text="⚡  Additional Settings",
-        font=("Chivo", 36, "bold"),
-        text_color=("#1f2937", "#ffffff"),
+        font=FONT_TITLE,
+        text_color=COLOR_TEXT_PRIMARY,
         anchor="w"
     )
     title_label.pack(side="left")
@@ -27,8 +33,8 @@ def populate_additional_settings(main_window, frame):
     subtitle_label = ctk.CTkLabel(
         title_frame,
         text="Configure Bunnyhop and NoFlash preferences",
-        font=("Gambetta", 16),
-        text_color=("#64748b", "#94a3b8"),
+        font=FONT_SUBTITLE,
+        text_color=COLOR_TEXT_SECONDARY,
         anchor="w"
     )
     subtitle_label.pack(side="left", padx=(20, 0), pady=(10, 0))
@@ -40,13 +46,7 @@ def populate_additional_settings(main_window, frame):
 def create_bunnyhop_config_section(main_window, parent):
     """Create Bunnyhop configuration section with related settings."""
     # Section frame with modern styling
-    section = ctk.CTkFrame(
-        parent,
-        corner_radius=20,
-        fg_color=("#ffffff", "#1a1b23"),
-        border_width=2,
-        border_color=("#e2e8f0", "#2d3748")
-    )
+    section = ctk.CTkFrame(parent, **SECTION_STYLE)
     section.pack(fill="x", pady=(0, 30))
     
     # Header frame for section title and description
@@ -57,8 +57,8 @@ def create_bunnyhop_config_section(main_window, parent):
     ctk.CTkLabel(
         header,
         text="🐰  Bunnyhop Configuration",
-        font=("Chivo", 24, "bold"),
-        text_color=("#1f2937", "#ffffff"),
+        font=FONT_SECTION_TITLE,
+        text_color=COLOR_TEXT_PRIMARY,
         anchor="w"
     ).pack(side="left")
     
@@ -66,8 +66,8 @@ def create_bunnyhop_config_section(main_window, parent):
     ctk.CTkLabel(
         header,
         text="Control Bunnyhop behavior",
-        font=("Gambetta", 14),
-        text_color=("#64748b", "#94a3b8"),
+        font=FONT_SECTION_DESCRIPTION,
+        text_color=COLOR_TEXT_SECONDARY,
         anchor="e"
     ).pack(side="right")
     
@@ -92,13 +92,7 @@ def create_bunnyhop_config_section(main_window, parent):
 def create_noflash_config_section(main_window, parent):
     """Create NoFlash configuration section with related settings."""
     # Section frame with modern styling
-    section = ctk.CTkFrame(
-        parent,
-        corner_radius=20,
-        fg_color=("#ffffff", "#1a1b23"),
-        border_width=2,
-        border_color=("#e2e8f0", "#2d3748")
-    )
+    section = ctk.CTkFrame(parent, **SECTION_STYLE)
     section.pack(fill="x", pady=(0, 30))
     
     # Header frame for section title and description
@@ -109,8 +103,8 @@ def create_noflash_config_section(main_window, parent):
     ctk.CTkLabel(
         header,
         text="🌞  NoFlash Configuration",
-        font=("Chivo", 24, "bold"),
-        text_color=("#1f2937", "#ffffff"),
+        font=FONT_SECTION_TITLE,
+        text_color=COLOR_TEXT_PRIMARY,
         anchor="w"
     ).pack(side="left")
     
@@ -118,8 +112,8 @@ def create_noflash_config_section(main_window, parent):
     ctk.CTkLabel(
         header,
         text="Control flash suppression behavior",
-        font=("Gambetta", 14),
-        text_color=("#64748b", "#94a3b8"),
+        font=FONT_SECTION_DESCRIPTION,
+        text_color=COLOR_TEXT_SECONDARY,
         anchor="e"
     ).pack(side="right")
     
@@ -147,13 +141,7 @@ def create_setting_item(parent, label_text, description, widget_type, key, main_
     item_frame.pack(fill="x", padx=40, pady=(0, 30 if not is_last else 40))
     
     # Container with hover effect
-    container = ctk.CTkFrame(
-        item_frame,
-        corner_radius=12,
-        fg_color=("#f8fafc", "#252830"),
-        border_width=1,
-        border_color=("#e2e8f0", "#374151")
-    )
+    container = ctk.CTkFrame(item_frame, **SETTING_ITEM_STYLE)
     container.pack(fill="x", pady=(0, 0))
     
     # Content frame within the container
@@ -168,8 +156,8 @@ def create_setting_item(parent, label_text, description, widget_type, key, main_
     ctk.CTkLabel(
         label_frame,
         text=label_text,
-        font=("Chivo", 16, "bold"),
-        text_color=("#1f2937", "#ffffff"),
+        font=FONT_ITEM_LABEL,
+        text_color=COLOR_TEXT_PRIMARY,
         anchor="w"
     ).pack(fill="x", pady=(0, 4))
     
@@ -177,8 +165,8 @@ def create_setting_item(parent, label_text, description, widget_type, key, main_
     ctk.CTkLabel(
         label_frame,
         text=description,
-        font=("Gambetta", 13),
-        text_color=("#64748b", "#94a3b8"),
+        font=FONT_ITEM_DESCRIPTION,
+        text_color=COLOR_TEXT_SECONDARY,
         anchor="w",
         wraplength=400
     ).pack(fill="x")
@@ -191,15 +179,8 @@ def create_setting_item(parent, label_text, description, widget_type, key, main_
     if widget_type == "entry":
         widget = ctk.CTkEntry(
             widget_frame,
-            width=220,
-            height=45,
-            corner_radius=12,
-            border_width=2,
-            border_color=("#d1d5db", "#374151"),
-            fg_color=("#ffffff", "#1f2937"),
-            text_color=("#1f2937", "#ffffff"),
-            font=("Chivo", 14),
-            justify="center"
+            justify="center",
+            **ENTRY_STYLE
         )
         if key == "JumpKey":
             main_window.jump_key_entry = widget
@@ -236,8 +217,8 @@ def create_setting_item(parent, label_text, description, widget_type, key, main_
         value_label = ctk.CTkLabel(
             value_frame,
             text=f"{main_window.noflash.config['NoFlash'].get(key, 0.0):.2f}",
-            font=("Chivo", 14, "bold"),
-            text_color=("#1f2937", "#ffffff")
+            font=FONT_ITEM_LABEL,
+            text_color=COLOR_TEXT_PRIMARY
         )
         value_label.pack(expand=True)
         
@@ -247,16 +228,8 @@ def create_setting_item(parent, label_text, description, widget_type, key, main_
             from_=0.0,
             to=1.0,
             number_of_steps=100,
-            width=200,
-            height=20,
-            corner_radius=10,
-            button_corner_radius=10,
-            border_width=0,
-            fg_color=("#e2e8f0", "#374151"),
-            progress_color=("#D5006D", "#E91E63"),
-            button_color=("#ffffff", "#ffffff"),
-            button_hover_color=("#f8fafc", "#f8fafc"),
-            command=lambda e: update_slider_value(e, key, main_window)
+            command=lambda e: update_slider_value(e, key, main_window),
+            **SLIDER_STYLE
         )
         widget.set(main_window.noflash.config["NoFlash"].get(key, 0.0))
         widget.pack(side="left")

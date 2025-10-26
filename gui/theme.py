@@ -101,16 +101,12 @@ SLIDER_STYLE = {
     "progress_color": COLOR_ACCENT_FG,
     "button_color": COLOR_SLIDER_BUTTON,
     "button_hover_color": COLOR_SLIDER_BUTTON_HOVER,
-    "value_frame_width": 60,
-    "value_frame_height": 35,
 }
 
 COMBOBOX_STYLE = {
     "width": 180,
     "height": 45,
     "corner_radius": 12,
-    "border_width": 2,
-    "border_color": COLOR_WIDGET_BORDER,
     "fg_color": COLOR_WIDGET_FG,
     "text_color": COLOR_TEXT_PRIMARY,
     "font": FONT_WIDGET,

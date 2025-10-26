@@ -1,23 +1,10 @@
 import customtkinter as ctk
 from classes.config_manager import COLOR_CHOICES
 from classes.utility import Utility
-from gui.theme import (
-    CHECKBOX_STYLE,
-    COMBOBOX_STYLE,
-    ENTRY_STYLE,
-    SLIDER_STYLE,
-    SECTION_STYLE,
-    SETTING_ITEM_STYLE,
-    FONT_TITLE,
-    FONT_SUBTITLE,
-    FONT_SECTION_TITLE,
-    FONT_SECTION_DESCRIPTION,
-    FONT_ITEM_LABEL,
-    FONT_ITEM_DESCRIPTION,
-    COLOR_TEXT_PRIMARY,
-    COLOR_TEXT_SECONDARY,
-    COLOR_BORDER,
-)
+from gui.theme import (CHECKBOX_STYLE, COMBOBOX_STYLE, ENTRY_STYLE, SLIDER_STYLE,
+                        SECTION_STYLE, SETTING_ITEM_STYLE, FONT_TITLE, FONT_SUBTITLE, 
+                        FONT_SECTION_TITLE, FONT_SECTION_DESCRIPTION, FONT_ITEM_LABEL, 
+                        FONT_ITEM_DESCRIPTION, COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY, COLOR_BORDER)
 
 def populate_overlay_settings(main_window, frame):
     """
@@ -28,29 +15,9 @@ def populate_overlay_settings(main_window, frame):
     main_window.overlay_widgets = {}
     settings = ctk.CTkScrollableFrame(frame, fg_color="transparent")
     settings.pack(fill="both", expand=True, padx=40, pady=40)
-
-    # Frame for page title and subtitle
-    title_frame = ctk.CTkFrame(settings, fg_color="transparent")
-    title_frame.pack(fill="x", pady=(0, 40))
-
-    # Settings title with an icon
-    ctk.CTkLabel(
-        title_frame,
-        text="🌍  Overlay Settings",
-        font=FONT_TITLE,
-        text_color=COLOR_TEXT_PRIMARY,
-        anchor="w",
-    ).pack(side="left")
-
-    # Subtitle providing context
-    ctk.CTkLabel(
-        title_frame,
-        text="Configure your ESP overlay preferences",
-        font=FONT_SUBTITLE,
-        text_color=COLOR_TEXT_SECONDARY,
-        anchor="w",
-    ).pack(side="left", padx=(20, 0), pady=(10, 0))
-
+    
+    create_title_section(settings)
+    
     # Define all settings in a structured dictionary
     settings_data = {
         "Bounding Box": {
@@ -112,6 +79,28 @@ def populate_overlay_settings(main_window, frame):
             section_data["description"],
             section_data["settings"],
         )
+
+def create_title_section(parent):
+    """Create the title and subtitle for the settings page."""
+
+    title_frame = ctk.CTkFrame(parent, fg_color="transparent")
+    title_frame.pack(fill="x", pady=(0, 40))
+    
+    ctk.CTkLabel(
+        title_frame,
+        text="🌍  Overlay Settings",
+        font=FONT_TITLE,
+        text_color=COLOR_TEXT_PRIMARY,
+        anchor="w",
+    ).pack(side="left")
+    
+    ctk.CTkLabel(
+        title_frame,
+        text="Configure your ESP overlay preferences",
+        font=FONT_SUBTITLE,
+        text_color=COLOR_TEXT_SECONDARY,
+        anchor="w",
+    ).pack(side="left", padx=(20, 0), pady=(10, 0))
 
 
 def create_settings_section(main_window, parent, title, description, settings_list):
@@ -228,8 +217,8 @@ def _create_slider(parent, key, main_window):
         slider_container,
         corner_radius=8,
         fg_color=COLOR_BORDER,
-        width=SLIDER_STYLE["value_frame_width"],
-        height=SLIDER_STYLE["value_frame_height"],
+        width=60,
+        height=35,
     )
     value_frame.pack(side="right", padx=(15, 0))
     value_frame.pack_propagate(False)
@@ -250,7 +239,7 @@ def _create_slider(parent, key, main_window):
         to=5.0 if key == "box_line_thickness" else 420,
         number_of_steps=9 if key == "box_line_thickness" else 3,
         command=lambda e, k=key: update_slider_value(e, k, main_window),
-        **{k: v for k, v in SLIDER_STYLE.items() if k not in ["value_frame_width", "value_frame_height"]},
+        **SLIDER_STYLE,
     )
     widget.set(main_window.overlay.config["Overlay"][key])
     widget.pack(side="left")

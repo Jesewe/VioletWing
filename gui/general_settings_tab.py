@@ -5,7 +5,14 @@ import orjson
 from pathlib import Path
 from tkinter import filedialog, messagebox
 from classes.config_manager import ConfigManager
-from gui import theme
+from gui.theme import (
+    FONT_TITLE, FONT_SUBTITLE, FONT_SECTION_TITLE, FONT_SECTION_DESCRIPTION,
+    FONT_ITEM_LABEL, FONT_ITEM_DESCRIPTION, FONT_WIDGET,
+    COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY, COLOR_ACCENT_FG, COLOR_ACCENT_HOVER,
+    COLOR_ACCENT_BUTTON, COLOR_ACCENT_BUTTON_HOVER,
+    SECTION_STYLE, SETTING_ITEM_STYLE, CHECKBOX_STYLE, COMBOBOX_STYLE,
+    BUTTON_STYLE_PRIMARY, BUTTON_STYLE_DANGER
+)
 
 # --- Constants ---
 FEATURE_SETTINGS = [
@@ -29,16 +36,16 @@ def create_section_header(parent, title, subtitle):
     ctk.CTkLabel(
         header,
         text=title,
-        font=(theme.FONT_FAMILY_BOLD[0], theme.FONT_SIZE_H2, theme.FONT_FAMILY_BOLD[2]),
-        text_color=theme.COLOR_TEXT_PRIMARY,
+        font=FONT_SECTION_TITLE,
+        text_color=COLOR_TEXT_PRIMARY,
         anchor="w"
     ).pack(side="left")
 
     ctk.CTkLabel(
         header,
         text=subtitle,
-        font=(theme.FONT_FAMILY_REGULAR[0], theme.FONT_SIZE_H4),
-        text_color=theme.COLOR_TEXT_SECONDARY,
+        font=FONT_SECTION_DESCRIPTION,
+        text_color=COLOR_TEXT_SECONDARY,
         anchor="e"
     ).pack(side="right")
     
@@ -57,16 +64,16 @@ def populate_general_settings(main_window, frame):
     ctk.CTkLabel(
         title_frame,
         text="⚙️  General Settings",
-        font=(theme.FONT_FAMILY_BOLD[0], theme.FONT_SIZE_H1, theme.FONT_FAMILY_BOLD[2]),
-        text_color=theme.COLOR_TEXT_PRIMARY,
+        font=FONT_TITLE,
+        text_color=COLOR_TEXT_PRIMARY,
         anchor="w"
     ).pack(side="left")
 
     ctk.CTkLabel(
         title_frame,
         text="Configure main application features",
-        font=(theme.FONT_FAMILY_REGULAR[0], theme.FONT_SIZE_H3),
-        text_color=theme.COLOR_TEXT_SECONDARY,
+        font=FONT_SUBTITLE,
+        text_color=COLOR_TEXT_SECONDARY,
         anchor="w"
     ).pack(side="left", padx=(20, 0), pady=(10, 0))
 
@@ -76,7 +83,7 @@ def populate_general_settings(main_window, frame):
 
 def create_reset_section(main_window, parent):
     """Create section for resetting all settings to default."""
-    section = ctk.CTkFrame(parent, **theme.SECTION_STYLE)
+    section = ctk.CTkFrame(parent, **SECTION_STYLE)
     section.pack(fill="x", pady=(0, 30))
 
     create_section_header(section, "⚙️  Configuration Management", "Manage configuration files and settings")
@@ -89,7 +96,7 @@ def create_reset_section(main_window, parent):
         text="📁  Open Config Directory",
         width=280,
         command=main_window.open_config_directory,
-        **theme.BUTTON_STYLE_PRIMARY
+        **BUTTON_STYLE_PRIMARY
     ).pack(side="left", padx=(0, 20))
 
     ctk.CTkButton(
@@ -97,12 +104,12 @@ def create_reset_section(main_window, parent):
         text="🔄  Reset All Settings",
         width=280,
         command=main_window.reset_to_default_settings,
-        **theme.BUTTON_STYLE_DANGER
+        **BUTTON_STYLE_DANGER
     ).pack(side="left")
 
 def create_features_section(main_window, parent):
     """Create section for configuring main application features."""
-    section = ctk.CTkFrame(parent, **theme.SECTION_STYLE)
+    section = ctk.CTkFrame(parent, **SECTION_STYLE)
     section.pack(fill="x", pady=(0, 30))
 
     create_section_header(section, "🔧  Feature Configuration", "Enable or disable main application features")
@@ -138,7 +145,7 @@ def load_dynamic_offset_sources():
 
 def create_offsets_section(main_window, parent):
     """Create section for configuring offset source and local file selection."""
-    section = ctk.CTkFrame(parent, **theme.SECTION_STYLE)
+    section = ctk.CTkFrame(parent, **SECTION_STYLE)
     section.pack(fill="x", pady=(0, 30))
 
     header = create_section_header(section, "📡  Offsets Configuration", "Configure offset source and local files")
@@ -158,12 +165,7 @@ def create_offsets_section(main_window, parent):
         variable=main_window.offset_source_var,
         values=dropdown_values,
         command=lambda dn: update_offset_source(main_window, source_mapping[dn]),
-        font=(theme.FONT_FAMILY_REGULAR[0], theme.FONT_SIZE_H4),
-        dropdown_font=(theme.FONT_FAMILY_REGULAR[0], theme.FONT_SIZE_H4),
-        corner_radius=12,
-        fg_color=theme.COLOR_ACCENT_FG,
-        button_color=theme.COLOR_ACCENT_BUTTON,
-        button_hover_color=theme.COLOR_ACCENT_BUTTON_HOVER
+        **COMBOBOX_STYLE
     ).pack(side="right", padx=(0, 10))
 
     main_window.local_files_frame = ctk.CTkFrame(section, fg_color="transparent")
@@ -179,7 +181,7 @@ def create_file_selector(main_window, parent, label_text, filename, description,
     item_frame = ctk.CTkFrame(parent, fg_color="transparent")
     item_frame.pack(fill="x", padx=0, pady=(0, 10))
     
-    container = ctk.CTkFrame(item_frame, **theme.SETTING_ITEM_STYLE)
+    container = ctk.CTkFrame(item_frame, **SETTING_ITEM_STYLE)
     container.pack(fill="x")
 
     content_frame = ctk.CTkFrame(container, fg_color="transparent")
@@ -191,16 +193,16 @@ def create_file_selector(main_window, parent, label_text, filename, description,
     ctk.CTkLabel(
         label_frame,
         text=label_text,
-        font=(theme.FONT_FAMILY_BOLD[0], theme.FONT_SIZE_H3, theme.FONT_FAMILY_BOLD[2]),
-        text_color=theme.COLOR_TEXT_PRIMARY,
+        font=FONT_ITEM_LABEL,
+        text_color=COLOR_TEXT_PRIMARY,
         anchor="w"
     ).pack(fill="x", pady=(0, 4))
 
     ctk.CTkLabel(
         label_frame,
         text=description,
-        font=(theme.FONT_FAMILY_REGULAR[0], theme.FONT_SIZE_P),
-        text_color=theme.COLOR_TEXT_SECONDARY,
+        font=FONT_ITEM_DESCRIPTION,
+        text_color=COLOR_TEXT_SECONDARY,
         anchor="w",
         wraplength=400
     ).pack(fill="x")
@@ -225,10 +227,10 @@ def create_file_selector(main_window, parent, label_text, filename, description,
     file_button = ctk.CTkButton(
         button_frame,
         text=button_text,
-        font=(theme.FONT_FAMILY_REGULAR[0], theme.FONT_SIZE_H4),
+        font=FONT_WIDGET,
         corner_radius=10,
-        fg_color=theme.COLOR_ACCENT_FG,
-        hover_color=theme.COLOR_ACCENT_HOVER,
+        fg_color=COLOR_ACCENT_FG,
+        hover_color=COLOR_ACCENT_HOVER,
         command=select_file
     )
     file_button.pack()
@@ -253,7 +255,7 @@ def create_setting_item(parent, label_text, description, widget_type, key, main_
     item_frame = ctk.CTkFrame(parent, fg_color="transparent")
     item_frame.pack(fill="x", padx=40, pady=(0, 30 if not is_last else 40))
     
-    container = ctk.CTkFrame(item_frame, **theme.SETTING_ITEM_STYLE)
+    container = ctk.CTkFrame(item_frame, **SETTING_ITEM_STYLE)
     container.pack(fill="x")
     
     content_frame = ctk.CTkFrame(container, fg_color="transparent")
@@ -265,16 +267,16 @@ def create_setting_item(parent, label_text, description, widget_type, key, main_
     ctk.CTkLabel(
         label_frame,
         text=label_text,
-        font=(theme.FONT_FAMILY_BOLD[0], theme.FONT_SIZE_H3, theme.FONT_FAMILY_BOLD[2]),
-        text_color=theme.COLOR_TEXT_PRIMARY,
+        font=FONT_ITEM_LABEL,
+        text_color=COLOR_TEXT_PRIMARY,
         anchor="w"
     ).pack(fill="x", pady=(0, 4))
     
     ctk.CTkLabel(
         label_frame,
         text=description,
-        font=(theme.FONT_FAMILY_REGULAR[0], theme.FONT_SIZE_P),
-        text_color=theme.COLOR_TEXT_SECONDARY,
+        font=FONT_ITEM_DESCRIPTION,
+        text_color=COLOR_TEXT_SECONDARY,
         anchor="w",
         wraplength=400
     ).pack(fill="x")
@@ -289,14 +291,8 @@ def create_setting_item(parent, label_text, description, widget_type, key, main_
             widget_frame,
             text="",
             variable=var,
-            width=30,
-            height=30,
-            corner_radius=8,
-            border_width=2,
-            fg_color=theme.COLOR_ACCENT_FG,
-            hover_color=theme.COLOR_ACCENT_HOVER,
-            checkmark_color="#ffffff",
-            command=lambda: main_window.save_settings(show_message=False)
+            command=lambda: main_window.save_settings(show_message=False),
+            **CHECKBOX_STYLE
         ).pack()
         
         setattr(main_window, f"{key.lower()}_var", var)

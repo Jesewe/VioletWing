@@ -1,6 +1,8 @@
 import customtkinter as ctk
 import os
 from classes.logger import Logger
+from gui.theme import (FONT_TITLE, FONT_SUBTITLE, FONT_SECTION_TITLE, FONT_WIDGET,
+                         COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY, SECTION_STYLE)
 
 def populate_logs(main_window, frame):
     """Populate the logs frame with a text widget to display logs."""
@@ -15,43 +17,12 @@ def populate_logs(main_window, frame):
     )
     logs_container.pack(fill="both", expand=True, padx=40, pady=40)
 
-    # Header section
-    header_frame = ctk.CTkFrame(
-        logs_container,
-        fg_color="transparent",
-        height=100
-    )
-    header_frame.pack(fill="x", pady=(0, 35))
-    header_frame.pack_propagate(False)
-
-    # Container for title and subtitle
-    title_container = ctk.CTkFrame(header_frame, fg_color="transparent")
-    title_container.pack(side="left", fill="y")
-
-    # Title label
-    title_label = ctk.CTkLabel(
-        title_container,
-        text="📋 Application Logs",
-        font=("Chivo", 36, "bold"),
-        text_color=("#1f2937", "#ffffff")
-    )
-    title_label.pack(anchor="w", pady=(10, 0))
-
-    # Subtitle providing context
-    subtitle_label = ctk.CTkLabel(
-        title_container,
-        text="Real-time application logs and system events",
-        font=("Gambetta", 16),
-        text_color=("#64748b", "#94a3b8")
-    )
-    subtitle_label.pack(anchor="w", pady=(8, 0))
+    create_title_section(logs_container)
 
     # Main card for logs display
     logs_card = ctk.CTkFrame(
         logs_container,
-        corner_radius=25,
-        fg_color=("#ffffff", "#1a1b23"),
-        border_color=("#e2e8f0", "#2d3748")
+        **{**SECTION_STYLE, "border_width": 0}
     )
     logs_card.pack(fill="both", expand=True)
 
@@ -73,8 +44,8 @@ def populate_logs(main_window, frame):
     logs_title = ctk.CTkLabel(
         header_content,
         text="System Logs",
-        font=("Chivo", 20, "bold"),
-        text_color=("#1f2937", "#ffffff")
+        font=FONT_SECTION_TITLE,
+        text_color=COLOR_TEXT_PRIMARY
     )
     logs_title.pack(side="left")
 
@@ -82,9 +53,7 @@ def populate_logs(main_window, frame):
     status_frame = ctk.CTkFrame(
         header_content, 
         corner_radius=20,
-        fg_color=("#dcfce7", "#14532d"),
-        border_width=2,
-        border_color=("#bbf7d0", "#166534")
+        fg_color=("#dcfce7", "#14532d")
     )
     status_frame.pack(side="right")
 
@@ -96,7 +65,7 @@ def populate_logs(main_window, frame):
     status_dot = ctk.CTkLabel(
         status_content,
         text="●",
-        font=("Chivo", 16),
+        font=FONT_WIDGET,
         text_color=("#059669", "#10b981")
     )
     status_dot.pack(side="left", padx=(0, 10))
@@ -105,7 +74,7 @@ def populate_logs(main_window, frame):
     status_text = ctk.CTkLabel(
         status_content,
         text="Live",
-        font=("Chivo", 15, "bold"),
+        font=FONT_WIDGET,
         text_color=("#059669", "#10b981")
     )
     status_text.pack(side="left")
@@ -123,9 +92,9 @@ def populate_logs(main_window, frame):
         logs_content,
         corner_radius=22,
         border_width=0,
-        font=("Chivo", 14),
+        font=FONT_WIDGET,
         fg_color=("#fcfcfd", "#0f0f11"),
-        text_color=("#1f2937", "#e2e8f0"),
+        text_color=COLOR_TEXT_PRIMARY,
         state="disabled",
         wrap="word"
     )
@@ -137,6 +106,33 @@ def populate_logs(main_window, frame):
         main_window.last_log_position = os.path.getsize(Logger.LOG_FILE)
     else:
         main_window.last_log_position = 0
+
+def create_title_section(parent):
+    """Create the title and subtitle for the settings page."""
+    header_frame = ctk.CTkFrame(
+        parent,
+        fg_color="transparent",
+        height=100
+    )
+    header_frame.pack(fill="x", pady=(0, 35))
+    header_frame.pack_propagate(False)
+
+    title_container = ctk.CTkFrame(header_frame, fg_color="transparent")
+    title_container.pack(side="left", fill="y")
+
+    ctk.CTkLabel(
+        title_container,
+        text="📋 Application Logs",
+        font=FONT_TITLE,
+        text_color=COLOR_TEXT_PRIMARY
+    ).pack(anchor="w", pady=(10, 0))
+
+    ctk.CTkLabel(
+        title_container,
+        text="Real-time application logs and system events",
+        font=FONT_SUBTITLE,
+        text_color=COLOR_TEXT_SECONDARY
+    ).pack(anchor="w", pady=(8, 0))
 
 def _load_logs_safely(main_window):
     """Safely load logs with duplicate prevention and proper error handling."""

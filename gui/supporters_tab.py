@@ -4,6 +4,9 @@ import threading
 import requests
 from classes.logger import Logger
 from classes.utility import Utility
+from gui.theme import (FONT_TITLE, FONT_SUBTITLE, FONT_SECTION_TITLE, FONT_ITEM_LABEL, FONT_ITEM_DESCRIPTION,
+                         COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY, COLOR_BACKGROUND, COLOR_BORDER,
+                         COLOR_WIDGET_BACKGROUND, SECTION_STYLE)
 
 # Cache the logger instance
 logger = Logger.get_logger()
@@ -16,16 +19,14 @@ def populate_supporters(main_window, frame):
 
     # Scrollable container
     supporters_container = ctk.CTkScrollableFrame(
-        main_container, fg_color="transparent",
-        scrollbar_button_color=("#CBD5E1", "#475569"),
-        scrollbar_button_hover_color=("#94A3B8", "#64748B")
+        main_container, fg_color="transparent"
     )
     supporters_container.pack(fill="both", expand=True)
 
     # Hero section
     hero_frame = ctk.CTkFrame(
-        supporters_container, corner_radius=20, fg_color=("#FFFFFF", "#0F172A"),
-        border_width=2, border_color=("#E2E8F0", "#1E293B")
+        supporters_container,
+        **SECTION_STYLE
     )
     hero_frame.pack(fill="x", pady=(0, 48), padx=24)
 
@@ -35,12 +36,12 @@ def populate_supporters(main_window, frame):
 
     # Title and subtitle
     ctk.CTkLabel(
-        hero_content, text="🤝 Project Supporters", font=("Chivo", 48, "bold"),
-        text_color=("#0F172A", "#F8FAFC")
+        hero_content, text="🤝 Project Supporters", font=FONT_TITLE,
+        text_color=COLOR_TEXT_PRIMARY
     ).pack(anchor="w")
     ctk.CTkLabel(
         hero_content, text="Celebrating our incredible community members who fuel this project's growth",
-        font=("Gambetta", 20), text_color=("#475569", "#CBD5E1"), wraplength=800
+        font=FONT_SUBTITLE, text_color=COLOR_TEXT_SECONDARY, wraplength=800
     ).pack(anchor="w", pady=(20, 0))
 
     # Stats frame
@@ -53,8 +54,8 @@ def populate_supporters(main_window, frame):
 
     # Loading container
     loading_container = ctk.CTkFrame(
-        content_frame, corner_radius=16, fg_color=("#FFFFFF", "#1E293B"),
-        border_width=1, border_color=("#E2E8F0", "#334155")
+        content_frame,
+        **SECTION_STYLE
     )
     loading_container.pack(pady=24)
 
@@ -68,8 +69,8 @@ def populate_supporters(main_window, frame):
         fg_color=("#3B82F6", "#60A5FA")
     ).pack()
     ctk.CTkLabel(
-        loading_content, text="Loading supporters data...", font=("Gambetta", 18),
-        text_color=("#64748B", "#94A3B8")
+        loading_content, text="Loading supporters data...", font=FONT_ITEM_LABEL,
+        text_color=COLOR_TEXT_SECONDARY
     ).pack(pady=(20, 0))
     
     # Fetch supporter data in a background thread
@@ -167,11 +168,11 @@ def populate_supporters(main_window, frame):
             content.pack(expand=True, fill="both", padx=16, pady=16)
 
             # Value label
-            ctk.CTkLabel(content, text=f"{theme['value']:,}", font=("Chivo", 36, "bold"),
+            ctk.CTkLabel(content, text=f"{theme['value']:,}", font=FONT_TITLE,
                         text_color=theme['number_color']).pack(expand=True, pady=(8, 0))
 
             # Description label
-            ctk.CTkLabel(content, text=theme['label'], font=("Gambetta", 15, "normal"),
+            ctk.CTkLabel(content, text=theme['label'], font=FONT_ITEM_DESCRIPTION,
                         text_color=theme['label_color']).pack(pady=(0, 8))
     
     def create_developers_section(container, developers):
@@ -182,8 +183,8 @@ def populate_supporters(main_window, frame):
 
         # Header frame
         header = ctk.CTkFrame(
-            section, corner_radius=16, fg_color=("#FFFFFF", "#1E293B"), 
-            border_width=2, border_color=("#F1F5F9", "#334155")
+            section,
+            **SECTION_STYLE
         )
         header.pack(fill="x", pady=(0, 32))
 
@@ -199,25 +200,25 @@ def populate_supporters(main_window, frame):
         
         # Title
         ctk.CTkLabel(
-            content, text="Developers", font=("Chivo", 32, "bold"), 
-            text_color=("#0F172A", "#F8FAFC")
+            content, text="Developers", font=FONT_SECTION_TITLE, 
+            text_color=COLOR_TEXT_PRIMARY
         ).pack(anchor="w")
         
         # Description
         ctk.CTkLabel(
             content, text="🚀 Core developers building and maintaining this project", 
-            font=("Gambetta", 18), text_color=("#475569", "#CBD5E1")
+            font=FONT_SUBTITLE, text_color=COLOR_TEXT_SECONDARY
         ).pack(anchor="w", pady=(12, 0))
 
         # Member count badge
         badge = ctk.CTkFrame(
-            content, corner_radius=24, fg_color=("#F0FDF4", "#1E293B"), 
+            content, corner_radius=24, fg_color=COLOR_WIDGET_BACKGROUND, 
             height=40, border_width=1, border_color=("#22C55E", "#16A34A")
         )
         badge.pack(anchor="w", pady=(20, 0))
         ctk.CTkLabel(
             badge, text=f"{len(developers)} {'developer' if len(developers) == 1 else 'developers'}", 
-            font=("Chivo", 16, "bold"), text_color=("#15803D", "#22C55E")
+            font=FONT_ITEM_LABEL, text_color=("#15803D", "#22C55E")
         ).pack(padx=20, pady=8)
 
         # Developers grid
@@ -230,8 +231,8 @@ def populate_supporters(main_window, frame):
         for i, username in enumerate(developers):
             # Developer card
             card = ctk.CTkFrame(
-                grid, corner_radius=12, fg_color=("#FFFFFF", "#1E293B"), 
-                border_width=1, border_color=("#E2E8F0", "#475569"), height=70
+                grid, corner_radius=12, fg_color=COLOR_WIDGET_BACKGROUND, 
+                border_width=1, border_color=COLOR_BORDER, height=70
             )
             card.grid(
                 row=i // columns, column=i % columns, 
@@ -256,8 +257,8 @@ def populate_supporters(main_window, frame):
             
             # Username label
             ctk.CTkLabel(
-                card_content, text=username, font=("Chivo", 16, "bold"), 
-                text_color=("#1E293B", "#F1F5F9")
+                card_content, text=username, font=FONT_ITEM_LABEL, 
+                text_color=COLOR_TEXT_PRIMARY
             ).pack(side="left", padx=(16, 0))
     
     def create_supporters_section(container, supporters):
@@ -268,8 +269,8 @@ def populate_supporters(main_window, frame):
 
         # Header frame
         header = ctk.CTkFrame(
-            section, corner_radius=16, fg_color=("#FFFFFF", "#1E293B"), 
-            border_width=2, border_color=("#F1F5F9", "#334155")
+            section,
+            **SECTION_STYLE
         )
         header.pack(fill="x", pady=(0, 32))
 
@@ -285,25 +286,25 @@ def populate_supporters(main_window, frame):
         
         # Title
         ctk.CTkLabel(
-            content, text="Community Supporters", font=("Chivo", 32, "bold"), 
-            text_color=("#0F172A", "#F8FAFC")
+            content, text="Community Supporters", font=FONT_SECTION_TITLE, 
+            text_color=COLOR_TEXT_PRIMARY
         ).pack(anchor="w")
         
         # Description
         ctk.CTkLabel(
             content, text="💙 Amazing community members supporting this project", 
-            font=("Gambetta", 18), text_color=("#475569", "#CBD5E1")
+            font=FONT_SUBTITLE, text_color=COLOR_TEXT_SECONDARY
         ).pack(anchor="w", pady=(12, 0))
 
         # Member count badge
         badge = ctk.CTkFrame(
-            content, corner_radius=24, fg_color=("#FEF3C7", "#1E293B"), 
+            content, corner_radius=24, fg_color=COLOR_WIDGET_BACKGROUND, 
             height=40, border_width=1, border_color=("#F59E0B", "#D97706")
         )
         badge.pack(anchor="w", pady=(20, 0))
         ctk.CTkLabel(
             badge, text=f"{len(supporters)} {'member' if len(supporters) == 1 else 'members'}", 
-            font=("Chivo", 16, "bold"), text_color=("#92400E", "#F59E0B")
+            font=FONT_ITEM_LABEL, text_color=("#92400E", "#F59E0B")
         ).pack(padx=20, pady=8)
 
         # Supporters grid
@@ -316,8 +317,8 @@ def populate_supporters(main_window, frame):
         for i, username in enumerate(supporters):
             # Supporter card
             card = ctk.CTkFrame(
-                grid, corner_radius=12, fg_color=("#FFFFFF", "#1E293B"), 
-                border_width=1, border_color=("#E2E8F0", "#475569"), height=70
+                grid, corner_radius=12, fg_color=COLOR_WIDGET_BACKGROUND, 
+                border_width=1, border_color=COLOR_BORDER, height=70
             )
             card.grid(
                 row=i // columns, column=i % columns, 
@@ -342,16 +343,16 @@ def populate_supporters(main_window, frame):
             
             # Username label
             ctk.CTkLabel(
-                card_content, text=username, font=("Chivo", 16, "bold"), 
-                text_color=("#1E293B", "#F1F5F9")
+                card_content, text=username, font=FONT_ITEM_LABEL, 
+                text_color=COLOR_TEXT_PRIMARY
             ).pack(side="left", padx=(16, 0))
     
     def show_no_supporters(container):
         """Display a message when no supporters are found."""
         # No supporters message frame
         message_frame = ctk.CTkFrame(
-            container, corner_radius=16, fg_color=("#F8FAFC", "#1E293B"),
-            border_width=2, border_color=("#E2E8F0", "#334155")
+            container,
+            **SECTION_STYLE
         )
         message_frame.pack(pady=24)
 
@@ -371,12 +372,12 @@ def populate_supporters(main_window, frame):
 
         # Message
         ctk.CTkLabel(
-            content, text="No Supporters Yet", font=("Chivo", 22, "bold"), 
-            text_color=("#475569", "#CBD5E1")
+            content, text="No Supporters Yet", font=FONT_SECTION_TITLE, 
+            text_color=COLOR_TEXT_SECONDARY
         ).pack(pady=(20, 8))
         ctk.CTkLabel(
             content, text="Be the first to support this amazing project!", 
-            font=("Gambetta", 16), text_color=("#64748B", "#94A3B8")
+            font=FONT_SUBTITLE, text_color=COLOR_TEXT_SECONDARY
         ).pack()
     
     def show_error(loading_container, error_msg):

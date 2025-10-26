@@ -19,21 +19,29 @@ MAIN_LOOP_SLEEP = 0.05
 ENTITY_COUNT = 64
 # Size of each entity entry in memory
 ENTITY_ENTRY_SIZE = 112
-
+# Skeleton bone structure {parent_bone_id: [child_bone_ids]}
 SKELETON_BONES = {
-    6: [5],
-    5: [4],
-    4: [3, 8, 11],
-    3: [0],
-    8: [9],
-    9: [10],
-    11: [12],
-    12: [13],
-    0: [22, 25],
-    22: [23],
-    23: [24],
-    25: [26],
-    26: [27],
+    # Trunk Core Chain
+    6: [5],  # Head -> Neck
+    5: [4],  # Neck -> Chest
+    4: [3, 13, 8],  # Chest -> Stomach, Right Shoulder, Left Shoulder
+    3: [2],  # Stomach -> Center Point
+    2: [1],  # Center Point -> Small Head
+    1: [0],  # Small Head -> Pelvis 
+    # Right Hand Chain (4 points)
+    13: [14],  # Right Shoulder -> Right Elbow
+    14: [15],  # Right Elbow -> Right Wrist
+    15: [16],  # Right Wrist -> Right Hand 
+    # Left Arm Chain (4 points)
+    8: [9],  # Left Shoulder -> Left Elbow
+    9: [10],  # Left Elbow -> Left Wrist
+    10: [11],  # Left Wrist -> Left Hand
+    # Legs Chain
+    0: [22, 25],  # Pelvis -> Left Hip, Right Hip
+    22: [23],  # Left Hip -> Left Knee
+    23: [24],  # Left Knee -> Left Foot
+    25: [26],  # Right Hip -> Right Knee
+    26: [27],  # Right Knee -> Right Foot
 }
 ALL_BONE_IDS = set(SKELETON_BONES.keys())
 for _bones in SKELETON_BONES.values():

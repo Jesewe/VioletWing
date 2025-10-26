@@ -12,6 +12,7 @@ import sys
 
 from watchdog.observers import Observer
 
+from classes.updater import Updater
 from classes.utility import Utility
 from classes.trigger_bot import CS2TriggerBot
 from classes.esp import CS2Overlay
@@ -31,6 +32,9 @@ from gui.logs_tab import populate_logs
 from gui.faq_tab import populate_faq
 from gui.notifications_tab import populate_notifications
 from gui.supporters_tab import populate_supporters
+from gui.theme import (FONT_FAMILY_BOLD, FONT_FAMILY_REGULAR, FONT_SIZE_H2, FONT_SIZE_H4, FONT_SIZE_P,
+                         COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY, COLOR_BACKGROUND, COLOR_WIDGET_BACKGROUND, COLOR_ACCENT_FG,
+                         BUTTON_STYLE_PRIMARY, BUTTON_STYLE_DANGER)
 
 # Cache the logger instance for consistent logging throughout the application
 logger = Logger.get_logger()
@@ -99,6 +103,9 @@ class MainWindow:
         self.root.grid_columnconfigure(0, weight=1)
         self.root.grid_rowconfigure(1, weight=1)
         
+        # Initialize the updater
+        self.updater = Updater(self)
+        
         # Initialize UI components like header and content
         self.setup_ui()
         
@@ -138,216 +145,95 @@ class MainWindow:
 
     def create_modern_header(self):
         """Create a sleek modern header with gradient-like appearance."""
-        # Main header container with fixed height and dark background
-        header_container = ctk.CTkFrame(
-            self.root, 
-            height=80,
-            corner_radius=0,
-            fg_color=("#1a1a1a", "#0d1117")
-        )
-        header_container.grid(row=0, column=0, sticky="ew", padx=0, pady=0)
+        header_container = ctk.CTkFrame(self.root, height=80, corner_radius=0, fg_color=("#1a1a1a", "#0d1117"))
+        header_container.grid(row=0, column=0, sticky="ew")
         header_container.grid_propagate(False)
         header_container.grid_columnconfigure(1, weight=1)
-        
-        # Left side frame for logo and title
-        left_frame = ctk.CTkFrame(header_container, fg_color="transparent")
+
+        self.create_header_left(header_container)
+        self.create_header_right(header_container)
+
+    def create_header_left(self, parent):
+        """Create the left side of the header with title and version."""
+        left_frame = ctk.CTkFrame(parent, fg_color="transparent")
         left_frame.grid(row=0, column=0, sticky="w", padx=30, pady=15)
         
-        # Frame for title components
         title_frame = ctk.CTkFrame(left_frame, fg_color="transparent")
         title_frame.pack(side="left")
         
-        # Main title "Violet" with accent color
-        main_title = ctk.CTkLabel(
-            title_frame,
-            text="Violet",
-            font=("Chivo", 28, "bold"),
-            text_color="#D5006D"
-        )
-        main_title.pack(side="left")
-        
-        # Subtitle "Wing" in white
-        sub_title = ctk.CTkLabel(
-            title_frame,
-            text="Wing",
-            font=("Chivo", 28, "bold"),
-            text_color="#E0E0E0"
-        )
-        sub_title.pack(side="left", padx=(5, 0))
-        
-        # Version label with smaller font and gray color
-        version_label = ctk.CTkLabel(
-            title_frame,
-            text=f"{ConfigManager.VERSION}",
-            font=("Gambetta", 12),
-            text_color="#6b7280"
-        )
-        version_label.pack(side="left", padx=(10, 0), pady=(8, 0))
-        
-        # Right side frame for status and action buttons
-        right_frame = ctk.CTkFrame(header_container, fg_color="transparent")
+        ctk.CTkLabel(title_frame, text="Violet", font=(FONT_FAMILY_BOLD[0], FONT_SIZE_H2, "bold"), text_color=COLOR_ACCENT_FG[0]).pack(side="left")
+        ctk.CTkLabel(title_frame, text="Wing", font=(FONT_FAMILY_BOLD[0], FONT_SIZE_H2, "bold"), text_color=COLOR_TEXT_PRIMARY[1]).pack(side="left", padx=(5, 0))
+        ctk.CTkLabel(title_frame, text=f"{ConfigManager.VERSION}", font=(FONT_FAMILY_REGULAR[0], FONT_SIZE_P), text_color=COLOR_TEXT_SECONDARY[0]).pack(side="left", padx=(10, 0), pady=(8, 0))
+
+    def create_header_right(self, parent):
+        """Create the right side of the header with status, social buttons, and update button."""
+        right_frame = ctk.CTkFrame(parent, fg_color="transparent")
         right_frame.grid(row=0, column=2, sticky="e", padx=30, pady=15)
         
-        # Status indicator frame
-        self.status_frame = ctk.CTkFrame(right_frame, fg_color="transparent")
+        self.create_status_indicator(right_frame)
+        social_frame = self.create_social_buttons(right_frame)
+        self.create_update_button(social_frame)
+
+    def create_status_indicator(self, parent):
+        """Create the status indicator widget."""
+        self.status_frame = ctk.CTkFrame(parent, fg_color="transparent")
         self.status_frame.pack(side="right", padx=(20, 0))
         
-        # Status dot indicating client activity
-        status_dot = ctk.CTkFrame(
-            self.status_frame,
-            width=12,
-            height=12,
-            corner_radius=6,
-            fg_color="#ef4444"
-        )
-        status_dot.pack(side="left", pady=(0, 2))
-        
-        # Status label showing "Inactive" or "Active"
-        self.status_label = ctk.CTkLabel(
-            self.status_frame,
-            text="Inactive",
-            font=("Chivo", 14, "bold"),
-            text_color="#ef4444"
-        )
+        ctk.CTkFrame(self.status_frame, width=12, height=12, corner_radius=6, fg_color="#ef4444").pack(side="left", pady=(0, 2))
+        self.status_label = ctk.CTkLabel(self.status_frame, text="Inactive", font=(FONT_FAMILY_BOLD[0], FONT_SIZE_H4, "bold"), text_color=BUTTON_STYLE_DANGER["fg_color"][0])
         self.status_label.pack(side="left", padx=(8, 0))
-        
-        # Frame for social media buttons
-        social_frame = ctk.CTkFrame(right_frame, fg_color="transparent")
+
+    def create_social_buttons(self, parent):
+        """Create and pack the social media buttons."""
+        social_frame = ctk.CTkFrame(parent, fg_color="transparent")
         social_frame.pack(side="right")
-        
-        # Load social media icons using CTkImage
-        icons = ['github', 'telegram', 'violetwing']
-        for icon in icons:
-            try:
-                image = Image.open(Utility.resource_path(f'src/img/{icon}_icon.png'))
-                setattr(self, f'{icon}_ctk_image', ctk.CTkImage(light_image=image, dark_image=image, size=(24, 24)))
-            except FileNotFoundError:
-                setattr(self, f'{icon}_ctk_image', None)
-        
-        social_buttons = [
-            ("GitHub", "github", "https://github.com/Jesewe/VioletWing", "#21262d", "#30363d", "#30363d"),
-            ("Telegram", "telegram", "https://t.me/cs2_jesewe", "#0088cc", "#006bb3", None),
-            ("Help Center", "violetwing", "https://violetwing.featurebase.app/en/help", "#d5006d", "#97004e", None)
+
+        social_buttons_data = [
+            {"text": "GitHub", "icon": "github", "url": "https://github.com/Jesewe/VioletWing", "fg_color": "#21262d", "hover_color": "#30363d", "border_color": "#30363d"},
+            {"text": "Telegram", "icon": "telegram", "url": "https://t.me/cs2_jesewe", "fg_color": "#0088cc", "hover_color": "#006bb3"},
+            {"text": "Help Center", "icon": "violetwing", "url": "https://violetwing.featurebase.app/en/help", "fg_color": "#d5006d", "hover_color": "#97004e"}
         ]
 
-        for i, (text, icon, url, fg_color, hover_color, border_color) in enumerate(social_buttons):
+        for i, data in enumerate(social_buttons_data):
+            try:
+                image = Image.open(Utility.resource_path(f'src/img/{data["icon"]}_icon.png'))
+                ctk_image = ctk.CTkImage(light_image=image, dark_image=image, size=(24, 24))
+            except FileNotFoundError:
+                ctk_image = None
+
             btn = ctk.CTkButton(
                 social_frame,
-                text=text,
-                image=getattr(self, f'{icon}_ctk_image'),
+                text=data["text"],
+                image=ctk_image,
                 compound="left",
-                command=lambda u=url: webbrowser.open(u),
+                command=lambda u=data["url"]: webbrowser.open(u),
                 height=32,
                 corner_radius=16,
-                fg_color=fg_color,
-                hover_color=hover_color,
-                border_width=1 if border_color else 0,
-                border_color=border_color,
+                fg_color=data["fg_color"],
+                hover_color=data["hover_color"],
+                border_width=1 if "border_color" in data else 0,
+                border_color=data.get("border_color"),
+                font=(FONT_FAMILY_BOLD[0], FONT_SIZE_H4)
+            )
+            btn.pack(side="left", padx=(0, 8) if i < len(social_buttons_data) - 1 else (0, 0))
+        
+        return social_frame
+
+    def create_update_button(self, parent):
+        """Create the update button if an update is available."""
+        if self.updater.check_for_updates():
+            update_btn = ctk.CTkButton(
+                parent,
+                text="Pre-release Available!" if self.updater.is_prerelease else "Update Available!",
+                command=self.updater.handle_update,
+                width=120,
+                height=32,
+                corner_radius=16,
+                fg_color="#ef4444" if not self.updater.is_prerelease else "#f59e0b",
+                hover_color="#dc2626" if not self.updater.is_prerelease else "#d97706",
                 font=("Chivo", 14)
             )
-            btn.pack(side="left", padx=(0, 8) if i < len(social_buttons) - 1 else (0, 0))
-
-        # Check for updates if running as an executable
-        if getattr(sys, 'frozen', False):
-            logger.info("Running from executable. Checking for updates...")
-            download_url, is_prerelease = Utility.check_for_updates(ConfigManager.VERSION)
-            if download_url:
-                self.download_url = download_url
-                self.is_prerelease = is_prerelease
-                # Update button shown when a new version is available
-                update_btn = ctk.CTkButton(
-                    social_frame,
-                    text="Pre-release Available!" if is_prerelease else "Update Available!",
-                    command=self.handle_update,
-                    width=120,
-                    height=32,
-                    corner_radius=16,
-                    fg_color="#ef4444" if not is_prerelease else "#f59e0b",
-                    hover_color="#dc2626" if not is_prerelease else "#d97706",
-                    font=("Chivo", 14)
-                )
-                update_btn.pack(side="left", padx=(8, 0))
-        else:
-            logger.info("Running from source code. Auto-update disabled.")
-
-    def handle_update(self):
-        """Handle the update process with user confirmation."""
-        # Check if download URL exists
-        if not hasattr(self, 'download_url'):
-            messagebox.showerror("Error", "No update available.")
-            return
-
-        # Prompt user to confirm update
-        update_type = "pre-release" if getattr(self, 'is_prerelease', False) else "stable release"
-        response = messagebox.askyesno("Update Available", f"A new {update_type} is available. Are you ready to update?")
-        if response:
-            messagebox.showinfo("Updating", "Downloading update in background. You will be notified when the update is complete.")
-            # Start update in a separate thread
-            threading.Thread(target=self.download_and_update, args=(self.download_url,)).start()
-
-    def download_and_update(self, download_url):
-        """Download the new executable, create a .bat file to update and notify."""
-        try:
-            logger.info(f"Downloading update from {download_url}")
-            response = requests.get(download_url, stream=True)
-            response.raise_for_status()
-            
-            # Define paths for current and temporary executables
-            current_exe = sys.executable
-            exe_name = os.path.basename(current_exe)
-            temp_exe = os.path.join(ConfigManager.UPDATE_DIRECTORY, "new_VioletWing.exe")
-            bat_file = os.path.join(ConfigManager.UPDATE_DIRECTORY, "update.bat")
-            
-            # Download the new executable
-            with open(temp_exe, 'wb') as f:
-                for chunk in response.iter_content(chunk_size=8192):
-                    f.write(chunk)
-            
-            logger.info("Update downloaded successfully")
-            
-            # Create a batch file to handle the update process
-            with open(bat_file, 'w') as f:
-                f.write(f'''@echo off
-title VioletWing Updater
-echo Updating VioletWing...
-echo.
-echo Waiting for application to close...
-timeout /t 3 /nobreak >nul
-
-:WAIT_LOOP
-tasklist /FI "IMAGENAME eq {exe_name}" 2>NUL | find /I /N "{exe_name}">NUL
-if "%ERRORLEVEL%"=="0" (
-    echo Application is still running, waiting...
-    timeout /t 2 /nobreak >nul
-    goto WAIT_LOOP
-)
-
-echo Backing up current version...
-if exist "{current_exe}.backup" del "{current_exe}.backup"
-move "{current_exe}" "{current_exe}.backup"
-
-echo Installing new version...
-move "{temp_exe}" "{current_exe}"
-
-echo Starting updated application...
-start "" "{current_exe}"
-
-echo Update completed successfully!
-timeout /t 3 /nobreak >nul
-
-echo Cleaning up...
-del "{current_exe}.backup" 2>nul
-del "%~f0" 2>nul
-''')
-            
-            logger.info(f".bat file created at {bat_file}")
-            
-            # Execute the batch file and close the application
-            subprocess.Popen(bat_file, shell=True)
-            self.root.quit()
-        except Exception as e:
-            logger.error(f"Failed to update: {e}")
-            messagebox.showerror("Update Error", f"Failed to update: {str(e)}")
+            update_btn.pack(side="left", padx=(8, 0))
 
     def create_main_content(self):
         """Create the main content area with a modern layout."""
@@ -358,7 +244,7 @@ del "%~f0" 2>nul
 
         self.create_sidebar(main_container)
 
-        self.content_frame = ctk.CTkFrame(main_container, corner_radius=0, fg_color=("#f8fafc", "#161b22"))
+        self.content_frame = ctk.CTkFrame(main_container, corner_radius=0, fg_color=COLOR_BACKGROUND)
         self.content_frame.grid(row=0, column=1, sticky="nsew")
 
         self.tab_views = {
@@ -384,7 +270,7 @@ del "%~f0" 2>nul
 
     def create_sidebar(self, parent):
         """Create modern sidebar navigation."""
-        sidebar = ctk.CTkFrame(parent, width=280, corner_radius=0, fg_color=("#ffffff", "#0d1117"))
+        sidebar = ctk.CTkFrame(parent, width=280, corner_radius=0, fg_color=COLOR_BACKGROUND)
         sidebar.grid(row=0, column=0, sticky="nsew")
         sidebar.grid_propagate(False)
 
@@ -412,9 +298,9 @@ del "%~f0" 2>nul
                 height=50,
                 corner_radius=12,
                 fg_color="transparent",
-                hover_color=("#e5e7eb", "#21262d"),
-                text_color=("#374151", "#d1d5db"),
-                font=("Chivo", 16),
+                hover_color=COLOR_WIDGET_BACKGROUND,
+                text_color=COLOR_TEXT_SECONDARY,
+                font=(FONT_FAMILY_BOLD[0], FONT_SIZE_H4),
                 anchor="w",
             )
             btn.pack(pady=(0, 8), padx=20, fill="x")
@@ -428,14 +314,15 @@ del "%~f0" 2>nul
             if key == active_key:
                 # Highlight the active button
                 btn.configure(
-                    fg_color=("#D5006D", "#D5006D"),
-                    text_color="#ffffff"
+                    fg_color=COLOR_ACCENT_FG,
+                    text_color=COLOR_TEXT_PRIMARY[1]
                 )
             else:
                 # Reset inactive buttons to default style
                 btn.configure(
                     fg_color="transparent",
-                    text_color=("#374151", "#d1d5db")
+                    text_color=COLOR_TEXT_SECONDARY,
+                    hover_color=COLOR_WIDGET_BACKGROUND
                 )
 
     def switch_view(self, view_key):
@@ -621,13 +508,20 @@ del "%~f0" 2>nul
         """Save the configuration settings and apply to relevant features in real-time."""
         try:
             self.validate_inputs()
-            old_config = ConfigManager.load_config().copy()
-            self.update_config_from_ui()
-            new_config = self.triggerbot.config
-            ConfigManager.save_config(new_config, log_info=False)
+            
+            # Load the current configuration to ensure all parts are present
+            config = ConfigManager.load_config()
+            old_config = config.copy()
 
-            self.apply_feature_state_changes(old_config, new_config)
-            self.update_running_feature_configs(new_config)
+            # Update the configuration from the UI
+            self.update_config_from_ui(config)
+            
+            # Save the updated configuration
+            ConfigManager.save_config(config, log_info=True)
+            
+            # Apply changes to running features
+            self.apply_feature_state_changes(old_config, config)
+            self.update_running_feature_configs(config)
 
             if show_message:
                 messagebox.showinfo("Settings Saved", "Configuration has been saved successfully.")
@@ -725,24 +619,24 @@ del "%~f0" 2>nul
         else:
             self.update_client_status("Inactive", "#ef4444")
 
-    def update_config_from_ui(self):
+    def update_config_from_ui(self, config):
         """Update the configuration from the UI elements by calling granular update methods."""
-        self._update_general_config_from_ui()
-        self._update_trigger_config_from_ui()
-        self._update_overlay_config_from_ui()
-        self._update_additional_config_from_ui()
+        self._update_general_config_from_ui(config)
+        self._update_trigger_config_from_ui(config)
+        self._update_overlay_config_from_ui(config)
+        self._update_additional_config_from_ui(config)
 
-    def _update_general_config_from_ui(self):
+    def _update_general_config_from_ui(self, config):
         """Update General settings from the UI."""
-        settings = self.triggerbot.config["General"]
+        settings = config["General"]
         if hasattr(self, 'trigger_var'): settings["Trigger"] = self.trigger_var.get()
         if hasattr(self, 'overlay_var'): settings["Overlay"] = self.overlay_var.get()
         if hasattr(self, 'bunnyhop_var'): settings["Bunnyhop"] = self.bunnyhop_var.get()
         if hasattr(self, 'noflash_var'): settings["Noflash"] = self.noflash_var.get()
 
-    def _update_trigger_config_from_ui(self):
+    def _update_trigger_config_from_ui(self, config):
         """Update Trigger settings from the UI."""
-        settings = self.triggerbot.config["Trigger"]
+        settings = config["Trigger"]
         if hasattr(self, 'trigger_key_entry'): settings["TriggerKey"] = self.trigger_key_entry.get().strip()
         if hasattr(self, 'toggle_mode_var'): settings["ToggleMode"] = self.toggle_mode_var.get()
         if hasattr(self, 'attack_teammates_var'): settings["AttackOnTeammates"] = self.attack_teammates_var.get()
@@ -761,9 +655,9 @@ del "%~f0" 2>nul
             
             settings['WeaponSettings'][weapon_type] = weapon_settings
 
-    def _update_overlay_config_from_ui(self):
+    def _update_overlay_config_from_ui(self, config):
         """Update Overlay settings from the UI."""
-        settings = self.overlay.config["Overlay"]
+        settings = config["Overlay"]
         if hasattr(self, 'enable_box_var'): settings["enable_box"] = self.enable_box_var.get()
         if hasattr(self, 'enable_skeleton_var'): settings["enable_skeleton"] = self.enable_skeleton_var.get()
         if hasattr(self, 'box_line_thickness_slider'): settings["box_line_thickness"] = self.box_line_thickness_slider.get()
@@ -778,16 +672,16 @@ del "%~f0" 2>nul
         if hasattr(self, 'teammate_color_hex_combo'): settings["teammate_color_hex"] = COLOR_CHOICES.get(self.teammate_color_hex_combo.get(), "#00FFFF")
         if hasattr(self, 'target_fps_slider'): settings["target_fps"] = self.target_fps_slider.get()
 
-    def _update_additional_config_from_ui(self):
+    def _update_additional_config_from_ui(self, config):
         """Update Additional (Bunnyhop, NoFlash) settings from the UI."""
-        bunnyhop_settings = self.bunnyhop.config.get("Bunnyhop", {})
+        bunnyhop_settings = config.get("Bunnyhop", {})
         if hasattr(self, 'jump_key_entry'): bunnyhop_settings["JumpKey"] = self.jump_key_entry.get().strip()
         try:
             if hasattr(self, 'jump_delay_entry'): bunnyhop_settings["JumpDelay"] = float(self.jump_delay_entry.get())
         except ValueError:
             pass
         
-        noflash_settings = self.noflash.config.get("NoFlash", {})
+        noflash_settings = config.get("NoFlash", {})
         if hasattr(self, 'FlashSuppressionStrength_slider'): noflash_settings["FlashSuppressionStrength"] = self.FlashSuppressionStrength_slider.get()
 
     def validate_inputs(self):
@@ -918,7 +812,7 @@ del "%~f0" 2>nul
         """Update Overlay settings UI from the configuration."""
         settings = self.overlay.config["Overlay"]
         if hasattr(self, 'enable_box_var'): self.enable_box_var.set(settings["enable_box"])
-        if hasattr(self, 'enable_skeleton_var'): self.enable_skeleton_var.set(settings.get("enable_skeleton", True))
+        if hasattr(self, 'enable_skeleton_var'): self.enable_skeleton_var.set(settings["enable_skeleton"])
         if hasattr(self, 'box_line_thickness_slider'):
             self.box_line_thickness_slider.set(settings["box_line_thickness"])
             if hasattr(self, 'box_line_thickness_value_label'): self.box_line_thickness_value_label.configure(text=f"{settings['box_line_thickness']:.1f}")

@@ -9,6 +9,12 @@ from classes.logger import Logger
 from classes.utility import Utility
 from classes.config_manager import ConfigManager
 from dateutil.parser import parse as parse_date
+from gui.theme import (
+    FONT_TITLE, FONT_SUBTITLE, FONT_SECTION_TITLE, FONT_SECTION_DESCRIPTION,
+    FONT_ITEM_LABEL, FONT_ITEM_DESCRIPTION, FONT_WIDGET,
+    COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY, COLOR_ACCENT_FG,
+    SECTION_STYLE, BUTTON_STYLE_PRIMARY, BUTTON_STYLE_DANGER
+)
 
 # Cache the logger instance
 logger = Logger.get_logger()
@@ -30,8 +36,8 @@ def populate_dashboard(main_window, frame):
     title_label = ctk.CTkLabel(
         title_frame,
         text="🎯 Dashboard",
-        font=("Chivo", 36, "bold"),
-        text_color=("#1f2937", "#ffffff")
+        font=FONT_TITLE,
+        text_color=COLOR_TEXT_PRIMARY
     )
     title_label.pack(side="left")
     
@@ -39,8 +45,8 @@ def populate_dashboard(main_window, frame):
     subtitle_label = ctk.CTkLabel(
         title_frame,
         text="Monitor and control your CS2 client",
-        font=("Gambetta", 16),
-        text_color=("#64748b", "#94a3b8")
+        font=FONT_SUBTITLE,
+        text_color=COLOR_TEXT_SECONDARY
     )
     subtitle_label.pack(side="left", padx=(20, 0), pady=(10, 0))
     
@@ -87,13 +93,7 @@ def populate_dashboard(main_window, frame):
     version_card.grid(row=0, column=2, sticky="ew", padx=(10, 0))
     
     # Control panel section
-    control_panel = ctk.CTkFrame(
-        dashboard,
-        corner_radius=20,
-        fg_color=("#ffffff", "#1a1b23"),
-        border_width=2,
-        border_color=("#e2e8f0", "#2d3748")
-    )
+    control_panel = ctk.CTkFrame(dashboard, **SECTION_STYLE)
     control_panel.pack(fill="x", pady=(0, 40))
     
     # Header for control panel
@@ -104,8 +104,8 @@ def populate_dashboard(main_window, frame):
     ctk.CTkLabel(
         control_header,
         text="🎮 Control Center",
-        font=("Chivo", 24, "bold"),
-        text_color=("#1f2937", "#ffffff")
+        font=FONT_SECTION_TITLE,
+        text_color=COLOR_TEXT_PRIMARY
     ).pack(side="left")
     
     # Frame for control buttons
@@ -118,13 +118,7 @@ def populate_dashboard(main_window, frame):
         text="▶  Start Client",
         command=main_window.start_client,
         width=180,
-        height=60,
-        corner_radius=20,
-        fg_color=("#22c55e", "#16a34a"),
-        hover_color=("#16a34a", "#15803d"),
-        font=("Chivo", 18, "bold"),
-        border_width=2,
-        border_color=("#16a34a", "#15803d")
+        **BUTTON_STYLE_PRIMARY
     )
     start_button.pack(side="left", padx=(0, 20))
     
@@ -134,24 +128,12 @@ def populate_dashboard(main_window, frame):
         text="⏹  Stop Client",
         command=main_window.stop_client,
         width=180,
-        height=60,
-        corner_radius=20,
-        fg_color=("#ef4444", "#dc2626"),
-        hover_color=("#dc2626", "#b91c1c"),
-        font=("Chivo", 18, "bold"),
-        border_width=2,
-        border_color=("#dc2626", "#b91c1c")
+        **BUTTON_STYLE_DANGER
     )
     stop_button.pack(side="left")
     
     # Quick start guide section
-    guide_card = ctk.CTkFrame(
-        dashboard,
-        corner_radius=20,
-        fg_color=("#ffffff", "#1a1b23"),
-        border_width=2,
-        border_color=("#e2e8f0", "#2d3748")
-    )
+    guide_card = ctk.CTkFrame(dashboard, **SECTION_STYLE)
     guide_card.pack(fill="x")
     
     # Header for quick start guide
@@ -162,16 +144,16 @@ def populate_dashboard(main_window, frame):
     ctk.CTkLabel(
         guide_header,
         text="🚀 Quick Start Guide",
-        font=("Chivo", 24, "bold"),
-        text_color=("#1f2937", "#ffffff")
+        font=FONT_SECTION_TITLE,
+        text_color=COLOR_TEXT_PRIMARY
     ).pack(side="left")
     
     # Guide subtitle
     ctk.CTkLabel(
         guide_header,
         text="Follow these steps to get started",
-        font=("Gambetta", 14),
-        text_color=("#64748b", "#94a3b8")
+        font=FONT_SECTION_DESCRIPTION,
+        text_color=COLOR_TEXT_SECONDARY
     ).pack(side="right")
     
     # List of guide steps
@@ -195,7 +177,7 @@ def populate_dashboard(main_window, frame):
             width=50,
             height=50,
             corner_radius=25,
-            fg_color=("#D5006D", "#E91E63")
+            fg_color=COLOR_ACCENT_FG
         )
         step_badge.pack(side="left", padx=(0, 25))
         step_badge.pack_propagate(False)
@@ -204,7 +186,7 @@ def populate_dashboard(main_window, frame):
         ctk.CTkLabel(
             step_badge,
             text=step_num,
-            font=("Chivo", 20, "bold"),
+            font=FONT_WIDGET,
             text_color="#ffffff"
         ).place(relx=0.5, rely=0.5, anchor="center")
         
@@ -216,8 +198,8 @@ def populate_dashboard(main_window, frame):
         ctk.CTkLabel(
             step_content,
             text=step_title,
-            font=("Chivo", 18, "bold"),
-            text_color=("#1f2937", "#ffffff"),
+            font=FONT_ITEM_LABEL,
+            text_color=COLOR_TEXT_PRIMARY,
             anchor="w"
         ).pack(fill="x")
         
@@ -225,8 +207,8 @@ def populate_dashboard(main_window, frame):
         ctk.CTkLabel(
             step_content,
             text=step_desc,
-            font=("Gambetta", 14),
-            text_color=("#64748b", "#94a3b8"),
+            font=FONT_ITEM_DESCRIPTION,
+            text_color=COLOR_TEXT_SECONDARY,
             anchor="w"
         ).pack(fill="x", pady=(4, 0))
         
@@ -263,8 +245,8 @@ def create_stat_card(main_window, parent, title, value, color, subtitle):
     ctk.CTkLabel(
         content,
         text=title,
-        font=("Chivo", 16, "bold"),
-        text_color=("#64748b", "#94a3b8"),
+        font=FONT_ITEM_LABEL,
+        text_color=COLOR_TEXT_SECONDARY,
         anchor="w"
     ).pack(fill="x", pady=(0, 15))
     
@@ -272,7 +254,7 @@ def create_stat_card(main_window, parent, title, value, color, subtitle):
     value_label = ctk.CTkLabel(
         content,
         text=value,
-        font=("Chivo", 28, "bold"),
+        font=FONT_SECTION_TITLE,
         text_color=color,
         anchor="w"
     )
@@ -282,8 +264,8 @@ def create_stat_card(main_window, parent, title, value, color, subtitle):
     ctk.CTkLabel(
         content,
         text=subtitle,
-        font=("Gambetta", 12),
-        text_color=("#94a3b8", "#64748b"),
+        font=FONT_ITEM_DESCRIPTION,
+        text_color=COLOR_TEXT_SECONDARY,
         anchor="w"
     ).pack(fill="x")
     

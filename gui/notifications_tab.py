@@ -4,6 +4,9 @@ import threading
 import requests
 import webbrowser
 from classes.logger import Logger
+from gui.theme import (FONT_TITLE, FONT_SUBTITLE, FONT_SECTION_TITLE, FONT_ITEM_LABEL, FONT_ITEM_DESCRIPTION,
+                         COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY, COLOR_BACKGROUND, COLOR_BORDER,
+                         COLOR_WIDGET_BACKGROUND, COLOR_ACCENT_FG, SECTION_STYLE)
 
 # Cache the logger instance
 logger = Logger.get_logger()
@@ -17,9 +20,7 @@ def populate_notifications(main_window, frame):
     # Scrollable container for notifications content
     notifications_container = ctk.CTkScrollableFrame(
         frame,
-        fg_color="transparent",
-        scrollbar_button_color=("#CBD5E1", "#475569"),
-        scrollbar_button_hover_color=("#94A3B8", "#64748B")
+        fg_color="transparent"
     )
     notifications_container.pack(fill="both", expand=True, padx=40, pady=40)
 
@@ -40,8 +41,8 @@ def populate_notifications(main_window, frame):
     title_label = ctk.CTkLabel(
         title_container,
         text="🔔 Notifications",
-        font=("Chivo", 36, "bold"),
-        text_color=("#1f2937", "#ffffff")
+        font=FONT_TITLE,
+        text_color=COLOR_TEXT_PRIMARY
     )
     title_label.pack(anchor="w", pady=(10, 0))
 
@@ -49,18 +50,15 @@ def populate_notifications(main_window, frame):
     subtitle_label = ctk.CTkLabel(
         title_container,
         text="Latest news and updates for VioletWing",
-        font=("Gambetta", 16),
-        text_color=("#64748b", "#94a3b8")
+        font=FONT_SUBTITLE,
+        text_color=COLOR_TEXT_SECONDARY
     )
     subtitle_label.pack(anchor="w", pady=(8, 0))
 
     # Loading card
     loading_card = ctk.CTkFrame(
         notifications_container,
-        corner_radius=25,
-        fg_color=("#ffffff", "#1a1b23"),
-        border_width=3,
-        border_color=("#e2e8f0", "#2d3748")
+        **SECTION_STYLE
     )
     loading_card.pack(fill="x", pady=(0, 40))
 
@@ -90,8 +88,8 @@ def populate_notifications(main_window, frame):
     ctk.CTkLabel(
         loading_content,
         text="Loading notifications data...",
-        font=("Gambetta", 18, "bold"),
-        text_color=("#64748B", "#94A3B8")
+        font=FONT_ITEM_LABEL,
+        text_color=COLOR_TEXT_SECONDARY
     ).pack(pady=(24, 0))
 
     # Fetch notifications data in a background thread
@@ -138,10 +136,7 @@ def populate_notifications(main_window, frame):
         # Card for each notification
         notification_card = ctk.CTkFrame(
             container,
-            corner_radius=25,
-            fg_color=("#ffffff", "#1a1b23"),
-            border_width=3,
-            border_color=("#e2e8f0", "#2d3748")
+            **SECTION_STYLE
         )
         notification_card.pack(fill="x", pady=(0, 30 if not is_last else 0))
 
@@ -155,7 +150,7 @@ def populate_notifications(main_window, frame):
             width=50,
             height=50,
             corner_radius=25,
-            fg_color=("#D5006D", "#E91E63")
+            fg_color=COLOR_ACCENT_FG
         )
         number_badge.pack(side="left", padx=(0, 18))
         number_badge.pack_propagate(False)
@@ -164,7 +159,7 @@ def populate_notifications(main_window, frame):
         ctk.CTkLabel(
             number_badge,
             text=str(notification.get('number', '')),
-            font=("Chivo", 18, "bold"),
+            font=FONT_ITEM_LABEL,
             text_color="#ffffff"
         ).place(relx=0.5, rely=0.5, anchor="center")
 
@@ -174,8 +169,8 @@ def populate_notifications(main_window, frame):
         title_label = ctk.CTkLabel(
             header_frame,
             text=title,
-            font=("Chivo", 20, "bold"),
-            text_color=("#1f2937", "#ffffff") if not url else ("#D5006D", "#E91E63"),
+            font=FONT_SECTION_TITLE,
+            text_color=COLOR_TEXT_PRIMARY if not url else COLOR_ACCENT_FG,
             anchor="w",
             cursor="hand2" if url else "arrow"
         )
@@ -189,17 +184,17 @@ def populate_notifications(main_window, frame):
             timestamp_frame = ctk.CTkFrame(
                 header_frame,
                 corner_radius=15,
-                fg_color=("#f1f5f9", "#2d3748"),
+                fg_color=COLOR_WIDGET_BACKGROUND,
                 border_width=1,
-                border_color=("#e2e8f0", "#374151")
+                border_color=COLOR_BORDER
             )
             timestamp_frame.pack(side="right")
             
             ctk.CTkLabel(
                 timestamp_frame,
                 text=timestamp,
-                font=("Gambetta", 13, "bold"),
-                text_color=("#6b7280", "#9ca3af"),
+                font=FONT_ITEM_DESCRIPTION,
+                text_color=COLOR_TEXT_SECONDARY,
                 anchor="center"
             ).pack(padx=12, pady=6)
 
@@ -211,8 +206,8 @@ def populate_notifications(main_window, frame):
         message_label = ctk.CTkLabel(
             message_frame,
             text=notification.get('message', 'No Message'),
-            font=("Gambetta", 15),
-            text_color=("#4b5563", "#9ca3af"),
+            font=FONT_ITEM_DESCRIPTION,
+            text_color=COLOR_TEXT_SECONDARY,
             anchor="w",
             wraplength=800,
             justify="left"
