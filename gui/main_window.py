@@ -22,6 +22,7 @@ from classes.config_manager import ConfigManager, COLOR_CHOICES
 from classes.file_watcher import ConfigFileChangeHandler
 from classes.logger import Logger
 from classes.memory_manager import MemoryManager
+from classes.client_manager import ClientManager
 
 from gui.home_tab import populate_dashboard
 from gui.general_settings_tab import populate_general_settings
@@ -36,8 +37,8 @@ from gui.theme import (FONT_FAMILY_BOLD, FONT_FAMILY_REGULAR, FONT_SIZE_H2, FONT
                          COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY, COLOR_BACKGROUND, COLOR_WIDGET_BACKGROUND, COLOR_ACCENT_FG,
                          BUTTON_STYLE_PRIMARY, BUTTON_STYLE_DANGER)
 
-# Cache the logger instance for consistent logging throughout the application
-logger = Logger.get_logger()
+# Get a logger instance for this module
+logger = Logger.get_logger(__name__)
 
 class MainWindow:
     def __init__(self):
@@ -51,8 +52,6 @@ class MainWindow:
         self.noflash_thread = None
         self.observer = None
         self.log_timer = None
-        # Track the last position in the log file for incremental updates
-        self.last_log_position = 0
 
         # Configure CustomTkinter with a modern dark theme
         ctk.set_appearance_mode("dark")
@@ -116,6 +115,9 @@ class MainWindow:
         # Bind window close event to cleanup resources
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
 
+        # Initialize the client manager
+        self.client_manager = ClientManager(self)
+
     def initialize_features(self):
         """Initialize all feature instances and create a centralized feature registry."""
         try:
@@ -131,9 +133,9 @@ class MainWindow:
                 "Noflash": {"name": "Noflash", "instance": self.noflash, "class": CS2NoFlash},
             }
             logger.info("All features initialized successfully.")
-        except Exception as e:
-            logger.error(f"Failed to initialize features: {e}")
-            messagebox.showerror("Initialization Error", f"Failed to initialize features: {str(e)}")
+        except Exception:
+            logger.exception("Failed to initialize features.")
+            messagebox.showerror("Initialization Error", "Failed to initialize features. Check logs for details.")
 
     def setup_ui(self):
         """Setup the modern user interface components."""
@@ -382,9 +384,9 @@ class MainWindow:
             if offsets is None or client_data is None or buttons_data is None:
                 raise ValueError("Failed to fetch offsets from the server.")
             return offsets, client_data, buttons_data
-        except Exception as e:
-            logger.error("Offsets fetch error: %s", e)
-            messagebox.showerror("Offset Error", f"Failed to fetch offsets: {str(e)}")
+        except Exception:
+            logger.exception("Failed to fetch offsets from the server.")
+            messagebox.showerror("Offset Error", "Failed to fetch offsets. Check logs for details.")
             return {}, {}, {}
 
     def update_client_status(self, status, color):
@@ -402,92 +404,13 @@ class MainWindow:
         if hasattr(self, 'bot_status_label'):
             self.bot_status_label.configure(text=status, text_color=color)
 
-    def _start_feature(self, feature_name, feature_obj, config):
-        """Helper method to start a single feature."""
-        if not getattr(feature_obj, 'is_running', False):
-            try:
-                # Ensure the feature object has the latest config
-                feature_obj.config = config
-                feature_obj.is_running = True
-                thread = threading.Thread(target=feature_obj.start, daemon=True)
-                thread.start()
-                setattr(self, f'{feature_name.lower()}_thread', thread)
-                logger.info(f"{feature_name} started.")
-                return True
-            except Exception as e:
-                # Reset running state on failure
-                feature_obj.is_running = False
-                logger.error(f"Failed to start {feature_name}: {e}")
-                messagebox.showerror(f"{feature_name} Error", f"Failed to start {feature_name}: {str(e)}")
-        return False
-
-    def _stop_feature(self, feature_name, feature_obj):
-        """Helper method to stop a single feature."""
-        if feature_obj and getattr(feature_obj, 'is_running', False):
-            try:
-                feature_obj.stop()
-                thread = getattr(self, f'{feature_name.lower()}_thread', None)
-                if thread and thread.is_alive():
-                    thread.join(timeout=2.0)
-                    if thread.is_alive():
-                        logger.warning(f"{feature_name} thread did not terminate cleanly.")
-                    else:
-                        logger.info(f"{feature_name} thread terminated successfully.")
-                setattr(self, f'{feature_name.lower()}_thread', None)
-                feature_obj.is_running = False
-                logger.debug(f"{feature_name} stopped.")
-                return True
-            except Exception as e:
-                logger.error(f"Failed to stop {feature_name}: {e}", exc_info=True)
-                # Force reset the running state even if stop failed
-                feature_obj.is_running = False
-        return False
-
     def start_client(self):
-        """Start selected features based on General settings, ensuring no duplicates."""
-        if not Utility.is_game_running():
-            messagebox.showerror("Game Not Running", "Could not find cs2.exe process. Make sure the game is running.")
-            return
-
-        # Initialize the MemoryManager once before starting any features
-        if not self.memory_manager.initialize():
-            messagebox.showerror("Initialization Error", "Failed to initialize memory manager. Please check the logs for details.")
-            return
-
-        config = ConfigManager.load_config()
-        any_feature_started = False
-
-        # Start features based on General settings
-        for config_key, feature_data in self.features.items():
-            if config["General"][config_key]:
-                feature_name = feature_data["name"]
-                feature_obj = feature_data["instance"]
-                if not getattr(feature_obj, 'is_running', False):
-                    if self._start_feature(feature_name, feature_obj, config):
-                        any_feature_started = True
-                else:
-                    logger.info(f"{feature_name} is already running.")
-                    any_feature_started = True
-
-        if any_feature_started:
-            self.update_client_status("Active", "#22c55e")
-        else:
-            logger.warning("No features enabled in General settings.")
-            messagebox.showwarning("No Features Enabled", "Please enable at least one feature in General Settings.")
+        """Start selected features using the client manager."""
+        self.client_manager.start_client()
 
     def stop_client(self):
-        """Stop all running features and ensure threads are terminated."""
-        features_stopped = False
-
-        # Stop all features
-        for feature_data in self.features.values():
-            if self._stop_feature(feature_data["name"], feature_data["instance"]):
-                features_stopped = True
-
-        if features_stopped:
-            self.update_client_status("Inactive", "#ef4444")
-        else:
-            logger.debug("No features were running to stop.")
+        """Stop all running features using the client manager."""
+        self.client_manager.stop_client()
 
     def update_weapon_settings_display(self):
         """Update UI fields based on the selected weapon type."""
@@ -520,54 +443,17 @@ class MainWindow:
             ConfigManager.save_config(config, log_info=True)
             
             # Apply changes to running features
-            self.apply_feature_state_changes(old_config, config)
-            self.update_running_feature_configs(config)
+            self.client_manager.apply_feature_state_changes(old_config, config)
+            self.client_manager.update_running_feature_configs(config)
 
             if show_message:
                 messagebox.showinfo("Settings Saved", "Configuration has been saved successfully.")
         except ValueError as e:
-            logger.error(f"Invalid input: {e}")
+            logger.warning(f"Invalid input during settings save: {e}")
             messagebox.showerror("Invalid Input", str(e))
-        except Exception as e:
-            logger.error(f"Unexpected error during save_settings: {e}", exc_info=True)
-            messagebox.showerror("Error", f"An unexpected error occurred: {str(e)}")
-
-    def apply_feature_state_changes(self, old_config, new_config):
-        """Start or stop features based on configuration changes."""
-        game_running = Utility.is_game_running()
-
-        for key, feature_data in self.features.items():
-            old_enabled = old_config["General"].get(key, False)
-            new_enabled = new_config["General"].get(key, False)
-            is_running = getattr(feature_data["instance"], 'is_running', False)
-
-            if old_enabled == new_enabled:
-                continue
-
-            if new_enabled and not is_running:
-                if game_running:
-                    if self.memory_manager.initialize():
-                        self._start_feature(feature_data["name"], feature_data["instance"], new_config)
-                    else:
-                        logger.error(f"Failed to initialize memory manager for {feature_data['name']}")
-                else:
-                    logger.warning(f"Cannot start {feature_data['name']}: Game is not running")
-            elif not new_enabled and is_running:
-                self._stop_feature(feature_data["name"], feature_data["instance"])
-
-    def update_running_feature_configs(self, new_config):
-        """Update the configuration for all currently running features and update UI status."""
-        any_feature_running = False
-        for feature_data in self.features.values():
-            instance = feature_data["instance"]
-            if getattr(instance, 'is_running', False):
-                instance.update_config(new_config)
-                logger.debug(f"Configuration updated for {feature_data['name']}.")
-                any_feature_running = True
-        
-        status = "Active" if any_feature_running else "Inactive"
-        color = "#22c55e" if any_feature_running else "#ef4444"
-        self.update_client_status(status, color)
+        except Exception:
+            logger.exception("An unexpected error occurred while saving settings.")
+            messagebox.showerror("Error", "An unexpected error occurred. Check logs for details.")
 
     def _restart_feature(self, feature_name, feature_obj, feature_class, config_section, new_config):
         """Helper method to restart a single feature."""
@@ -591,8 +477,8 @@ class MainWindow:
                 logger.info(f"{feature_name} restarted with new configuration.")
             
             return True
-        except Exception as e:
-            logger.error(f"Failed to restart {feature_name}: {e}")
+        except Exception:
+            logger.exception(f"Failed to restart feature: {feature_name}")
             return False
 
     def restart_affected_features(self, old_config, new_config):
@@ -777,9 +663,9 @@ class MainWindow:
             ConfigManager.save_config(new_config)
             
             messagebox.showinfo("Settings Reset", "All settings have been reset to their default values. You can now start the client again.")
-        except Exception as e:
-            logger.error(f"Failed to reset settings: {e}")
-            messagebox.showerror("Error", f"Failed to reset settings: {str(e)}")
+        except Exception:
+            logger.exception("Failed to reset settings to default.")
+            messagebox.showerror("Error", "Failed to reset settings. Check logs for details.")
 
     def update_ui_from_config(self):
         """Update the UI elements from the configuration by calling granular update methods."""
@@ -859,58 +745,45 @@ class MainWindow:
             self.observer.schedule(event_handler, path=ConfigManager.CONFIG_DIRECTORY, recursive=False)
             self.observer.start()
             logger.info("Config file watcher started successfully.")
-        except Exception as e:
-            logger.error("Failed to initialize config watcher: %s", e)
+        except Exception:
+            logger.exception("Failed to initialize config file watcher.")
 
     def start_log_timer(self):
-        """Start timer for updating logs in a separate thread."""
-        def update_logs():
-            logger = Logger.get_logger()
-            while True:
-                try:
-                    # Update logs if the widget exists and log file is present
-                    if hasattr(self, 'log_text') and os.path.exists(Logger.LOG_FILE):
-                        file_size = os.path.getsize(Logger.LOG_FILE)
-                        # Reset position if log file is truncated
-                        if file_size < self.last_log_position:
-                            self.last_log_position = 0
-                        if self.last_log_position < file_size:
-                            with open(Logger.LOG_FILE, 'r', encoding='utf-8') as log_file:
-                                log_file.seek(self.last_log_position)
-                                new_logs = log_file.read()
-                                self.last_log_position = log_file.tell()
-                                if new_logs:
-                                    self.root.after(0, lambda logs=new_logs: self.update_log_display(logs))
-                except Exception as e:
-                    logger.error(f"Error in log update thread: {e}")
-                time.sleep(0.1)
+        """Starts a timer to periodically update the log display in the GUI."""
+        def read_log_file():
+            try:
+                if hasattr(self, 'log_text') and os.path.exists(Logger.LOG_FILE):
+                    with open(Logger.LOG_FILE, 'r', encoding='utf-8') as f:
+                        # Read the entire file content
+                        log_content = f.read()
+                    
+                    # Schedule the UI update on the main thread
+                    self.root.after(0, self.update_log_display, log_content)
+            except Exception:
+                logger.exception("Error reading log file for GUI display.")
+            
+            # Reschedule the timer to run again after 2 seconds
+            self.log_timer = self.root.after(2000, read_log_file)
 
-        # Start log update thread
-        self.log_timer = threading.Thread(target=update_logs, daemon=True)
-        self.log_timer.start()
+        # Start the first run of the log reader
+        read_log_file()
 
-    def update_log_display(self, new_logs):
-        """Update the log display with new logs, limiting lines for performance."""
-        logger = Logger.get_logger()
+    def update_log_display(self, log_content):
+        """Updates the log display widget with new content."""
         try:
-            # Ensure log widget exists and is valid
             if hasattr(self, 'log_text') and self.log_text.winfo_exists():
+                # Get the current content and compare to avoid unnecessary updates
+                current_content = self.log_text.get("1.0", "end-1c")
+                if current_content == log_content:
+                    return
+
                 self.log_text.configure(state="normal")
-                self.log_text.insert("end", new_logs)
+                self.log_text.delete("1.0", "end")
+                self.log_text.insert("1.0", log_content)
                 self.log_text.see("end")
-                
-                # Limit log lines to 1000 for performance
-                max_lines = 1000
-                current_text = self.log_text.get("1.0", "end-1c")
-                lines = current_text.splitlines()
-                if len(lines) > max_lines:
-                    excess_lines = len(lines) - max_lines
-                    delete_to = f"{excess_lines + 1}.0"
-                    self.log_text.delete("1.0", delete_to)
-                
                 self.log_text.configure(state="disabled")
-        except Exception as e:
-            logger.error(f"Error updating log display: {e}")
+        except Exception:
+            logger.exception("Failed to update log display in the GUI.")
 
     def run(self):
         """Start the application main loop."""
@@ -931,5 +804,9 @@ class MainWindow:
             if hasattr(self, 'observer') and self.observer:
                 self.observer.stop()
                 self.observer.join()
-        except Exception as e:
-            logger.error("Error during cleanup: %s", e)
+            
+            # Cancel the log timer if it's running
+            if self.log_timer:
+                self.root.after_cancel(self.log_timer)
+        except Exception:
+            logger.exception("An error occurred during application cleanup.")

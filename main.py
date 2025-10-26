@@ -21,7 +21,7 @@ def main():
     # Set up logging for the application.
     try:
         Logger.setup_logging()
-        logger = Logger.get_logger()
+        logger = Logger.get_logger("main")
     except Exception as e:
         print(f"Failed to setup logging: {e}", file=sys.stderr)
         sys.exit(1)
@@ -52,11 +52,10 @@ def main():
         logger.info("Application interrupted by user")
         exit_code = 0  # Clean exit on Ctrl+C
     except ImportError as e:
-        logger.error("Failed to import required modules: %s", e)
-        logger.error("Please ensure all dependencies are installed")
+        logger.exception("Failed to import required modules. Please ensure all dependencies are installed.")
         exit_code = 2
     except Exception as e:
-        logger.error("Unexpected error: %s", e, exc_info=True)
+        logger.exception("An unexpected error occurred in the main application loop.")
         exit_code = 1
     finally:
         # Ensure proper cleanup
