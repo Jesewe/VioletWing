@@ -1,6 +1,6 @@
 ### Summary
 
-- The `SKELETON_BONES` structure has been completely revised and expanded. The new structure provides a more accurate and detailed representation of the human skeleton, including distinct chains for the trunk, arms, and legs.
+- The `SKELETON_BONES` structure has been completely revised and expanded. The new structure provides a more accurate and detailed representation of the human skeleton, including distinct chains for the trunk, arms, and legs. (by @jian2486)
 - A centralized theme system has been implemented to manage UI styling. Hardcoded values for fonts, colors, and widget styles in the GUI tabs have been replaced with constants imported from a new `gui/theme.py` module.
 - Updated the log directory and file names to be more consistent with the application name (e.g., `AppData\Local\VioletWing\logs\violetwing.log`).
 - Simplified the implementation by removing the custom `DetailedFormatter` and the `_get_caller_info` method. Caller information (filename, line number) is now handled directly by the standard `logging.Formatter`.
