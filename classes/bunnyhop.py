@@ -9,7 +9,7 @@ from classes.logger import Logger
 from classes.utility import Utility
 
 # Initialize the logger for consistent logging
-logger = Logger.get_logger()
+logger = Logger.get_logger(__name__)
 # Define the main loop sleep time for reduced CPU usage
 MAIN_LOOP_SLEEP = 0.001  # Reduced for better timing precision
 # Constants for bunnyhop

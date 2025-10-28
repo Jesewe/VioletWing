@@ -268,7 +268,11 @@ def update_slider_value(event, key, main_window):
     """Update the slider value label and save settings."""
     slider_info = main_window.overlay_widgets.get(key, {})
     if "widget" in slider_info and "value_label" in slider_info:
-        value = slider_info["widget"].get()
+        value = event
         format_spec = ".0f" if key == "target_fps" else ".1f"
         slider_info["value_label"].configure(text=f"{value:{format_spec}}")
-        main_window.save_settings(show_message=False)
+        
+        # Manually update the config for the slider before saving
+        if main_window.overlay.config["Overlay"][key] != value:
+            main_window.overlay.config["Overlay"][key] = value
+            main_window.save_settings(show_message=False)

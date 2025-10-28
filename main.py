@@ -21,7 +21,7 @@ def main():
     # Set up logging for the application.
     try:
         Logger.setup_logging()
-        logger = Logger.get_logger("main")
+        logger = Logger.get_logger(__name__)
     except Exception as e:
         print(f"Failed to setup logging: {e}", file=sys.stderr)
         sys.exit(1)

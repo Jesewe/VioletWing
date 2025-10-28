@@ -17,7 +17,7 @@ from gui.theme import (
 )
 
 # Cache the logger instance
-logger = Logger.get_logger()
+logger = Logger.get_logger(__name__)
 
 def populate_dashboard(main_window, frame):
     """Populate the dashboard frame with status cards, controls, and a quick start guide."""
@@ -87,7 +87,7 @@ def populate_dashboard(main_window, frame):
         stats_frame,
         "📦 Version",
         f"{ConfigManager.VERSION}",
-        "#D5006D",
+        "#8e44ad",
         "Current application version"
     )
     version_card.grid(row=0, column=2, sticky="ew", padx=(10, 0))

@@ -8,7 +8,7 @@ from classes.config_manager import ConfigManager
 from classes.logger import Logger
 from classes.utility import Utility
 
-logger = Logger.get_logger()
+logger = Logger.get_logger(__name__)
 
 class Updater:
     def __init__(self, main_window):

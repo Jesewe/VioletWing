@@ -6,7 +6,7 @@ from classes.logger import Logger
 from classes.utility import Utility
 
 # Initialize the logger for consistent logging
-logger = Logger.get_logger()
+logger = Logger.get_logger(__name__)
 
 class MemoryManager:
     def __init__(self, offsets: dict, client_data: dict, buttons_data: dict) -> None:

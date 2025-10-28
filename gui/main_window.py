@@ -191,9 +191,9 @@ class MainWindow:
         social_frame.pack(side="right")
 
         social_buttons_data = [
-            {"text": "GitHub", "icon": "github", "url": "https://github.com/Jesewe/VioletWing", "fg_color": "#21262d", "hover_color": "#30363d", "border_color": "#30363d"},
-            {"text": "Telegram", "icon": "telegram", "url": "https://t.me/cs2_jesewe", "fg_color": "#0088cc", "hover_color": "#006bb3"},
-            {"text": "Help Center", "icon": "violetwing", "url": "https://violetwing.featurebase.app/en/help", "fg_color": "#d5006d", "hover_color": "#97004e"}
+            {"text": "GitHub", "icon": "github", "url": "https://github.com/Jesewe/VioletWing", "fg_color": "#2c3e50", "hover_color": "#34495e", "border_color": "#34495e"},
+            {"text": "Telegram", "icon": "telegram", "url": "https://t.me/cs2_jesewe", "fg_color": "#29A9EA", "hover_color": "#279cdb"},
+            {"text": "Help Center", "icon": "violetwing", "url": "https://violetwing.featurebase.app/en/help", "fg_color": "#8e44ad", "hover_color": "#9b59b6"}
         ]
 
         for i, data in enumerate(social_buttons_data):
@@ -440,7 +440,7 @@ class MainWindow:
             self.update_config_from_ui(config)
             
             # Save the updated configuration
-            ConfigManager.save_config(config, log_info=True)
+            ConfigManager.save_config(config, log_info=False)
             
             # Apply changes to running features
             self.client_manager.apply_feature_state_changes(old_config, config)
@@ -544,19 +544,44 @@ class MainWindow:
     def _update_overlay_config_from_ui(self, config):
         """Update Overlay settings from the UI."""
         settings = config["Overlay"]
-        if hasattr(self, 'enable_box_var'): settings["enable_box"] = self.enable_box_var.get()
-        if hasattr(self, 'enable_skeleton_var'): settings["enable_skeleton"] = self.enable_skeleton_var.get()
-        if hasattr(self, 'box_line_thickness_slider'): settings["box_line_thickness"] = self.box_line_thickness_slider.get()
-        if hasattr(self, 'box_color_hex_combo'): settings["box_color_hex"] = COLOR_CHOICES.get(self.box_color_hex_combo.get(), "#FFA500")
-        if hasattr(self, 'draw_snaplines_var'): settings["draw_snaplines"] = self.draw_snaplines_var.get()
-        if hasattr(self, 'snaplines_color_hex_combo'): settings["snaplines_color_hex"] = COLOR_CHOICES.get(self.snaplines_color_hex_combo.get(), "#FFFFFF")
-        if hasattr(self, 'text_color_hex_combo'): settings["text_color_hex"] = COLOR_CHOICES.get(self.text_color_hex_combo.get(), "#FFFFFF")
-        if hasattr(self, 'draw_health_numbers_var'): settings["draw_health_numbers"] = self.draw_health_numbers_var.get()
-        if hasattr(self, 'draw_nicknames_var'): settings["draw_nicknames"] = self.draw_nicknames_var.get()
-        if hasattr(self, 'use_transliteration_var'): settings["use_transliteration"] = self.use_transliteration_var.get()
-        if hasattr(self, 'draw_teammates_var'): settings["draw_teammates"] = self.draw_teammates_var.get()
-        if hasattr(self, 'teammate_color_hex_combo'): settings["teammate_color_hex"] = COLOR_CHOICES.get(self.teammate_color_hex_combo.get(), "#00FFFF")
-        if hasattr(self, 'target_fps_slider'): settings["target_fps"] = self.target_fps_slider.get()
+        widgets = self.overlay_widgets
+
+        # Helper to safely get values from widgets
+        def get_widget_value(key, value_type):
+            if key in widgets:
+                widget_info = widgets[key]
+                if value_type == "var" and "variable" in widget_info:
+                    return widget_info["variable"].get()
+                if value_type == "widget" and "widget" in widget_info:
+                    return widget_info["widget"].get()
+            return None
+
+        # Update settings from widgets
+        checkbox_keys = [
+            "enable_box", "enable_skeleton", "draw_snaplines",
+            "draw_health_numbers", "draw_nicknames", "use_transliteration", "draw_teammates"
+        ]
+        for key in checkbox_keys:
+            value = get_widget_value(key, "var")
+            if value is not None:
+                settings[key] = value
+
+        slider_keys = ["box_line_thickness", "target_fps"]
+        for key in slider_keys:
+            value = get_widget_value(key, "widget")
+            if value is not None:
+                settings[key] = value
+
+        combo_keys = {
+            "box_color_hex": "#FFA500",
+            "snaplines_color_hex": "#FFFFFF",
+            "text_color_hex": "#FFFFFF",
+            "teammate_color_hex": "#00FFFF"
+        }
+        for key, default_color in combo_keys.items():
+            value = get_widget_value(key, "widget")
+            if value is not None:
+                settings[key] = COLOR_CHOICES.get(value, default_color)
 
     def _update_additional_config_from_ui(self, config):
         """Update Additional (Bunnyhop, NoFlash) settings from the UI."""
@@ -608,7 +633,6 @@ class MainWindow:
                 raise ValueError("Post-shot delay must be a valid number.")
             if post_delay < 0:
                 raise ValueError("Post-shot delay must be non-negative.")
-
 
         if hasattr(self, 'target_fps_slider'):
             try:

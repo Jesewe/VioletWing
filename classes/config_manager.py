@@ -5,7 +5,7 @@ from pyMeow import get_color, fade_color
 from classes.logger import Logger
 
 # Initialize the logger for consistent logging
-logger = Logger.get_logger()
+logger = Logger.get_logger(__name__)
 
 class ConfigManager:
     """

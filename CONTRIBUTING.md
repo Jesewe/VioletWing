@@ -82,7 +82,7 @@ Follow these guidelines for consistent, high-quality code:
 
 - **Format**: Follow the `Logger` class format for log entries.
 - **Levels**: Use appropriate levels (`INFO`, `WARNING`, `ERROR`) based on context.
-- **Location**: Logs are saved to `%LOCALAPPDATA%\Requests\ItsJesewe\crashes\`.
+- **Location**: Logs are saved to `%LOCALAPPDATA%\VioletWing\logs\`.
 
 ## Submitting Issues
 
@@ -93,7 +93,7 @@ Before opening an issue:
    - A clear description of the problem or bug.
    - Steps to reproduce.
    - Expected vs. actual behavior.
-   - Screenshots or log excerpts (from `vw_logs.log` or `vw_detailed_logs.log`).
+   - Screenshots or log excerpts (from `violetwing.log` or `violetwing_detailed.log`).
 
 Use the [Issues tab](https://github.com/Jesewe/VioletWing/issues) and select the appropriate template (e.g., Bug Report).
 

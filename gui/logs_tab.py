@@ -136,7 +136,7 @@ def create_title_section(parent):
 
 def _load_logs_safely(main_window):
     """Safely load logs with duplicate prevention and proper error handling."""
-    logger = Logger.get_logger()
+    logger = Logger.get_logger(__name__)
     try:
         # Display welcome message if log file doesn't exist
         if not os.path.exists(Logger.LOG_FILE):

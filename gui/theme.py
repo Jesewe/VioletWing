@@ -33,10 +33,10 @@ COLOR_BUTTON_DANGER_BORDER = ("#fecaca", "#7f1d1d")
 COLOR_BUTTON_DANGER_TEXT = "#ffffff"
 
 # Accent Colors (for checkboxes, option menus)
-COLOR_ACCENT_FG = ("#D5006D", "#E91E63")
-COLOR_ACCENT_HOVER = ("#B8004A", "#C2185B")
-COLOR_ACCENT_BUTTON = ("#B8004A", "#C2185B")
-COLOR_ACCENT_BUTTON_HOVER = ("#9F003D", "#A6144E")
+COLOR_ACCENT_FG = ("#8e44ad", "#8e44ad")
+COLOR_ACCENT_HOVER = ("#9b59b6", "#9b59b6")
+COLOR_ACCENT_BUTTON = ("#8e44ad", "#8e44ad")
+COLOR_ACCENT_BUTTON_HOVER = ("#9b59b6", "#9b59b6")
 
 # Widget-specific Colors
 COLOR_WIDGET_BORDER = ("#d1d5db", "#374151")

@@ -9,7 +9,7 @@ from gui.theme import (FONT_TITLE, FONT_SUBTITLE, FONT_SECTION_TITLE, FONT_ITEM_
                          COLOR_WIDGET_BACKGROUND, COLOR_ACCENT_FG, SECTION_STYLE)
 
 # Cache the logger instance
-logger = Logger.get_logger()
+logger = Logger.get_logger(__name__)
 
 def populate_notifications(main_window, frame):
     """Populate the Notifications tab with news from a JSON file."""
