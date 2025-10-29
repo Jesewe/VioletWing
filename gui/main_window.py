@@ -23,6 +23,7 @@ from classes.file_watcher import ConfigFileChangeHandler
 from classes.logger import Logger
 from classes.memory_manager import MemoryManager
 from classes.client_manager import ClientManager
+from classes.user_tracker import UserTracker
 
 from gui.home_tab import populate_dashboard
 from gui.general_settings_tab import populate_general_settings
@@ -118,6 +119,13 @@ class MainWindow:
         # Initialize the client manager
         self.client_manager = ClientManager(self)
 
+        # Initialize User Tracker
+        self.user_tracker = UserTracker(ConfigManager, logger)
+        self.user_tracker.start_heartbeat()
+        
+        # Start periodic online user count updates
+        self.update_online_users_display()
+
     def initialize_features(self):
         """Initialize all feature instances and create a centralized feature registry."""
         try:
@@ -172,9 +180,19 @@ class MainWindow:
         right_frame = ctk.CTkFrame(parent, fg_color="transparent")
         right_frame.grid(row=0, column=2, sticky="e", padx=30, pady=15)
         
+        self.create_online_users_display(right_frame)
         self.create_status_indicator(right_frame)
         social_frame = self.create_social_buttons(right_frame)
         self.create_update_button(social_frame)
+
+    def create_online_users_display(self, parent):
+        """Create the online users display widget."""
+        self.online_users_frame = ctk.CTkFrame(parent, fg_color="transparent")
+        self.online_users_frame.pack(side="right", padx=(20, 0))
+        
+        ctk.CTkLabel(self.online_users_frame, text="Online:", font=(FONT_FAMILY_REGULAR[0], FONT_SIZE_H4), text_color=COLOR_TEXT_SECONDARY).pack(side="left")
+        self.online_users_label = ctk.CTkLabel(self.online_users_frame, text="N/A", font=(FONT_FAMILY_BOLD[0], FONT_SIZE_H4, "bold"), text_color=COLOR_TEXT_PRIMARY)
+        self.online_users_label.pack(side="left", padx=(5, 0))
 
     def create_status_indicator(self, parent):
         """Create the status indicator widget."""
@@ -809,6 +827,20 @@ class MainWindow:
         except Exception:
             logger.exception("Failed to update log display in the GUI.")
 
+    def update_online_users_display(self):
+        """Fetch and display the number of online users."""
+        def fetch_and_update():
+            count = self.user_tracker.get_online_users()
+            if self.online_users_label.winfo_exists():
+                if count is not None:
+                    self.root.after(0, lambda: self.online_users_label.configure(text=str(count)))
+                else:
+                    self.root.after(0, lambda: self.online_users_label.configure(text="N/A"))
+        
+        threading.Thread(target=fetch_and_update, daemon=True).start()
+        
+        self.root.after(30000, self.update_online_users_display)
+
     def run(self):
         """Start the application main loop."""
         self.root.mainloop()
@@ -821,6 +853,10 @@ class MainWindow:
     def cleanup(self):
         """Cleanup resources before closing the application."""
         try:
+            # Stop user tracker heartbeat
+            if hasattr(self, 'user_tracker'):
+                self.user_tracker.stop_heartbeat()
+
             # Stop all running features
             self.stop_client()
             

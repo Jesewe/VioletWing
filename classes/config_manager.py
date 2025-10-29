@@ -26,6 +26,7 @@ class ConfigManager:
 
     # Default configuration settings with General, Trigger, and Overlay categories
     DEFAULT_CONFIG = {
+        "user_id": None,
         "General": {
             "Trigger": False,
             "Overlay": False,
