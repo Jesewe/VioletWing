@@ -14,7 +14,7 @@ class ConfigManager:
     with caching for efficiency and default configuration management.
     """
     # Application version
-    VERSION = "v1.2.8.8"
+    VERSION = "v1.2.8.9"
     # Directory where the update files are stored
     UPDATE_DIRECTORY = os.path.expanduser(r'~\AppData\Local\Requests\ItsJesewe\Update')
     # Directory where the offsets files are stored
