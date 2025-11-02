@@ -6,13 +6,9 @@ labels: "Enhancement"
 assignees: ""
 ---
 
-### Describe the Problem
-
-_In your own words, explain the problem that this feature would address. Why is this change necessary?_
-
 ### Proposed Feature
 
-_Outline your suggested solution. Describe what the new feature should do and provide any key details on how it might be implemented._
+_Describe the proposed solution. Describe what the new feature is intended to do._
 
 ### Checklist
 

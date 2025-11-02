@@ -16,7 +16,7 @@ logger = Logger.get_logger(__name__)
 # Define the main loop sleep time for reduced CPU usage
 MAIN_LOOP_SLEEP = 0.05
 # Number of entities to iterate over
-ENTITY_COUNT = 64
+ENTITY_COUNT = 32
 # Size of each entity entry in memory
 ENTITY_ENTRY_SIZE = 112
 # Skeleton bone structure {parent_bone_id: [child_bone_ids]}
@@ -88,8 +88,7 @@ class Entity:
                 self.all_bones_pos_3d = None
 
             return True
-        except Exception as e:
-            # logger.error(f"Failed to update entity data: {e}")
+        except Exception:
             return False
 
     def bone_pos(self, bone: int) -> Dict[str, float]:

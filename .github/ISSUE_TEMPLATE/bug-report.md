@@ -10,14 +10,6 @@ assignees: ""
 
 _In your own words, describe the bug you encountered._
 
-### Expected Behavior
-
-_Describe what you expected to happen instead._
-
-### Actual Behavior
-
-_Describe what actually happened. Include any error messages, logs, or screenshots if available._
-
 ### Environment Details
 
 - **Operating System:** _(e.g., Windows 10, Windows 11)_
@@ -28,5 +20,5 @@ _Describe what actually happened. Include any error messages, logs, or screensho
 
 _Attach logs from the following locations:_
 
-- `%LOCALAPPDATA%\Requests\ItsJesewe\crashes\tb_logs.log`
-- `%LOCALAPPDATA%\Requests\ItsJesewe\crashes\tb_detailed_logs.log`
+- `%LOCALAPPDATA%\VioletWing\logs\violetwing.log`
+- `%LOCALAPPDATA%\VioletWing\logs\violetwing_detailed.log`

@@ -52,7 +52,7 @@ By participating, you agree to follow the [Code of Conduct](CODE_OF_CONDUCT.md).
 ### Testing Changes
 
 - Run the application to validate changes.
-- Check logs at `%LOCALAPPDATA%\Requests\ItsJesewe\crashes\vw_logs.log` or `vw_detailed_logs.log` for debugging.
+- Check logs at `%LOCALAPPDATA%\VioletWing\logs\violetwing.log` or `violetwing_detailed.log` for debugging.
 - Test in Counter-Strike 2 (casual or offline modes) to ensure TriggerBot, Overlay, Bunnyhop, and NoFlash features work as expected.
 
 ## Coding Standards

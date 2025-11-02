@@ -30,7 +30,7 @@ The maintainer will acknowledge receipt of your report within 5 business days an
 
 ## Disclaimer
 
-The maintainers of this project are not responsible for any consequences resulting from the use or misuse of this tool. Users assume full responsibility for their actions when using the "CS2 TriggerBot."
+The maintainers of this project are not responsible for any consequences resulting from the use or misuse of this tool. Users assume full responsibility for their actions when using the "VioletWing".
 
 By using this tool, you agree to comply with all relevant laws and game terms of service.
 

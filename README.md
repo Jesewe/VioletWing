@@ -30,8 +30,8 @@ VioletWing is an automated tool designed for Counter-Strike 2 that enhances game
   - Adjustable delays (`ShotDelayMin`, `ShotDelayMax`, `PostShotDelay`) with weapon-specific settings for Pistols, Rifles, Snipers, SMGs, and Heavy weapons.
   - Option to attack teammates.
 - **Overlay (ESP)**:
-  - Displays enemy bounding boxes, skeletons, snaplines, health numbers, nicknames, and a minimap.
-  - Customizable colors, line thickness, minimap size, target FPS, and options like teammate drawing and name transliteration.
+  - Displays enemy bounding boxes, skeletons, snaplines, health numbers and nicknames.
+  - Customizable colors, line thickness, target FPS, and options like teammate drawing and name transliteration.
 - **Bunnyhop**:
   - Automates bunny hopping for continuous jumping and speed maintenance.
   - Configurable jump key and delay.

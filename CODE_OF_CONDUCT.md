@@ -36,7 +36,7 @@ The VioletWing maintainers, led by the project owner (contact: jesewescience@out
 
 ## Enforcement
 
-Report any abusive, harassing, or unacceptable behavior to jesewescience@outlook.com. All reports will be reviewed promptly, fairly, and confidentially, respecting the privacy and security of the reporter. Maintainers may request additional details, such as screenshots or logs (e.g., from `%LOCALAPPDATA%\Requests\ItsJesewe\crashes\vw_logs.log`), to investigate issues thoroughly.
+Report any abusive, harassing, or unacceptable behavior to jesewescience@outlook.com. All reports will be reviewed promptly, fairly, and confidentially, respecting the privacy and security of the reporter. Maintainers may request additional details, such as screenshots or logs (e.g., from `%LOCALAPPDATA%\VioletWing\logs\violetwing.log`), to investigate issues thoroughly.
 
 ### Enforcement Guidelines
 
