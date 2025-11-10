@@ -7,132 +7,205 @@
 [![Latest Release](https://img.shields.io/github/v/release/jesewe/VioletWing?style=for-the-badge&logo=github&color=8E44AD)](https://github.com/Jesewe/VioletWing/releases/latest/)
 [![License](https://img.shields.io/github/license/jesewe/VioletWing?style=for-the-badge&color=8E44AD)](LICENSE)
 
-<a href="#features"><strong>Features</strong></a> •
-<a href="#installation"><strong>Installation</strong></a> •
-<a href="#usage"><strong>Usage</strong></a> •
-<a href="#troubleshooting"><strong>Troubleshooting</strong></a> •
-<a href="#contributing"><strong>Contributing</strong></a>
+<a href="#-key-features"><strong>Features</strong></a> •
+<a href="#-installation"><strong>Installation</strong></a> •
+<a href="#-quick-start"><strong>Quick Start</strong></a> •
+<a href="#-configuration"><strong>Configuration</strong></a> •
+<a href="#-troubleshooting"><strong>Support</strong></a>
 
 </div>
 
 ---
 
-# Overview
+## 🌟 What is VioletWing?
 
-VioletWing is an automated tool designed for Counter-Strike 2 that enhances gameplay with features like precise aiming, visual overlays, and movement automation. It includes a graphical user interface (GUI) for easy configuration.
+VioletWing is a comprehensive training tool designed to help Counter-Strike 2 players analyze and improve their gameplay mechanics. Whether you're practicing aim consistency, movement techniques, or game awareness, VioletWing provides the tools you need to level up your skills.
 
-## Features
+---
 
-- **TriggerBot**:
-  - Automatically fires when an enemy is under your crosshair.
-  - Configurable trigger key (e.g., `x`, `c`, `mouse4`, `mouse5`) via GUI or `config.json`.
-  - Toggle mode for single-key activation.
-  - Adjustable delays (`ShotDelayMin`, `ShotDelayMax`, `PostShotDelay`) with weapon-specific settings for Pistols, Rifles, Snipers, SMGs, and Heavy weapons.
-  - Option to attack teammates.
-- **Overlay (ESP)**:
-  - Displays enemy bounding boxes, skeletons, snaplines, health numbers and nicknames.
-  - Customizable colors, line thickness, target FPS, and options like teammate drawing and name transliteration.
-- **Bunnyhop**:
-  - Automates bunny hopping for continuous jumping and speed maintenance.
-  - Configurable jump key and delay.
-- **NoFlash**:
-  - Reduces or eliminates flashbang effects for uninterrupted visibility.
-  - Adjustable flash suppression strength.
-- **Automatic Offset Fetching**: Retrieves latest offsets from remote sources on startup.
-- **Graphical User Interface (GUI)**:
-  - **Dashboard**: Shows bot status, offset updates, and version info.
-  - **General Settings**: Toggle TriggerBot, Overlay, Bunnyhop, and NoFlash.
-  - **Trigger Settings**: Configure trigger key, delays, toggle mode, and weapon-specific options.
-  - **Overlay Settings**: Adjust ESP features, colors, and appearance.
-  - **Additional Settings**: Configure Bunnyhop (jump key, delay) and NoFlash (suppression strength).
-  - **Logs Tab**: View real-time logs from `%LOCALAPPDATA%\VioletWing\logs\violetwing.log`.
-  - **FAQ Tab**: Answers to common questions about all features.
-  - **Notifications Tab**: Displays update notifications and other alerts.
-  - **Supporters Tab**: Lists contributors and supporters.
-- **Dynamic Config Updates**: Applies `config.json` changes without restarting via file watcher.
-- **Update Checker**: Notifies of new versions via GitHub releases, including stable and pre-releases.
-- **Logging**: Saves logs to `%LOCALAPPDATA%\VioletWing\logs\violetwing.log` and `violetwing_detailed.log` with detailed error tracing.
+## ✨ Key Features
 
-## Installation
+### 🎯 TriggerBot
 
-Install by cloning the repository or downloading a pre-built executable from releases.
+Precision training tool for developing muscle memory and reaction timing.
 
-### Option 1: Clone the Repository
+- **Customizable Trigger Keys**: Map to any key (`x`, `c`, `mouse4`, `mouse5`)
+- **Toggle Mode**: Single-key activation for convenience
+- **Weapon-Specific Delays**: Realistic timing for Pistols, Rifles, Snipers, SMGs, and Heavy weapons
+- **Advanced Configuration**: Fine-tune `ShotDelayMin`, `ShotDelayMax`, and `PostShotDelay`
 
-1. **Clone the Repository:**
+### 👁️ ESP Overlay
 
-   ```bash
-   git clone https://github.com/Jesewe/VioletWing.git
-   cd VioletWing
-   ```
+Visual training aid to understand positioning and game mechanics.
 
-2. **Install Dependencies:**
+- **Enemy Detection**: Bounding boxes, skeletons, and snaplines
+- **Health & Name Display**: Real-time player information
+- **Customizable Appearance**: Colors, line thickness, and FPS targeting
+- **Teammate Visualization**: Optional teammate drawing with name transliteration
 
-   ```bash
-   pip install -r requirements.txt
-   ```
+### 🐰 Bunnyhop
 
-   **PyMeow Module:**  
-    PyMeow is essential for rendering the overlay.  
-    Download the latest `pyMeow*.zip` from the [PyMeow GitHub Releases page](https://github.com/qb-0/pyMeow/releases) and install it:
+Master movement mechanics with automated bunny hopping practice.
 
-   ```bash
-   pip install pyMeow*.zip
-   ```
+- **Configurable Jump Key**: Set your preferred key binding
+- **Adjustable Timing**: Control jump delay for different scenarios
+- **Speed Maintenance**: Learn optimal timing for speed retention
 
-3. **Compile the Project (Optional):**
+### 🕶️ NoFlash
 
-   To create an executable, run the provided `compile.bat` script:
+Train without interruption from flashbang effects.
 
-   ```bash
-   compile.bat
-   ```
+- **Adjustable Suppression**: Control flash reduction strength
+- **Seamless Integration**: Maintains gameplay feel while reducing distractions
 
-   This script uses PyInstaller to bundle the project into an executable file.
+### 🖥️ Modern GUI
 
-4. **Run the Script:**
+Intuitive interface for easy configuration and monitoring.
 
-   ```bash
-   python main.py
-   ```
+- **Dashboard**: Real-time status, offset updates, and version information
+- **Settings Panels**: Dedicated tabs for General, Trigger, Overlay, and Additional settings
+- **Live Logs**: Monitor bot activity with integrated log viewer
+- **FAQ Section**: Built-in help for all features
+- **Update Notifications**: Stay current with automatic update checking
+- **Supporters Page**: Acknowledge community contributors
 
-### Option 2: Download Pre-Built Executable
+### ⚙️ Advanced Functionality
 
-Download the latest executable from the [Releases](https://github.com/Jesewe/VioletWing/releases) page and run it directly.
+- **Automatic Offset Updates**: Fetches latest offsets from remote sources on startup
+- **Dynamic Configuration**: Apply `config.json` changes without restarting
+- **Comprehensive Logging**: Detailed logs saved to `%LOCALAPPDATA%\VioletWing\logs\`
+- **Version Management**: Supports both stable and pre-release updates
+- **File Watching**: Real-time config updates via file monitoring
 
-**Note:** Requires Python >= 3.8 and < 3.12.5.
+---
 
-## Usage
+## 📦 Installation
 
-1. Launch Counter-Strike 2.
-2. Run VioletWing (via Python or executable).
-3. Use the GUI to configure and toggle features.
-4. Changes to `config.json` are applied dynamically without restarting.
+### Method 1: Download Pre-Built (Recommended)
 
-## Troubleshooting
+**Easiest way to get started!**
 
-- **Failed to Fetch Offsets**: Verify internet connection and source URL accessibility.
-- **Offset Errors Post-Update**: Wait for updated offsets from [https://github.com/a2x/cs2-dumper](https://github.com/a2x/cs2-dumper).
-- **Could Not Open `cs2.exe`**: Ensure the game is running with necessary permissions.
-- **Overlay Not Displaying**: Check Overlay settings and game mode (windowed/borderless).
-- **Bunnyhop Inconsistent**: Verify focus on game window and settings.
-- **NoFlash Not Working**: Confirm offsets are updated and feature is enabled.
-- **Unexpected Errors**: Review logs in `%LOCALAPPDATA%\VioletWing\logs\`.
-- **Invalid Config Import**: Ensure `config.json` format is correct.
+1. Visit the [**Releases Page**](https://github.com/Jesewe/VioletWing/releases)
+2. Download the latest `VioletWing.exe`
+3. Run and enjoy!
 
-## Contributing
+### Method 2: Build from Source
 
-We welcome contributions to VioletWing!
+**For developers and advanced users**
 
-Before you start, please read our [**Contributing Guidelines**](CONTRIBUTING.md).
+```bash
+# Clone the repository
+git clone https://github.com/Jesewe/VioletWing.git
+cd VioletWing
 
-- To report a bug or suggest a feature, please [**open an issue**](https://github.com/Jesewe/VioletWing/issues) using the appropriate template.
-- To submit your changes, please [**create a pull request**](https://github.com/Jesewe/VioletWing/pulls).
+# Install dependencies
+pip install -r requirements.txt
 
-## Disclaimer
+# Install PyMeow (required for overlay rendering)
+# Download from: https://github.com/qb-0/pyMeow/releases
+pip install pyMeow*.zip
 
-This tool is for educational purposes only. Using automation tools in online games violates terms of service and may result in bans. Use at your own risk.
+# Run the application
+python main.py
+```
 
-## License
+**Optional: Create your own executable**
 
-Licensed under the GPL-3.0 License. See the [LICENSE](LICENSE) file for details.
+```bash
+compile.bat
+```
+
+> **System Requirements:** Python >= 3.8 and < 3.12.10
+
+---
+
+## 🚀 Quick Start
+
+1. **Launch Counter-Strike 2** and enter a practice match
+2. **Start VioletWing** (executable or Python script)
+3. **Configure Your Settings** using the intuitive GUI
+4. **Toggle Features** on/off as needed for your training session
+5. **Practice and Improve!**
+
+---
+
+## ⚙️ Configuration
+
+VioletWing uses a flexible configuration system accessible through both the GUI and `config.json`.
+
+### GUI Configuration
+
+Navigate through dedicated settings tabs:
+
+- **General Settings**: Enable/disable TriggerBot, Overlay, Bunnyhop, NoFlash
+- **Trigger Settings**: Configure activation keys, delays, and weapon-specific behavior
+- **Overlay Settings**: Customize ESP appearance, colors, and display options
+- **Additional Settings**: Fine-tune Bunnyhop and NoFlash parameters
+
+### Manual Configuration
+
+Edit `config.json` directly for advanced customization. The file watcher automatically applies changes.
+
+---
+
+## 🔧 Troubleshooting
+
+### Common Issues & Solutions
+
+| Issue                               | Solution                                                                      |
+| ----------------------------------- | ----------------------------------------------------------------------------- |
+| **Failed to Fetch Offsets**         | Check internet connection and firewall settings                               |
+| **Offset Errors After Game Update** | Wait for updated offsets from [cs2-dumper](https://github.com/a2x/cs2-dumper) |
+| **Could Not Open `cs2.exe`**        | Run with administrator privileges                                             |
+| **Overlay Not Displaying**          | Use windowed or borderless mode; check Overlay settings                       |
+| **Bunnyhop Inconsistent**           | Ensure CS2 window has focus; verify jump key settings                         |
+| **NoFlash Not Working**             | Confirm offsets are current and feature is enabled                            |
+
+### Still Need Help?
+
+- 📋 Check the **FAQ Tab** in the application
+- 📝 Review logs in `%LOCALAPPDATA%\VioletWing\logs\`
+- 🐛 [Open an Issue](https://github.com/Jesewe/VioletWing/issues) with details
+
+---
+
+## 🤝 Contributing
+
+We love community contributions! Before getting started:
+
+1. Read our [**Contributing Guidelines**](CONTRIBUTING.md)
+2. Check existing [**Issues**](https://github.com/Jesewe/VioletWing/issues) and [**Pull Requests**](https://github.com/Jesewe/VioletWing/pulls)
+3. Fork, code, test, and submit your PR!
+
+### Ways to Contribute
+
+- 🐛 Report bugs with detailed reproduction steps
+- 💡 Suggest new features or improvements
+- 📖 Improve documentation
+- 🔧 Submit bug fixes or enhancements
+- ⭐ Star the project to show support!
+
+---
+
+## ⚠️ Disclaimer
+
+**Important Notice:**
+
+This tool is provided **for educational and training purposes only**. VioletWing is designed to help players understand game mechanics and practice in offline environments.
+
+- Using automation tools in online multiplayer matches violates Counter-Strike 2's Terms of Service
+- Use may result in VAC bans or other penalties
+- The developers assume no responsibility for misuse
+- **Use at your own risk and only in appropriate contexts**
+
+We strongly encourage fair play and respect for the gaming community.
+
+---
+
+## 📄 License
+
+VioletWing is licensed under the **GNU General Public License v3.0**.
+
+See the [LICENSE](LICENSE) file for complete details.
+
+---
