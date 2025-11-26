@@ -22,6 +22,9 @@ def populate_supporters(main_window, frame):
         main_container, fg_color="transparent"
     )
     supporters_container.pack(fill="both", expand=True)
+    
+    # Configure faster scroll speed by modifying canvas
+    supporters_container._parent_canvas.configure(yscrollincrement=20)
 
     # Hero section
     hero_frame = ctk.CTkFrame(
