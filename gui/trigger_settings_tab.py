@@ -12,6 +12,9 @@ def populate_trigger_settings(main_window, frame):
     settings = ctk.CTkScrollableFrame(frame, fg_color="transparent")
     settings.pack(fill="both", expand=True, padx=40, pady=40)
     
+    # Configure faster scroll speed by modifying canvas
+    settings._parent_canvas.configure(yscrollincrement=5)
+    
     create_title_section(settings)
     create_trigger_config_section(main_window, settings)
     create_timing_settings_section(main_window, settings)

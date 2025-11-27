@@ -23,6 +23,9 @@ def populate_notifications(main_window, frame):
         fg_color="transparent"
     )
     notifications_container.pack(fill="both", expand=True, padx=40, pady=40)
+    
+    # Configure faster scroll speed by modifying canvas
+    notifications_container._parent_canvas.configure(yscrollincrement=5)
 
     # Header section with fixed height
     header_frame = ctk.CTkFrame(
