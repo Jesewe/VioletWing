@@ -17,7 +17,7 @@ def populate_overlay_settings(main_window, frame):
     settings.pack(fill="both", expand=True, padx=40, pady=40)
     
     # Configure faster scroll speed by modifying canvas
-    settings._parent_canvas.configure(yscrollincrement=20)
+    settings._parent_canvas.configure(yscrollincrement=5)
     
     create_title_section(settings)
     

@@ -16,7 +16,7 @@ def populate_faq(main_window, frame):
     faq_container.pack(fill="both", expand=True, padx=40, pady=40)
     
     # Configure faster scroll speed by modifying canvas
-    faq_container._parent_canvas.configure(yscrollincrement=20)
+    faq_container._parent_canvas.configure(yscrollincrement=5)
     
     # Frame for page title and subtitle
     title_frame = ctk.CTkFrame(faq_container, fg_color="transparent")

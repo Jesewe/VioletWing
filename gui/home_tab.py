@@ -29,7 +29,7 @@ def populate_dashboard(main_window, frame):
     dashboard.pack(fill="both", expand=True, padx=40, pady=40)
     
     # Configure faster scroll speed by modifying canvas
-    dashboard._parent_canvas.configure(yscrollincrement=20)
+    dashboard._parent_canvas.configure(yscrollincrement=5)
     
     # Frame for page title and subtitle
     title_frame = ctk.CTkFrame(dashboard, fg_color="transparent")

@@ -24,7 +24,7 @@ def populate_supporters(main_window, frame):
     supporters_container.pack(fill="both", expand=True)
     
     # Configure faster scroll speed by modifying canvas
-    supporters_container._parent_canvas.configure(yscrollincrement=20)
+    supporters_container._parent_canvas.configure(yscrollincrement=5)
 
     # Hero section
     hero_frame = ctk.CTkFrame(
