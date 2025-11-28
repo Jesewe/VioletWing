@@ -211,6 +211,7 @@ class MainWindow:
         social_buttons_data = [
             {"text": "GitHub", "icon": "github", "url": "https://github.com/Jesewe/VioletWing", "fg_color": "#2c3e50", "hover_color": "#34495e", "border_color": "#34495e"},
             {"text": "Telegram", "icon": "telegram", "url": "https://t.me/cs2_jesewe", "fg_color": "#29A9EA", "hover_color": "#279cdb"},
+            {"text": "Support me on Ko-fi", "icon": "kofi", "url": "https://ko-fi.com/jesewe", "fg_color": "#FFA05A", "hover_color": "#FF5724"},
             {"text": "Help Center", "icon": "violetwing", "url": "https://violetwing.featurebase.app/en/help", "fg_color": "#8e44ad", "hover_color": "#9b59b6"}
         ]
 

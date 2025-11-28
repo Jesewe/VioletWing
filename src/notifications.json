@@ -47,5 +47,12 @@
     "url": "https://github.com/Jesewe/VioletWing/issues/119",
     "timestamp": "2025-10-03",
     "message": "Attention Counter-Strike 2 players: The recent VACNet anti-cheat update has enhanced detection capabilities. Continuous use of trigger bots or similar tools, including VioletWing, from start to finish in matches may lead to detection, resulting in account restrictions of 20 hours or more. There is no issue with the tools themselves, but aggressive use increases the risk of detection. Please play cautiously and at your own risk to avoid bans."
-}
+  },
+  {
+    "number": "8",
+    "title": "Support VioletWing on Ko-fi!",
+    "url": "https://ko-fi.com/jesewe",
+    "timestamp": "2025-11-28",
+    "message": "If you find VioletWing helpful and would like to support its development, consider buying me a coffee on Ko-fi! Your support helps keep the project alive and allows me to continue improving VioletWing for the community. Thank you for your generosity!"
+  }
 ]
