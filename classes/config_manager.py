@@ -70,7 +70,7 @@ class ConfigManager:
             "JumpDelay": 0.01
         },
         "NoFlash": {
-            "FlashSuppressionStrength": 1.0
+            "FlashSuppressionStrength": 0.0
         },
     }
 

@@ -678,8 +678,8 @@ class MainWindow:
         # Validate NoFlash settings
         if hasattr(self, 'FlashSuppressionStrength_slider'):
             strength = self.FlashSuppressionStrength_slider.get()
-            if not (0.0 <= strength <= 1.0):
-                raise ValueError("Flash suppression strength must be between 0.0 and 1.0.")
+            if not (0.0 <= strength <= 100.0):
+                raise ValueError("Flash suppression strength must be between 0.0 and 100.0.")
 
     def reset_to_default_settings(self):
         """Reset all settings to their default values."""

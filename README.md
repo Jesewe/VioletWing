@@ -5,8 +5,8 @@
 
 [![Downloads](https://img.shields.io/github/downloads/jesewe/VioletWing/total?style=for-the-badge&logo=github&color=8E44AD)](https://github.com/Jesewe/VioletWing/releases)
 [![Latest Release](https://img.shields.io/github/v/release/jesewe/VioletWing?style=for-the-badge&logo=github&color=8E44AD)](https://github.com/Jesewe/VioletWing/releases/latest/)
+[![Ko-fi](https://img.shields.io/badge/ko--fi-support-8E44AD?style=for-the-badge&logo=ko-fi)](https://ko-fi.com/E1E51PAHB3)
 [![License](https://img.shields.io/github/license/jesewe/VioletWing?style=for-the-badge&color=8E44AD)](LICENSE)
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/E1E51PAHB3)
 
 <a href="#-key-features"><strong>Features</strong></a> •
 <a href="#-installation"><strong>Installation</strong></a> •

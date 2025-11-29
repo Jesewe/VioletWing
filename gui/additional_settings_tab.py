@@ -122,7 +122,7 @@ def create_noflash_config_section(main_window, parent):
     
     # List of settings for NoFlash configuration
     settings_list = [
-        ("Flash Suppression Strength", "slider", "FlashSuppressionStrength", "Strength of flash suppression (0.0-1.0)")
+        ("Flash Suppression Strength", "slider", "FlashSuppressionStrength", "Strength of flash suppression (0.0-100.0)")
     ]
     
     # Create each setting item
@@ -219,7 +219,7 @@ def create_setting_item(parent, label_text, description, widget_type, key, main_
         # Value label with improved styling
         value_label = ctk.CTkLabel(
             value_frame,
-            text=f"{main_window.noflash.config['NoFlash'].get(key, 0.0):.2f}",
+            text=f"{main_window.noflash.config['NoFlash'].get(key, 0.0):.1f}",
             font=FONT_ITEM_LABEL,
             text_color=COLOR_TEXT_PRIMARY
         )
@@ -229,8 +229,8 @@ def create_setting_item(parent, label_text, description, widget_type, key, main_
         widget = ctk.CTkSlider(
             slider_container,
             from_=0.0,
-            to=1.0,
-            number_of_steps=100,
+            to=100.0,
+            number_of_steps=1000,
             command=lambda e: update_slider_value(e, key, main_window),
             **SLIDER_STYLE
         )
@@ -247,5 +247,5 @@ def create_setting_item(parent, label_text, description, widget_type, key, main_
 def update_slider_value(event, key, main_window):
     """Update the slider value label and save settings."""
     value = main_window.__getattribute__(f"{key}_slider").get()
-    main_window.__getattribute__(f"{key}_slider").value_label.configure(text=f"{value:.2f}")
+    main_window.__getattribute__(f"{key}_slider").value_label.configure(text=f"{value:.1f}")
     main_window.save_settings(show_message=False)
