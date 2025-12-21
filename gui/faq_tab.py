@@ -8,6 +8,10 @@ from gui.theme import (
 
 def populate_faq(main_window, frame):
     """Populate the FAQ frame with questions and answers."""
+    # Clear existing widgets to prevent duplication
+    for widget in frame.winfo_children():
+        widget.destroy()
+    
     # Scrollable container for FAQ content
     faq_container = ctk.CTkScrollableFrame(
         frame,
@@ -18,25 +22,36 @@ def populate_faq(main_window, frame):
     # Configure faster scroll speed by modifying canvas
     faq_container._parent_canvas.configure(yscrollincrement=5)
     
-    # Frame for page title and subtitle
-    title_frame = ctk.CTkFrame(faq_container, fg_color="transparent")
-    title_frame.pack(fill="x", pady=(0, 45))
+    # Header section with fixed height
+    header_frame = ctk.CTkFrame(
+        faq_container,
+        fg_color="transparent",
+        height=100
+    )
+    header_frame.pack(fill="x", pady=(0, 35))
+    header_frame.pack_propagate(False)
+    
+    # Container for title and subtitle
+    title_container = ctk.CTkFrame(header_frame, fg_color="transparent")
+    title_container.pack(side="left", fill="y")
     
     # FAQ title with icon
-    ctk.CTkLabel(
-        title_frame,
+    title_label = ctk.CTkLabel(
+        title_container,
         text="❓ Frequently Asked Questions",
         font=FONT_TITLE,
         text_color=COLOR_TEXT_PRIMARY
-    ).pack(anchor="w")
+    )
+    title_label.pack(anchor="w", pady=(10, 0))
     
     # Subtitle providing context
-    ctk.CTkLabel(
-        title_frame,
+    subtitle_label = ctk.CTkLabel(
+        title_container,
         text="Find answers to common questions about TriggerBot, Overlay, Bunnyhop, and NoFlash usage and configuration",
         font=FONT_SUBTITLE,
         text_color=COLOR_TEXT_SECONDARY
-    ).pack(anchor="w", pady=(10, 0))
+    )
+    subtitle_label.pack(anchor="w", pady=(8, 0))
     
     # List of FAQ items
     faqs = [
@@ -116,93 +131,39 @@ def populate_faq(main_window, frame):
     
     # Create FAQ cards
     for i, (question, answer) in enumerate(faqs):
-        # Card for each FAQ item
-        faq_card = ctk.CTkFrame(
-            faq_container,
-            corner_radius=25,
-            fg_color=SECTION_STYLE["fg_color"],
-            border_width=3,
-            border_color=SECTION_STYLE["border_color"]
-        )
-        faq_card.pack(fill="x", pady=(0, 25))
-        
-        # Frame for question header
-        question_frame = ctk.CTkFrame(faq_card, fg_color="transparent")
-        question_frame.pack(fill="x", padx=30, pady=(25, 15))
-        
-        # Number badge for question
-        number_badge = ctk.CTkFrame(
-            question_frame,
-            width=45,
-            height=45,
-            corner_radius=22,
-            fg_color=COLOR_ACCENT_FG
-        )
-        number_badge.pack(side="left", padx=(0, 18))
-        number_badge.pack_propagate(False)
-        
-        # Number inside badge
-        ctk.CTkLabel(
-            number_badge,
-            text=str(i+1),
-            font=FONT_WIDGET,
-            text_color="#ffffff"
-        ).place(relx=0.5, rely=0.5, anchor="center")
-        
-        # Question text
-        question_label = ctk.CTkLabel(
-            question_frame,
-            text=question,
-            font=FONT_ITEM_LABEL,
-            text_color=COLOR_TEXT_PRIMARY,
-            anchor="w"
-        )
-        question_label.pack(side="left", fill="x", expand=True)
-        
-        # Frame for answer text
-        answer_frame = ctk.CTkFrame(faq_card, fg_color="transparent")
-        answer_frame.pack(fill="x", padx=75, pady=(0, 25))
-        
-        # Answer text with wrapping
-        ctk.CTkLabel(
-            answer_frame,
-            text=answer,
-            font=FONT_ITEM_DESCRIPTION,
-            text_color=COLOR_TEXT_SECONDARY,
-            anchor="w",
-            wraplength=820,
-            justify="left"
-        ).pack(fill="x")
+        is_last = (i == len(faqs) - 1)
+        create_faq_card(faq_container, i + 1, question, answer, is_last)
     
     # Footer with additional help information
     footer_frame = ctk.CTkFrame(
         faq_container,
-        corner_radius=25,
-        fg_color=SECTION_STYLE["fg_color"],
-        border_width=3,
-        border_color=SECTION_STYLE["border_color"]
+        **SECTION_STYLE
     )
     footer_frame.pack(fill="x", pady=(40, 0))
     
+    # Footer content
+    footer_content = ctk.CTkFrame(footer_frame, fg_color="transparent")
+    footer_content.pack(padx=50, pady=40)
+    
     # Footer title
     ctk.CTkLabel(
-        footer_frame,
+        footer_content,
         text="💡 Still have questions?",
         font=FONT_SECTION_TITLE,
         text_color=COLOR_TEXT_PRIMARY
-    ).pack(pady=(25, 8))
+    ).pack(pady=(0, 8))
     
     # Footer guidance text
     ctk.CTkLabel(
-        footer_frame,
+        footer_content,
         text="Explore these resources for more help or to contribute to VioletWing:",
         font=FONT_ITEM_DESCRIPTION,
         text_color=COLOR_TEXT_SECONDARY
     ).pack(pady=(0, 20))
     
     # Links container
-    links_container = ctk.CTkFrame(footer_frame, fg_color="transparent")
-    links_container.pack(pady=(0, 15))
+    links_container = ctk.CTkFrame(footer_content, fg_color="transparent")
+    links_container.pack()
     
     # GitHub Issues link
     def open_github_issues():
@@ -248,8 +209,66 @@ def populate_faq(main_window, frame):
     
     # Additional footer text
     ctk.CTkLabel(
-        footer_frame,
+        footer_content,
         text="Remember: This tool is for educational purposes only. Always respect game terms of service.",
         font=FONT_ITEM_DESCRIPTION,
         text_color=COLOR_TEXT_SECONDARY
-    ).pack(pady=(20, 25))
+    ).pack(pady=(20, 0))
+
+def create_faq_card(container, number, question, answer, is_last=False):
+    """Create a card for a single FAQ item."""
+    # Card for each FAQ item
+    faq_card = ctk.CTkFrame(
+        container,
+        **SECTION_STYLE
+    )
+    faq_card.pack(fill="x", pady=(0, 30 if not is_last else 0))
+    
+    # Frame for question header
+    question_frame = ctk.CTkFrame(faq_card, fg_color="transparent")
+    question_frame.pack(fill="x", padx=30, pady=(25, 15))
+    
+    # Number badge for question
+    number_badge = ctk.CTkFrame(
+        question_frame,
+        width=50,
+        height=50,
+        corner_radius=25,
+        fg_color=COLOR_ACCENT_FG
+    )
+    number_badge.pack(side="left", padx=(0, 18))
+    number_badge.pack_propagate(False)
+    
+    # Number inside badge
+    ctk.CTkLabel(
+        number_badge,
+        text=str(number),
+        font=FONT_ITEM_LABEL,
+        text_color="#ffffff"
+    ).place(relx=0.5, rely=0.5, anchor="center")
+    
+    # Question text
+    question_label = ctk.CTkLabel(
+        question_frame,
+        text=question,
+        font=FONT_SECTION_TITLE,
+        text_color=COLOR_TEXT_PRIMARY,
+        anchor="w"
+    )
+    question_label.pack(side="left", fill="x", expand=True)
+    
+    # Frame for answer text
+    answer_frame = ctk.CTkFrame(faq_card, fg_color="transparent")
+    answer_frame.pack(fill="x", padx=78, pady=(0, 25))
+    
+    # Answer text with wrapping
+    answer_label = ctk.CTkLabel(
+        answer_frame,
+        text=answer,
+        font=FONT_ITEM_DESCRIPTION,
+        text_color=COLOR_TEXT_SECONDARY,
+        anchor="w",
+        wraplength=800,
+        justify="left"
+    )
+    answer_label.pack(fill="x")

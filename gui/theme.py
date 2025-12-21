@@ -3,8 +3,8 @@ Centralized theme for the application's UI.
 """
 
 # Font families
-FONT_FAMILY_BOLD = ("Chivo", 0, "bold")
-FONT_FAMILY_REGULAR = ("Gambetta", 0)
+FONT_FAMILY_BOLD = ("Manrope", 0, "bold")
+FONT_FAMILY_REGULAR = ("JetBrainsMono", 0)
 
 # Font sizes
 FONT_SIZE_H1 = 36

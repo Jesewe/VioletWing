@@ -87,10 +87,10 @@ class MainWindow:
             import ctypes
             gdi32 = ctypes.WinDLL('gdi32')
             font_files = [
-                'src/fonts/Chivo-Regular.ttf',
-                'src/fonts/Chivo-Bold.ttf',
-                'src/fonts/Gambetta-Regular.ttf',
-                'src/fonts/Gambetta-Bold.ttf'
+                'src/fonts/Manrope-Regular.ttf',
+                'src/fonts/Manrope-Bold.ttf',
+                'src/fonts/JetBrainsMono-Regular.ttf',
+                'src/fonts/JetBrainsMono-Bold.ttf'
             ]
             for font_file in font_files:
                 font_path = Utility.resource_path(font_file)

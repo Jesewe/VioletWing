@@ -124,10 +124,17 @@ def create_widget(parent, main_window, widget_type, key, is_weapon_specific):
     widget_frame.pack(side="right", padx=(30, 0))
 
     if widget_type == "entry":
-        widget = ctk.CTkEntry(
-            widget_frame,
-            **ENTRY_STYLE
-        )
+        if key == "TriggerKey":
+            widget = ctk.CTkEntry(
+                widget_frame,
+                justify="center",
+                **ENTRY_STYLE
+            )
+        else:
+            widget = ctk.CTkEntry(
+                widget_frame,
+                **ENTRY_STYLE
+            )
         widget.bind("<FocusOut>", lambda e: main_window.save_settings())
         widget.bind("<Return>", lambda e: main_window.save_settings())
         
