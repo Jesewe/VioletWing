@@ -70,7 +70,6 @@ class MainWindow:
         # Create the main window with a title and initial size
         self.root = ctk.CTk()
         self.root.title(f"VioletWing {ConfigManager.VERSION}")
-        self.root.geometry("1400x800")
         self.root.resizable(True, True)
         self.root.minsize(1400, 800)
 
@@ -212,7 +211,6 @@ class MainWindow:
             {"text": "GitHub", "icon": "github", "url": "https://github.com/Jesewe/VioletWing", "fg_color": "#2c3e50", "hover_color": "#34495e", "border_color": "#34495e"},
             {"text": "Telegram", "icon": "telegram", "url": "https://t.me/cs2_jesewe", "fg_color": "#29A9EA", "hover_color": "#279cdb"},
             {"text": "Support me on Ko-fi", "icon": "kofi", "url": "https://ko-fi.com/jesewe", "fg_color": "#FFA05A", "hover_color": "#FF5724"},
-            {"text": "Help Center", "icon": "violetwing", "url": "https://violetwing.featurebase.app/en/help", "fg_color": "#8e44ad", "hover_color": "#9b59b6"}
         ]
 
         for i, data in enumerate(social_buttons_data):
@@ -242,10 +240,17 @@ class MainWindow:
 
     def create_update_button(self, parent):
         """Create the update button if an update is available."""
+        try:
+            image = Image.open(Utility.resource_path(f'src/img/update_icon.png'))
+            ctk_image = ctk.CTkImage(light_image=image, dark_image=image, size=(24, 24))
+        except FileNotFoundError:
+            ctk_image = None
+
         if self.updater.check_for_updates():
             update_btn = ctk.CTkButton(
                 parent,
                 text="Pre-release Available!" if self.updater.is_prerelease else "Update Available!",
+                image=ctk_image,
                 command=self.updater.handle_update,
                 width=120,
                 height=32,
