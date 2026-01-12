@@ -72,6 +72,30 @@ jobs:
             exit 1
           fi
 
+      - name: Convert Changelog to Telegram Format
+        id: convert_changelog
+        run: |
+          # Read changelog and convert Markdown to Telegram HTML format
+          CHANGELOG=$(cat ./ChangeLog.md | sed 's/^# /📋 <b>/g' | \
+            sed 's/^## /<b>/g' | \
+            sed 's/^### /<b>/g' | \
+            sed 's/$/<\/b>/g' | \
+            sed 's/^\* /• /g' | \
+            sed 's/^\- /• /g' | \
+            sed 's/\*\*\(.*\)\*\*/<b>\1<\/b>/g' | \
+            sed 's/\*\(.*\)\*/<i>\1<\/i>/g' | \
+            sed 's/`\(.*\)`/<code>\1<\/code>/g' | \
+            head -c 3000)
+          
+          # Escape special characters for GitHub Actions
+          CHANGELOG="${CHANGELOG//'%'/'%25'}"
+          CHANGELOG="${CHANGELOG//$'\n'/'%0A'}"
+          CHANGELOG="${CHANGELOG//$'\r'/'%0D'}"
+          
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
       - name: Create release
         uses: softprops/action-gh-release@v2
         env:
@@ -87,13 +111,22 @@ jobs:
       - name: Send Telegram Notification
         if: success()
         run: |
+          RELEASE_TYPE="${{ github.event.inputs.prerelease == 'true' && 'Pre-release' || 'Release' }}"
+          TAG="${{ github.event.inputs.tag_name }}"
+          RELEASE_URL="${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ github.event.inputs.tag_name }}"
+          
+          MESSAGE="🎉 <b>New ${RELEASE_TYPE}: VioletWing ${TAG}</b>%0A%0A${{ steps.convert_changelog.outputs.changelog }}%0A%0A🔗 <a href=\"${RELEASE_URL}\">View Release</a>"
+          
           curl -s -X POST https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage \
           -d chat_id=${{ secrets.TELEGRAM_CHAT_ID }} \
-          -d text="🎉 New ${{ github.event.inputs.prerelease == 'true' && 'Pre-release' || 'Release' }}: VioletWing ${{ github.event.inputs.tag_name }} has been published! Check it out: ${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ github.event.inputs.tag_name }}"
+          -d parse_mode=HTML \
+          -d disable_web_page_preview=true \
+          -d text="${MESSAGE}"
 
       - name: Send Telegram Notification on Failure
         if: failure()
         run: |
           curl -s -X POST https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage \
           -d chat_id=${{ secrets.TELEGRAM_ADMIN_CHAT_ID }} \
-          -d text="🚨 ${{ github.event.inputs.prerelease == 'true' && 'Pre-release' || 'Release' }} Failed: VioletWing ${{ github.event.inputs.tag_name }}. Check the workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          -d parse_mode=HTML \
+          -d text="🚨 <b>${{ github.event.inputs.prerelease == 'true' && 'Pre-release' || 'Release' }} Failed: VioletWing ${{ github.event.inputs.tag_name }}</b>%0A%0ACheck the workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
