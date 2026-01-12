@@ -52,12 +52,11 @@ class CS2TriggerBot:
         self.trigger_key = settings['TriggerKey']
         self.toggle_mode = settings['ToggleMode']
         self.attack_on_teammates = settings['AttackOnTeammates']
-        
-        # Cache default weapon settings
-        active_weapon = settings.get("active_weapon_type", "Rifles")
         self.weapon_settings_cache = settings["WeaponSettings"]
-        self.current_weapon_settings = self.weapon_settings_cache.get(active_weapon, self.weapon_settings_cache["Rifles"])
-        self.last_weapon_type = active_weapon
+        
+        # Reset cached weapon settings to force fresh lookup
+        self.current_weapon_settings = None
+        self.last_weapon_type = None
         
         self.mouse_button_map = {
             "mouse3": Button.middle,
@@ -133,12 +132,15 @@ class CS2TriggerBot:
         return (self.attack_on_teammates or entity_team != player_team) and entity_health > 0
 
     def get_weapon_settings(self, weapon_type: str) -> Dict[str, Any]:
-        """Get weapon settings with caching for performance."""
+        """Get weapon settings with caching for performance. Always uses the actual in-game weapon type."""
+        # Always update cache when weapon type changes to ensure correct settings
         if weapon_type != self.last_weapon_type:
             self.current_weapon_settings = self.weapon_settings_cache.get(
-                weapon_type, self.weapon_settings_cache["Rifles"]
+                weapon_type, self.weapon_settings_cache.get("Rifles", {})
             )
             self.last_weapon_type = weapon_type
+            logger.debug(f"Weapon type changed to: {weapon_type}")
+        
         return self.current_weapon_settings
 
     def is_trigger_key_pressed(self) -> bool:
@@ -198,13 +200,18 @@ class CS2TriggerBot:
                     sleep(MAIN_LOOP_SLEEP)
                     continue
 
-                # Get weapon settings
+                # Get weapon settings - CRITICAL: Use the actual weapon type from game data
                 weapon_type = data.get("weapon_type", "Rifles")
                 weapon_settings = self.get_weapon_settings(weapon_type)
                 
-                shot_delay_min = weapon_settings['ShotDelayMin']
-                shot_delay_max = weapon_settings['ShotDelayMax']
-                post_shot_delay = weapon_settings['PostShotDelay']
+                # Ensure weapon_settings is valid
+                if not weapon_settings:
+                    logger.warning(f"No settings found for weapon type: {weapon_type}, using Rifles defaults")
+                    weapon_settings = self.weapon_settings_cache.get("Rifles", {})
+                
+                shot_delay_min = weapon_settings.get('ShotDelayMin', 0.0)
+                shot_delay_max = weapon_settings.get('ShotDelayMax', 0.0)
+                post_shot_delay = weapon_settings.get('PostShotDelay', 0.0)
 
                 # Pre-shot delay
                 if shot_delay_max > shot_delay_min:
