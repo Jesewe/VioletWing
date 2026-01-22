@@ -339,7 +339,7 @@ class Utility:
                 "m_AttributeManager": get_field("C_EconEntity", "m_AttributeManager"),
                 "m_Item": get_field("C_AttributeContainer", "m_Item"),
                 "m_iItemDefinitionIndex": get_field("C_EconItemView", "m_iItemDefinitionIndex"),
-                "m_pBoneArray": 528
+                "m_pBoneArray": 0x160 + 0x80
             }
 
             missing_keys = [k for k, v in extracted_offsets.items() if v is None]
