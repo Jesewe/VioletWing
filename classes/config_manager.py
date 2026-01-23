@@ -1,6 +1,9 @@
-import os, orjson, copy
+import os
+import orjson
+import copy
 from pathlib import Path
-from pyMeow import get_color, fade_color
+from typing import Dict, Any, Optional
+import threading
 
 from classes.logger import Logger
 
@@ -9,22 +12,25 @@ logger = Logger.get_logger(__name__)
 
 class ConfigManager:
     """
-    Manages the configuration file for the application.
-    Provides methods to load and save configuration settings, 
-    with caching for efficiency and default configuration management.
+    Thread-safe configuration manager for the application.
+    
+    Provides methods to load and save configuration settings with:
+    - Automatic caching for performance
+    - Thread-safe operations
+    - Automatic migration of missing keys
+    - Validation and error recovery
     """
+    
     # Application version
     VERSION = "v1.2.9.1"
-    # Directory where the update files are stored
+    
+    # Directory paths
     UPDATE_DIRECTORY = os.path.expanduser(r'~\AppData\Local\Requests\ItsJesewe\Update')
-    # Directory where the offsets files are stored
     OFFSETS_DIRECTORY = os.path.expanduser(r'~\AppData\Local\Requests\ItsJesewe\Offsets')
-    # Directory where the configuration file is stored
     CONFIG_DIRECTORY = os.path.expanduser(r'~\AppData\Local\Requests\ItsJesewe')
-    # Full path to the configuration file
     CONFIG_FILE = Path(CONFIG_DIRECTORY) / 'config.json'
-
-    # Default configuration settings with General, Trigger, and Overlay categories
+    
+    # Default configuration settings
     DEFAULT_CONFIG = {
         "user_id": None,
         "General": {
@@ -72,85 +78,237 @@ class ConfigManager:
         "NoFlash": {
             "FlashSuppressionStrength": 0.0
         },
+        "GitHub": {
+            "AccessToken": None
+        }
     }
-
-    # Cache to store the loaded configuration
-    _config_cache = None
-
+    
+    # Cache and thread safety
+    _config_cache: Optional[Dict[str, Any]] = None
+    _lock: threading.Lock = threading.Lock()
+    
     @classmethod
-    def load_config(cls):
+    def load_config(cls) -> Dict[str, Any]:
         """
-        Loads the configuration from the configuration file.
-        - Creates the configuration directory and file with default settings if they do not exist.
-        - Caches the configuration to avoid redundant file reads.
+        Load the configuration from the configuration file (thread-safe).
+        
+        - Creates the configuration directory and file with default settings if they don't exist
+        - Caches the configuration to avoid redundant file reads
+        - Automatically migrates missing keys from DEFAULT_CONFIG
+        - Returns a deep copy to prevent accidental cache mutation
+        
+        Returns:
+            Dictionary containing the configuration
         """
-        # Return a deep copy of the cached configuration if available.
+        # Fast path: return cached config if available (no lock needed for read)
         if cls._config_cache is not None:
             return copy.deepcopy(cls._config_cache)
-
-        # Ensure the configuration directory exists.
-        os.makedirs(cls.CONFIG_DIRECTORY, exist_ok=True)
-
-        # Ensure the offsets directory exists.
-        os.makedirs(cls.OFFSETS_DIRECTORY, exist_ok=True)
-
-        if not Path(cls.CONFIG_FILE).exists():
-            logger.info("config.json not found at %s, creating a default configuration.", cls.CONFIG_FILE)
-            default_copy = copy.deepcopy(cls.DEFAULT_CONFIG)
-            cls.save_config(default_copy, log_info=False)
-            cls._config_cache = default_copy
-        else:
-            try:
-                # Read and parse the configuration file using orjson.
-                file_bytes = Path(cls.CONFIG_FILE).read_bytes()
-                cls._config_cache = orjson.loads(file_bytes)
-                logger.info("Loaded configuration.")
-            except (orjson.JSONDecodeError, IOError) as e:
-                logger.exception("Failed to load configuration: %s", e)
-                default_copy = copy.deepcopy(cls.DEFAULT_CONFIG)
-                cls.save_config(default_copy, log_info=False)
-                cls._config_cache = default_copy
-
-            # Update the configuration if any keys are missing.
-            if cls._update_config(cls.DEFAULT_CONFIG, cls._config_cache):
-                cls.save_config(cls._config_cache, log_info=False)
         
-        return copy.deepcopy(cls._config_cache)
-
+        # Slow path: load from file (needs lock)
+        with cls._lock:
+            # Double-check pattern: another thread might have loaded it
+            if cls._config_cache is not None:
+                return copy.deepcopy(cls._config_cache)
+            
+            # Ensure directories exist
+            cls._ensure_directories()
+            
+            # Load or create config
+            if not cls.CONFIG_FILE.exists():
+                cls._create_default_config()
+            else:
+                cls._load_existing_config()
+            
+            return copy.deepcopy(cls._config_cache)
+    
     @classmethod
-    def _update_config(cls, default: dict, current: dict) -> bool:
+    def _ensure_directories(cls) -> None:
+        """Ensure all required directories exist."""
+        try:
+            Path(cls.CONFIG_DIRECTORY).mkdir(parents=True, exist_ok=True)
+            Path(cls.OFFSETS_DIRECTORY).mkdir(parents=True, exist_ok=True)
+        except OSError as e:
+            logger.error(f"Failed to create directories: {e}")
+    
+    @classmethod
+    def _create_default_config(cls) -> None:
+        """Create a new configuration file with default settings."""
+        logger.info(f"config.json not found at {cls.CONFIG_FILE}, creating default configuration.")
+        default_copy = copy.deepcopy(cls.DEFAULT_CONFIG)
+        cls._config_cache = default_copy
+        cls._save_to_file(default_copy, log_info=False)
+    
+    @classmethod
+    def _load_existing_config(cls) -> None:
+        """Load configuration from existing file."""
+        try:
+            file_bytes = cls.CONFIG_FILE.read_bytes()
+            loaded_config = orjson.loads(file_bytes)
+            
+            # Validate that loaded config is a dictionary
+            if not isinstance(loaded_config, dict):
+                raise ValueError("Configuration file does not contain a valid dictionary")
+            
+            cls._config_cache = loaded_config
+            logger.info("Loaded configuration.")
+            
+            # Migrate missing keys from default config
+            if cls._update_config(cls.DEFAULT_CONFIG, cls._config_cache):
+                logger.info("Configuration updated with missing keys.")
+                cls._save_to_file(cls._config_cache, log_info=False)
+                
+        except (orjson.JSONDecodeError, IOError, ValueError) as e:
+            logger.error(f"Failed to load configuration: {e}. Using default configuration.")
+            default_copy = copy.deepcopy(cls.DEFAULT_CONFIG)
+            cls._config_cache = default_copy
+            cls._save_to_file(default_copy, log_info=False)
+    
+    @classmethod
+    def _update_config(cls, default: Dict[str, Any], current: Dict[str, Any]) -> bool:
         """
-        Recursively update `current` with missing keys from `default`.
-        Returns True if any keys were added.
+        Recursively update current config with missing keys from default.
+        
+        Args:
+            default: Default configuration dictionary
+            current: Current configuration dictionary to update
+            
+        Returns:
+            True if any keys were added, False otherwise
         """
         updated = False
         for key, value in default.items():
             if key not in current:
-                current[key] = value
+                current[key] = copy.deepcopy(value)
                 updated = True
+                logger.debug(f"Added missing config key: {key}")
             elif isinstance(value, dict) and isinstance(current.get(key), dict):
                 if cls._update_config(value, current[key]):
                     updated = True
         return updated
-
+    
     @classmethod
-    def save_config(cls, config: dict, log_info: bool = True):
+    def save_config(cls, config: Dict[str, Any], log_info: bool = True) -> bool:
         """
-        Saves the configuration to the configuration file.
-        Updates the cache with the new configuration.
+        Save the configuration to the configuration file (thread-safe).
+        
+        Args:
+            config: Configuration dictionary to save
+            log_info: Whether to log the save operation
+            
+        Returns:
+            True if save was successful, False otherwise
         """
-        cls._config_cache = copy.deepcopy(config)
+        with cls._lock:
+            # Update cache
+            cls._config_cache = copy.deepcopy(config)
+            # Save to file
+            return cls._save_to_file(config, log_info)
+    
+    @classmethod
+    def _save_to_file(cls, config: Dict[str, Any], log_info: bool = True) -> bool:
+        """
+        Internal method to save configuration to file.
+        
+        Args:
+            config: Configuration dictionary to save
+            log_info: Whether to log the save operation
+            
+        Returns:
+            True if save was successful, False otherwise
+        """
         try:
-            # Ensure the configuration directory exists.
+            # Ensure directory exists
             Path(cls.CONFIG_DIRECTORY).mkdir(parents=True, exist_ok=True)
-            # Serialize and write the configuration to the file with pretty formatting.
+            
+            # Serialize and write configuration
             config_bytes = orjson.dumps(config, option=orjson.OPT_INDENT_2)
-            Path(cls.CONFIG_FILE).write_bytes(config_bytes)
+            cls.CONFIG_FILE.write_bytes(config_bytes)
+            
             if log_info:
-                logger.info("Saved configuration to %s.", cls.CONFIG_FILE)
-        except IOError as e:
-            logger.exception("Failed to save configuration: %s", e)
+                logger.info(f"Saved configuration to {cls.CONFIG_FILE}.")
+            return True
+            
+        except (OSError, IOError) as e:
+            logger.error(f"Failed to save configuration: {e}")
+            return False
+    
+    @classmethod
+    def reset_to_default(cls) -> Dict[str, Any]:
+        """
+        Reset configuration to default values.
+        
+        Returns:
+            The default configuration dictionary
+        """
+        with cls._lock:
+            default_copy = copy.deepcopy(cls.DEFAULT_CONFIG)
+            cls._config_cache = default_copy
+            cls._save_to_file(default_copy, log_info=True)
+            logger.info("Configuration reset to default values.")
+            return copy.deepcopy(default_copy)
+    
+    @classmethod
+    def invalidate_cache(cls) -> None:
+        """Invalidate the configuration cache, forcing a reload on next access."""
+        with cls._lock:
+            cls._config_cache = None
+            logger.debug("Configuration cache invalidated.")
+    
+    @classmethod
+    def get_value(cls, *keys: str, default: Any = None) -> Any:
+        """
+        Get a configuration value using a key path.
+        
+        Args:
+            *keys: Key path (e.g., "General", "Trigger")
+            default: Default value if key path doesn't exist
+            
+        Returns:
+            The configuration value or default
+        """
+        config = cls.load_config()
+        current = config
+        
+        for key in keys:
+            if isinstance(current, dict) and key in current:
+                current = current[key]
+            else:
+                return default
+        
+        return current
+    
+    @classmethod
+    def set_value(cls, *keys: str, value: Any) -> bool:
+        """
+        Set a configuration value using a key path.
+        
+        Args:
+            *keys: Key path (e.g., "General", "Trigger")
+            value: Value to set
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        if not keys:
+            logger.error("No keys provided to set_value")
+            return False
+        
+        config = cls.load_config()
+        current = config
+        
+        # Navigate to the parent of the target key
+        for key in keys[:-1]:
+            if key not in current:
+                current[key] = {}
+            current = current[key]
+        
+        # Set the value
+        current[keys[-1]] = value
+        
+        # Save the configuration
+        return cls.save_config(config, log_info=False)
 
+# Color choices for Overlay
 COLOR_CHOICES = {
     "Orange": "#FFA500",
     "Red": "#FF0000",
@@ -162,13 +320,22 @@ COLOR_CHOICES = {
     "Yellow": "#FFFF00"
 }
 
-class Colors:
-    orange = get_color("orange")
-    black = get_color("black")
-    cyan = get_color("cyan")
-    white = get_color("white")
-    grey = fade_color(get_color("#242625"), 0.7)
-    red = get_color("red")
-    green = get_color("green")
-    blue = get_color("blue")
-    yellow = get_color("yellow")
+# Import pyMeow colors
+try:
+    from pyMeow import get_color, fade_color
+    
+    class Colors:
+        """Pre-defined colors for overlay rendering using pyMeow."""
+        orange = get_color("orange")
+        black = get_color("black")
+        cyan = get_color("cyan")
+        white = get_color("white")
+        grey = fade_color(get_color("#242625"), 0.7)
+        red = get_color("red")
+        green = get_color("green")
+        blue = get_color("blue")
+        yellow = get_color("yellow")
+        
+except ImportError:
+    logger.warning("pyMeow not available, Colors class will not be initialized")
+    Colors = None

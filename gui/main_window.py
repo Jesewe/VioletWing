@@ -69,7 +69,7 @@ class MainWindow:
         
         # Create the main window with a title and initial size
         self.root = ctk.CTk()
-        self.root.title(f"VioletWing {ConfigManager.VERSION}")
+        self.root.title(f"VioletWing")
         self.root.resizable(True, True)
         self.root.minsize(1400, 800)
 
@@ -163,16 +163,46 @@ class MainWindow:
         self.create_header_right(header_container)
 
     def create_header_left(self, parent):
-        """Create the left side of the header with title and version."""
+        """Create the left side of the header with title and version badge."""
         left_frame = ctk.CTkFrame(parent, fg_color="transparent")
         left_frame.grid(row=0, column=0, sticky="w", padx=30, pady=15)
         
+        # Title container
         title_frame = ctk.CTkFrame(left_frame, fg_color="transparent")
         title_frame.pack(side="left")
         
-        ctk.CTkLabel(title_frame, text="Violet", font=(FONT_FAMILY_BOLD[0], FONT_SIZE_H2, "bold"), text_color=COLOR_ACCENT_FG[0]).pack(side="left")
-        ctk.CTkLabel(title_frame, text="Wing", font=(FONT_FAMILY_BOLD[0], FONT_SIZE_H2, "bold"), text_color=COLOR_TEXT_PRIMARY[1]).pack(side="left", padx=(5, 0))
-        ctk.CTkLabel(title_frame, text=f"{ConfigManager.VERSION}", font=(FONT_FAMILY_REGULAR[0], FONT_SIZE_P), text_color=COLOR_TEXT_SECONDARY[0]).pack(side="left", padx=(10, 0), pady=(8, 0))
+        # Title name
+        ctk.CTkLabel(
+            title_frame, 
+            text="Violet", 
+            font=(FONT_FAMILY_BOLD[0], FONT_SIZE_H2, "bold"), 
+            text_color=COLOR_ACCENT_FG[0]
+        ).pack(side="left")
+        
+        ctk.CTkLabel(
+            title_frame, 
+            text="Wing", 
+            font=(FONT_FAMILY_BOLD[0], FONT_SIZE_H2, "bold"), 
+            text_color=COLOR_TEXT_PRIMARY[1]
+        ).pack(side="left", padx=(5, 0))
+        
+        # Version badge
+        version_badge = ctk.CTkFrame(
+            left_frame,
+            fg_color=("#f3e8ff", "#2d1b4e"),
+            corner_radius=12,
+            height=28
+        )
+        version_badge.pack(side="left", padx=(15, 0))
+        
+        ctk.CTkLabel(
+            version_badge,
+            text=f"{ConfigManager.VERSION}",
+            font=(FONT_FAMILY_BOLD[0], 12, "bold"),
+            text_color=COLOR_ACCENT_FG[0],
+            padx=12,
+            pady=4
+        ).pack()
 
     def create_header_right(self, parent):
         """Create the right side of the header with status, social buttons, and update button."""
