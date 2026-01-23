@@ -543,6 +543,12 @@ class MainWindow:
         if hasattr(self, 'overlay_var'): settings["Overlay"] = self.overlay_var.get()
         if hasattr(self, 'bunnyhop_var'): settings["Bunnyhop"] = self.bunnyhop_var.get()
         if hasattr(self, 'noflash_var'): settings["Noflash"] = self.noflash_var.get()
+        
+        # Update OffsetSource from the dropdown
+        if hasattr(self, 'offset_source_var') and hasattr(self, 'offset_source_mapping'):
+            display_name = self.offset_source_var.get()
+            source_id = self.offset_source_mapping.get(display_name, "a2x")
+            settings["OffsetSource"] = source_id
 
     def _update_trigger_config_from_ui(self, config):
         """Update Trigger settings from the UI."""

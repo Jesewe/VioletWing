@@ -157,6 +157,9 @@ def create_offsets_section(main_window, parent):
     source_mapping = {f"{cfg['name']} ({cfg['author']})": sid for sid, cfg in available_sources.items()}
     source_mapping["Local Files"] = "local"
     
+    # Store the mapping in main_window for later use in save_settings
+    main_window.offset_source_mapping = source_mapping
+    
     dropdown_values = list(source_mapping.keys())
 
     current_source = main_window.triggerbot.config["General"].get("OffsetSource", "a2x")
@@ -240,14 +243,19 @@ def create_file_selector(main_window, parent, label_text, filename, description,
 
 def update_offset_source(main_window, selected_source_id):
     """Update offset source and show/hide file selection frame."""
+    # Update the config directly
     main_window.triggerbot.config["General"]["OffsetSource"] = selected_source_id
-    main_window.save_settings(show_message=False)
-
+    
+    # Save the configuration
+    ConfigManager.save_config(main_window.triggerbot.config, log_info=False)
+    
+    # Show restart warning
     messagebox.showwarning(
         "Restart Required", 
         "Offset source has been changed. Please restart the application for the changes to take effect."
     )
 
+    # Show/hide local files frame based on selection
     if selected_source_id == "local":
         main_window.local_files_frame.pack(fill="x", padx=40, pady=(0, 40))
     else:

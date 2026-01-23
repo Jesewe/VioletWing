@@ -275,7 +275,7 @@ def create_stat_card(main_window, parent, title, value, color, subtitle):
     return card, value_label
 
 def fetch_last_update(main_window):
-    """Fetch and display the last offset update time with retry, caching, and authentication."""
+    """Fetch and display the last offset update time based on selected source with retry, caching, and authentication."""
     def update_callback():
         max_retries = 3
         retry_delay = 5  # seconds
@@ -306,17 +306,78 @@ def fetch_last_update(main_window):
             except Exception as e:
                 pass
 
+        def load_offset_sources():
+            """Load available offset sources from remote or fallback to defaults."""
+            try:
+                response = requests.get(
+                    'https://raw.githubusercontent.com/Jesewe/VioletWing/refs/heads/main/src/offsets.json',
+                    timeout=10
+                )
+                response.raise_for_status()
+                return orjson.loads(response.content)
+            except (requests.RequestException, orjson.JSONDecodeError):
+                # Fallback to default sources
+                return {
+                    "a2x": {
+                        "name": "a2x Source",
+                        "author": "a2x",
+                        "repository": "a2x/cs2-dumper"
+                    },
+                    "jesewe": {
+                        "name": "Jesewe Source",
+                        "author": "Jesewe",
+                        "repository": "Jesewe/cs2-dumper"
+                    },
+                    "sezzyaep": {
+                        "name": "sezzyaep Source",
+                        "author": "sezzyaep",
+                        "repository": "sezzyaep/CS2-OFFSETS"
+                    }
+                }
+
         # Try loading cached timestamp first
         cached_timestamp = load_cached_timestamp()
         if cached_timestamp:
             logger.debug("Using cached timestamp: %s", cached_timestamp)
             update_ui(cached_timestamp, "#22c55e")
 
-        # Load config to check for GitHub token
+        # Load config to determine offset source
         config = ConfigManager.load_config()
-        github_token = config.get("GitHub", {}).get("AccessToken", None)
+        offset_source = config.get("General", {}).get("OffsetSource", "a2x")
 
+        # Handle local files case
+        if offset_source == "local":
+            try:
+                offsets_file = config.get("General", {}).get("OffsetsFile", "")
+                if offsets_file and Path(offsets_file).exists():
+                    file_mtime = Path(offsets_file).stat().st_mtime
+                    file_dt = datetime.fromtimestamp(file_mtime)
+                    formatted_timestamp = file_dt.strftime("%m/%d/%Y %H:%M")
+                    
+                    # Cache and update UI
+                    save_cached_timestamp(formatted_timestamp)
+                    update_ui(formatted_timestamp, "#22c55e")
+                    logger.debug("Using local file modification time: %s", formatted_timestamp)
+                else:
+                    update_ui("No Local File", "#ef4444")
+                    logger.warning("Local offsets file not found or not configured")
+            except Exception as e:
+                logger.error("Failed to get local file timestamp: %s", e)
+                update_ui("Error", "#ef4444")
+            return
+
+        # Load offset sources to get repository information
+        offset_sources = load_offset_sources()
+        
+        if offset_source not in offset_sources:
+            logger.error("Unknown offset source: %s", offset_source)
+            update_ui("Unknown Source", "#ef4444")
+            return
+
+        repository = offset_sources[offset_source].get("repository", "a2x/cs2-dumper")
+        
         # Set up headers for GitHub API
+        github_token = config.get("GitHub", {}).get("AccessToken", None)
         headers = {
             "Accept": "application/vnd.github+json",
             "X-GitHub-Api-Version": "2022-11-28",
@@ -325,13 +386,11 @@ def fetch_last_update(main_window):
         if github_token:
             headers["Authorization"] = f"Bearer {github_token}"
 
+        # Fetch from GitHub API
         for attempt in range(max_retries):
             try:
-                response = requests.get(
-                    "https://api.github.com/repos/a2x/cs2-dumper/commits/main",
-                    headers=headers,
-                    timeout=10
-                )
+                api_url = f"https://api.github.com/repos/{repository}/commits/main"
+                response = requests.get(api_url, headers=headers, timeout=10)
                 response.raise_for_status()
                 commit_data = orjson.loads(response.content)
                 commit_timestamp = commit_data["commit"]["committer"]["date"]
@@ -345,7 +404,7 @@ def fetch_last_update(main_window):
 
                 # Update UI
                 update_ui(formatted_timestamp, "#22c55e")
-                logger.debug("Successfully fetched last update: %s", formatted_timestamp)
+                logger.debug("Successfully fetched last update from %s: %s", repository, formatted_timestamp)
                 return
 
             except requests.exceptions.HTTPError as e:
@@ -359,11 +418,11 @@ def fetch_last_update(main_window):
                         update_ui("Rate Limit Exceeded", "#ef4444")
                         return
                 else:
-                    logger.error("HTTP error fetching last update: %s", e)
+                    logger.error("HTTP error fetching last update from %s: %s", repository, e)
                     update_ui("Error", "#ef4444")
                     return
             except Exception as e:
-                logger.error("Failed to fetch last update: %s", e)
+                logger.error("Failed to fetch last update from %s: %s", repository, e)
                 if attempt < max_retries - 1:
                     time.sleep(retry_delay)
                     continue
