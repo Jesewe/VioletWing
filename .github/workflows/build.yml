@@ -72,6 +72,14 @@ jobs:
             exit 1
           fi
 
+      - name: Prepare Release Body
+        run: |
+          # Create badges section
+          cat > badges.md << 'EOF'
+
+          [![Downloads](https://img.shields.io/github/downloads/Jesewe/VioletWing/${{ github.event.inputs.tag_name }}/total?style=for-the-badge&logo=github&color=8E44AD)](https://github.com/Jesewe/VioletWing/releases/tag/${{ github.event.inputs.tag_name }}) [![Platforms](https://img.shields.io/badge/platform-Windows-blue?style=for-the-badge&color=8E44AD)](https://github.com/Jesewe/VioletWing/releases/download/${{ github.event.inputs.tag_name }}/VioletWing.exe) [![Ko-fi](https://img.shields.io/badge/ko--fi-support-8E44AD?style=for-the-badge&logo=ko-fi)](https://ko-fi.com/E1E51PAHB3) [![License](https://img.shields.io/github/license/jesewe/VioletWing?style=for-the-badge&color=8E44AD)](https://github.com/Jesewe/VioletWing/blob/main/LICENSE)
+          EOF
+
       - name: Create release
         uses: softprops/action-gh-release@v2
         env:
@@ -79,7 +87,8 @@ jobs:
         with:
           tag_name: ${{ github.event.inputs.tag_name }}
           name: VioletWing - ${{ github.event.inputs.prerelease == 'true' && 'Pre-release' || 'Release' }} ${{ github.event.inputs.tag_name }}
-          body_path: ./ChangeLog.md
+          body_path: ./badges.md
+          generate_release_notes: true
           files: |
             ./artifact-download/VioletWing.exe
           prerelease: ${{ github.event.inputs.prerelease }}
