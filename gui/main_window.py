@@ -120,10 +120,92 @@ class MainWindow:
 
         # Initialize User Tracker
         self.user_tracker = UserTracker(ConfigManager, logger)
-        self.user_tracker.start_heartbeat()
+        # self.user_tracker.start_heartbeat()
         
         # Start periodic online user count updates
-        self.update_online_users_display()
+        # self.update_online_users_display()
+        
+        # Show deprecation notice
+        self.root.after(100, self.show_deprecation_notice)
+
+    def show_deprecation_notice(self):
+        """Show a notice that the project has reached its end."""
+        logger.info("This is the final release.")
+        try:
+            # Create a toplevel window
+            notice_window = ctk.CTkToplevel(self.root)
+            notice_window.title("VioletWing - End of Life")
+            notice_window.geometry("500x320")
+            notice_window.resizable(False, False)
+            
+            # Set window icon
+            try:
+                notice_window.iconbitmap(Utility.resource_path('src/img/icon.ico'))
+            except Exception:
+                pass
+            
+            # Make it modal
+            notice_window.transient(self.root)
+            notice_window.grab_set()
+            
+            # Center the window
+            x = (self.root.winfo_screenwidth() // 2) - (500 // 2)
+            y = (self.root.winfo_screenheight() // 2) - (320 // 2)
+            notice_window.geometry(f"500x320+{x}+{y}")
+            
+            # Focus
+            notice_window.focus_force()
+
+            # Content Frame
+            content_frame = ctk.CTkFrame(notice_window, fg_color="transparent")
+            content_frame.pack(expand=True, fill="both", padx=20, pady=20)
+            
+            # Icon
+            try:
+                image = Image.open(Utility.resource_path('src/img/icon.png'))
+                ctk_image = ctk.CTkImage(light_image=image, dark_image=image, size=(80, 80))
+                icon_label = ctk.CTkLabel(content_frame, text="", image=ctk_image)
+                icon_label.pack(pady=(10, 15))
+            except Exception:
+                # Fallback if image fails
+                icon_label = ctk.CTkLabel(content_frame, text="ℹ️", font=("Arial", 64))
+                icon_label.pack(pady=(10, 15))
+            
+            # Title
+            title_label = ctk.CTkLabel(
+                content_frame, 
+                text="Project Discontinued", 
+                font=(FONT_FAMILY_BOLD[0], 24, "bold"),
+                text_color=COLOR_TEXT_PRIMARY
+            )
+            title_label.pack(pady=(0, 10))
+            
+            # Message
+            msg_text = "Thank you for using VioletWing.\nThis project has reached its end, and this release is the final version."
+            msg_label = ctk.CTkLabel(
+                content_frame, 
+                text=msg_text, 
+                font=(FONT_FAMILY_REGULAR[0], 16),
+                text_color=COLOR_TEXT_SECONDARY,
+                wraplength=460
+            )
+            msg_label.pack(pady=(0, 20))
+            
+            # Close Button
+            close_btn = ctk.CTkButton(
+                content_frame,
+                text="I Understand",
+                command=notice_window.destroy,
+                width=160,
+                height=36,
+                font=(FONT_FAMILY_BOLD[0], 14),
+                fg_color=COLOR_ACCENT_FG,
+                hover_color=BUTTON_STYLE_PRIMARY["hover_color"]
+            )
+            close_btn.pack(side="bottom", pady=10)
+            
+        except Exception as e:
+            logger.error(f"Failed to show deprecation notice: {e}")
 
     def initialize_features(self):
         """Initialize all feature instances and create a centralized feature registry."""

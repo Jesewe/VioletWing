@@ -3,8 +3,8 @@
 
 VSVersionInfo(
     ffi=FixedFileInfo(
-        filevers=(1, 2, 9, 1),
-        prodvers=(1, 2, 9, 1),
+        filevers=(1, 2, 9, 2),
+        prodvers=(1, 2, 9, 2),
         mask=0x3f,
         flags=0x0,
         OS=0x4,
@@ -20,12 +20,12 @@ VSVersionInfo(
                     [
                         StringStruct(u'CompanyName', u'Jesewe'),
                         StringStruct(u'FileDescription', u'VioletWing with Trigger, Overlay, Bunnyhop, and NoFlash features'),
-                        StringStruct(u'FileVersion', u'1.2.9.1'),
+                        StringStruct(u'FileVersion', u'1.2.9.2'),
                         StringStruct(u'InternalName', u'VioletWing'),
-                        StringStruct(u'LegalCopyright', u'© 2025 Jesewe. Licensed under GPL-3.0 license'),
+                        StringStruct(u'LegalCopyright', u'© 2026 Jesewe. Licensed under GPL-3.0 license'),
                         StringStruct(u'OriginalFilename', u'VioletWing.exe'),
                         StringStruct(u'ProductName', u'VioletWing'),
-                        StringStruct(u'ProductVersion', u'1.2.9.1'),
+                        StringStruct(u'ProductVersion', u'1.2.9.2'),
                         StringStruct(u'Comments', u'A tool for Counter-Strike 2 with automated aiming, ESP, bunnyhop, and noflash features. For educational purposes only.'),
                         StringStruct(u'LegalTrademarks', u'All trademarks are property of their respective owners.'),
                     ]

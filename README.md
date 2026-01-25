@@ -5,8 +5,12 @@
 
 [![Downloads](https://img.shields.io/github/downloads/jesewe/VioletWing/total?style=for-the-badge&logo=github&color=8E44AD)](https://github.com/Jesewe/VioletWing/releases)
 [![Latest Release](https://img.shields.io/github/v/release/jesewe/VioletWing?style=for-the-badge&logo=github&color=8E44AD)](https://github.com/Jesewe/VioletWing/releases/latest/)
-[![Ko-fi](https://img.shields.io/badge/ko--fi-support-8E44AD?style=for-the-badge&logo=ko-fi)](https://ko-fi.com/E1E51PAHB3)
 [![License](https://img.shields.io/github/license/jesewe/VioletWing?style=for-the-badge&color=8E44AD)](LICENSE)
+
+> [!IMPORTANT]
+> **Project Discontinued**
+>
+> This project has reached its end of life. **v1.2.9.2** is the final release and no updates will be provided.
 
 <a href="#-key-features"><strong>Features</strong></a> •
 <a href="#-installation"><strong>Installation</strong></a> •
@@ -166,25 +170,6 @@ Edit `config.json` directly for advanced customization. The file watcher automat
 
 - 📋 Check the **FAQ Tab** in the application
 - 📝 Review logs in `%LOCALAPPDATA%\VioletWing\logs\`
-- 🐛 [Open an Issue](https://github.com/Jesewe/VioletWing/issues) with details
-
----
-
-## 🤝 Contributing
-
-We love community contributions! Before getting started:
-
-1. Read our [**Contributing Guidelines**](CONTRIBUTING.md)
-2. Check existing [**Issues**](https://github.com/Jesewe/VioletWing/issues) and [**Pull Requests**](https://github.com/Jesewe/VioletWing/pulls)
-3. Fork, code, test, and submit your PR!
-
-### Ways to Contribute
-
-- 🐛 Report bugs with detailed reproduction steps
-- 💡 Suggest new features or improvements
-- 📖 Improve documentation
-- 🔧 Submit bug fixes or enhancements
-- ⭐ Star the project to show support!
 
 ---
 
