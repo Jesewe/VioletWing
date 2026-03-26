@@ -5,7 +5,7 @@ pymem==1.14.0
 pynput==1.8.1
 python_dateutil==2.9.0.post0
 pywin32==311
-requests==2.32.5
+requests==2.33.0
 watchdog==6.0.0
 PyGetWindow==0.0.9
 orjson==3.11.7
