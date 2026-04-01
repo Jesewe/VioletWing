@@ -5,10 +5,10 @@ pymem==1.14.0
 pynput==1.8.1
 python_dateutil==2.9.0.post0
 pywin32==311
-requests==2.32.5
+requests==2.33.1
 watchdog==6.0.0
 PyGetWindow==0.0.9
-orjson==3.11.7
+orjson==3.11.8
 customtkinter==5.2.2
 pillow==12.1.1
 pyMeow @ https://github.com/qb-0/pyMeow/releases/download/1.73.42/pyMeow-1.73.42.zip
