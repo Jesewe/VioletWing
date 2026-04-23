@@ -34,7 +34,6 @@ class MemoryManager:
         self.m_flFlashDuration = None
         self.m_pBoneArray = None
         self.dwForceJump = None
-        self.m_pClippingWeapon = None
         self.m_AttributeManager = None
         self.m_iItemDefinitionIndex = None
         self.m_Item = None
@@ -108,7 +107,6 @@ class MemoryManager:
             self.m_hPlayerPawn = extracted["m_hPlayerPawn"]
             self.m_flFlashDuration = extracted["m_flFlashDuration"]
             self.m_pBoneArray = extracted["m_pBoneArray"]
-            self.m_pClippingWeapon = extracted["m_pClippingWeapon"]
             self.m_AttributeManager = extracted["m_AttributeManager"]
             self.m_iItemDefinitionIndex = extracted["m_iItemDefinitionIndex"]
             self.m_Item = extracted["m_Item"]
@@ -126,7 +124,7 @@ class MemoryManager:
             entity_offset = 112 * (index & 0x1FF)
             return self.read_longlong(ent_entry + entity_offset)
         except Exception as e:
-            logger.error(f"Error reading entity: {e}")
+            logger.debug(f"Error reading entity: {e}")
             return None
 
     def get_fire_logic_data(self) -> dict | None:
@@ -224,7 +222,7 @@ class MemoryManager:
                 "z": self.pm.read_float(address + 8)
             }
         except Exception as e:
-            logger.error(f"Failed to read vec3 at address {hex(address)}: {e}")
+            logger.debug(f"Failed to read vec3 at address {hex(address)}: {e}")
             return {"x": 0.0, "y": 0.0, "z": 0.0}
 
     def read_string(self, address: int, max_length: int = 256) -> str:
@@ -236,7 +234,7 @@ class MemoryManager:
             string_data = data.split(b'\x00')[0]
             return string_data.decode('utf-8', errors='replace')
         except Exception as e:
-            logger.error(f"Failed to read string at address {hex(address)}: {e}")
+            logger.debug(f"Failed to read string at address {hex(address)}: {e}")
             return ""
 
     def read_floats(self, address: int, count: int) -> list[float]:
@@ -247,7 +245,7 @@ class MemoryManager:
             data = self.pm.read_bytes(address, count * 4)
             return list(struct.unpack(f'{count}f', data))
         except Exception as e:
-            logger.error(f"Failed to read {count} floats at address {hex(address)}: {e}")
+            logger.debug(f"Failed to read {count} floats at address {hex(address)}: {e}")
             return []
 
     def read_int(self, address: int) -> int:
@@ -255,7 +253,7 @@ class MemoryManager:
         try:
             return self.pm.read_int(address)
         except Exception as e:
-            logger.error(f"Failed to read int at address {hex(address)}: {e}")
+            logger.debug(f"Failed to read int at address {hex(address)}: {e}")
             return 0
 
     def read_longlong(self, address: int) -> int:
@@ -263,7 +261,7 @@ class MemoryManager:
         try:
             return self.pm.read_longlong(address)
         except Exception as e:
-            logger.error(f"Failed to read longlong at address {hex(address)}: {e}")
+            logger.debug(f"Failed to read longlong at address {hex(address)}: {e}")
             return 0
 
     @property

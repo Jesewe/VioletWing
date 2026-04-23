@@ -89,50 +89,59 @@ class CS2NoFlash:
         last_player_position = 0
         failed_reads = 0
         max_failed_reads = 10  # Reinitialize after too many failures
-        
+        reinit_backoff = 0.1  # Start with 100ms backoff after reinit
+        max_reinit_backoff = 5.0  # Max 5 seconds between reinit attempts
+        logged_waiting = False  # Avoid spamming "waiting for player" logs
+
         while not self.stop_event.is_set():
             try:
                 if not is_game_active():
                     sleep(NOFLASH_LOOP_SLEEP)
+                    logged_waiting = False
                     continue
 
                 # Read player position
                 player_position = read_longlong(local_player_addr)
-                
+
                 if player_position and player_position > 0:
-                    # Reset failure counter on successful read
+                    # Reset failure counter and backoff on successful read
                     if failed_reads > 0:
                         failed_reads = 0
-                    
+                        reinit_backoff = 0.1
+                        logged_waiting = False
+
                     # Only write if player position changed or first time
                     if player_position != last_player_position:
                         last_player_position = player_position
-                    
+
                     # Write flash duration
                     try:
                         self.memory_manager.write_float(
-                            player_position + flash_offset, 
+                            player_position + flash_offset,
                             suppression_value
                         )
                     except Exception as e:
-                        logger.error(f"Error writing flash duration: {e}")
+                        logger.debug(f"Error writing flash duration: {e}")
                         failed_reads += 1
                 else:
                     # Invalid player position
                     failed_reads += 1
-                    
+
                     # Reinitialize if too many failures
                     if failed_reads >= max_failed_reads:
-                        logger.warning("Too many failed reads, reinitializing local player address...")
+                        if not logged_waiting:
+                            logger.warning("Player not found, waiting for spawn...")
+                            logged_waiting = True
                         if self.initialize_local_player():
                             local_player_addr = self.local_player_address
                             flash_offset = self.flash_duration_offset
-                            failed_reads = 0
-                        else:
-                            sleep(NOFLASH_LOOP_SLEEP * 10)  # Wait longer on failure
-                
+                        failed_reads = 0
+                        sleep(reinit_backoff)
+                        reinit_backoff = min(reinit_backoff * 2, max_reinit_backoff)
+                        continue
+
                 sleep(NOFLASH_LOOP_SLEEP)
-                
+
             except Exception as e:
                 logger.error(f"Unexpected error in main loop: {e}", exc_info=True)
                 failed_reads += 1

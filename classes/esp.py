@@ -351,7 +351,7 @@ class CS2Overlay:
                     text_color
                 )
         except Exception as e:
-            logger.error(f"Error drawing entity: {e}")
+            logger.debug(f"Error drawing entity: {e}")
 
     def start(self) -> None:
         """Start the Overlay."""

@@ -57,7 +57,10 @@ class MainWindow:
         # Configure CustomTkinter with a modern dark theme
         ctk.set_appearance_mode("dark")
         ctk.set_default_color_theme("blue")
-        
+
+        # Create the main window first to avoid a phantom Tk root window
+        self.root = ctk.CTk()
+
         # Fetch offsets and client data
         self.offsets, self.client_data, self.buttons_data = self.fetch_offsets_or_warn()
 
@@ -66,14 +69,12 @@ class MainWindow:
 
         # Initialize feature instances
         self.initialize_features()
-        
-        # Create the main window with a title and initial size
-        self.root = ctk.CTk()
         self.root.title(f"VioletWing")
         self.root.resizable(True, True)
         self.root.minsize(1400, 800)
 
         # Center the window on the screen
+        self.root.update_idletasks()
         x = (self.root.winfo_screenwidth() // 2) - (1400 // 2)
         y = (self.root.winfo_screenheight() // 2) - (800 // 2)
         self.root.geometry(f"1400x800+{x}+{y}")
@@ -918,8 +919,8 @@ class MainWindow:
         """Starts a timer to periodically update the log display in the GUI."""
         def read_log_file():
             try:
-                if hasattr(self, 'log_text') and os.path.exists(Logger.LOG_FILE):
-                    with open(Logger.LOG_FILE, 'r', encoding='utf-8') as f:
+                if hasattr(self, 'log_text') and os.path.exists(Logger.LOG_FILE()):
+                    with open(Logger.LOG_FILE(), 'r', encoding='utf-8') as f:
                         # Read the entire file content
                         log_content = f.read()
                     

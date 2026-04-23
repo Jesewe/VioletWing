@@ -78,20 +78,17 @@ class Logger:
     _lock: threading.Lock = threading.Lock()
     
     @classmethod
-    @property
     def LOG_DIRECTORY(cls) -> str:
         """Get the log directory path."""
         return cls._config.log_directory if cls._config else LoggerConfig().log_directory
     
     @classmethod
-    @property
     def LOG_FILE(cls) -> str:
         """Get the standard log file path."""
         log_dir = cls._config.log_directory if cls._config else LoggerConfig().log_directory
         return os.path.join(log_dir, 'violetwing.log')
     
     @classmethod
-    @property
     def DETAILED_LOG_FILE(cls) -> str:
         """Get the detailed log file path."""
         log_dir = cls._config.log_directory if cls._config else LoggerConfig().log_directory
