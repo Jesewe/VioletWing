@@ -331,7 +331,6 @@ class Utility:
                 "m_pWeaponServices": get_field("C_BasePlayerPawn", "m_pWeaponServices"),
                 "m_iIDEntIndex": get_field("C_CSPlayerPawn", "m_iIDEntIndex"),
                 "m_flFlashDuration": get_field("C_CSPlayerPawnBase", "m_flFlashDuration"),
-                "m_pClippingWeapon": get_field("C_CSPlayerPawn", "m_pClippingWeapon"),
                 "m_hPlayerPawn": get_field("CCSPlayerController", "m_hPlayerPawn"),
                 "m_iszPlayerName": get_field("CBasePlayerController", "m_iszPlayerName"),
                 "m_hActiveWeapon": get_field("CPlayer_WeaponServices", "m_hActiveWeapon"),
@@ -339,7 +338,7 @@ class Utility:
                 "m_AttributeManager": get_field("C_EconEntity", "m_AttributeManager"),
                 "m_Item": get_field("C_AttributeContainer", "m_Item"),
                 "m_iItemDefinitionIndex": get_field("C_EconItemView", "m_iItemDefinitionIndex"),
-                "m_pBoneArray": 0x160 + 0x80
+                "m_pBoneArray": get_field("CSkeletonInstance", "m_modelState") + 0x80
             }
 
             missing_keys = [k for k, v in extracted_offsets.items() if v is None]

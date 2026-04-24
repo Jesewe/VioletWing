@@ -11,9 +11,6 @@
 
 ---
 
-> [!IMPORTANT]
-> **v1.2.9.2** is the final release and no updates will be provided.
-
 ## What is VioletWing?
 
 VioletWing is a training tool for Counter-Strike 2 players. It helps analyze and improve gameplay mechanics such as aim consistency, movement, and game awareness.

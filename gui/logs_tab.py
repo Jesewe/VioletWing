@@ -102,8 +102,8 @@ def populate_logs(main_window, frame):
 
     # Load existing logs and set initial position
     _load_logs_safely(main_window)
-    if os.path.exists(Logger.LOG_FILE):
-        main_window.last_log_position = os.path.getsize(Logger.LOG_FILE)
+    if os.path.exists(Logger.LOG_FILE()):
+        main_window.last_log_position = os.path.getsize(Logger.LOG_FILE())
     else:
         main_window.last_log_position = 0
 
@@ -139,7 +139,7 @@ def _load_logs_safely(main_window):
     logger = Logger.get_logger(__name__)
     try:
         # Display welcome message if log file doesn't exist
-        if not os.path.exists(Logger.LOG_FILE):
+        if not os.path.exists(Logger.LOG_FILE()):
             welcome_msg = (
                 "=== Application Logs ===\n"
                 "Welcome to the logs viewer!\n"
@@ -151,7 +151,7 @@ def _load_logs_safely(main_window):
             return
 
         # Read all log lines from the file
-        with open(Logger.LOG_FILE, 'r', encoding='utf-8') as log_file:
+        with open(Logger.LOG_FILE(), 'r', encoding='utf-8') as log_file:
             raw_lines = log_file.read().splitlines()
 
         # Get currently displayed lines to avoid duplicates
@@ -181,13 +181,13 @@ def _load_logs_safely(main_window):
             _replace_content(main_window, empty_msg)
 
     except FileNotFoundError:
-        logger.warning(f"Log file {Logger.LOG_FILE} not found")
+        logger.warning(f"Log file {Logger.LOG_FILE()} not found")
         _show_error_message(main_window, "Log file not found")
     except PermissionError:
-        logger.error(f"Permission denied reading log file {Logger.LOG_FILE}")
+        logger.error(f"Permission denied reading log file {Logger.LOG_FILE()}")
         _show_error_message(main_window, "Permission denied accessing log file")
     except UnicodeDecodeError:
-        logger.error(f"Encoding error reading log file {Logger.LOG_FILE}")
+        logger.error(f"Encoding error reading log file {Logger.LOG_FILE()}")
         _show_error_message(main_window, "Log file encoding error")
     except Exception as e:
         logger.error(f"Unexpected error loading logs: {e}")
