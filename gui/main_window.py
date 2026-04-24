@@ -23,7 +23,6 @@ from classes.file_watcher import ConfigFileChangeHandler
 from classes.logger import Logger
 from classes.memory_manager import MemoryManager
 from classes.client_manager import ClientManager
-from classes.user_tracker import UserTracker
 
 from gui.home_tab import populate_dashboard
 from gui.general_settings_tab import populate_general_settings
@@ -119,95 +118,6 @@ class MainWindow:
         # Initialize the client manager
         self.client_manager = ClientManager(self)
 
-        # Initialize User Tracker
-        self.user_tracker = UserTracker(ConfigManager, logger)
-        # self.user_tracker.start_heartbeat()
-        
-        # Start periodic online user count updates
-        # self.update_online_users_display()
-        
-        # Show deprecation notice
-        self.root.after(100, self.show_deprecation_notice)
-
-    def show_deprecation_notice(self):
-        """Show a notice that the project has reached its end."""
-        logger.info("This is the final release.")
-        try:
-            # Create a toplevel window
-            notice_window = ctk.CTkToplevel(self.root)
-            notice_window.title("VioletWing - End of Life")
-            notice_window.geometry("500x320")
-            notice_window.resizable(False, False)
-            
-            # Set window icon
-            try:
-                notice_window.iconbitmap(Utility.resource_path('src/img/icon.ico'))
-            except Exception:
-                pass
-            
-            # Make it modal
-            notice_window.transient(self.root)
-            notice_window.grab_set()
-            
-            # Center the window
-            x = (self.root.winfo_screenwidth() // 2) - (500 // 2)
-            y = (self.root.winfo_screenheight() // 2) - (320 // 2)
-            notice_window.geometry(f"500x320+{x}+{y}")
-            
-            # Focus
-            notice_window.focus_force()
-
-            # Content Frame
-            content_frame = ctk.CTkFrame(notice_window, fg_color="transparent")
-            content_frame.pack(expand=True, fill="both", padx=20, pady=20)
-            
-            # Icon
-            try:
-                image = Image.open(Utility.resource_path('src/img/icon.png'))
-                ctk_image = ctk.CTkImage(light_image=image, dark_image=image, size=(80, 80))
-                icon_label = ctk.CTkLabel(content_frame, text="", image=ctk_image)
-                icon_label.pack(pady=(10, 15))
-            except Exception:
-                # Fallback if image fails
-                icon_label = ctk.CTkLabel(content_frame, text="ℹ️", font=("Arial", 64))
-                icon_label.pack(pady=(10, 15))
-            
-            # Title
-            title_label = ctk.CTkLabel(
-                content_frame, 
-                text="Project Discontinued", 
-                font=(FONT_FAMILY_BOLD[0], 24, "bold"),
-                text_color=COLOR_TEXT_PRIMARY
-            )
-            title_label.pack(pady=(0, 10))
-            
-            # Message
-            msg_text = "Thank you for using VioletWing.\nThis project has reached its end, and this release is the final version."
-            msg_label = ctk.CTkLabel(
-                content_frame, 
-                text=msg_text, 
-                font=(FONT_FAMILY_REGULAR[0], 16),
-                text_color=COLOR_TEXT_SECONDARY,
-                wraplength=460
-            )
-            msg_label.pack(pady=(0, 20))
-            
-            # Close Button
-            close_btn = ctk.CTkButton(
-                content_frame,
-                text="I Understand",
-                command=notice_window.destroy,
-                width=160,
-                height=36,
-                font=(FONT_FAMILY_BOLD[0], 14),
-                fg_color=COLOR_ACCENT_FG,
-                hover_color=BUTTON_STYLE_PRIMARY["hover_color"]
-            )
-            close_btn.pack(side="bottom", pady=10)
-            
-        except Exception as e:
-            logger.error(f"Failed to show deprecation notice: {e}")
-
     def initialize_features(self):
         """Initialize all feature instances and create a centralized feature registry."""
         try:
@@ -292,19 +202,9 @@ class MainWindow:
         right_frame = ctk.CTkFrame(parent, fg_color="transparent")
         right_frame.grid(row=0, column=2, sticky="e", padx=30, pady=15)
         
-        self.create_online_users_display(right_frame)
         self.create_status_indicator(right_frame)
         social_frame = self.create_social_buttons(right_frame)
         self.create_update_button(social_frame)
-
-    def create_online_users_display(self, parent):
-        """Create the online users display widget."""
-        self.online_users_frame = ctk.CTkFrame(parent, fg_color="transparent")
-        self.online_users_frame.pack(side="right", padx=(20, 0))
-        
-        ctk.CTkLabel(self.online_users_frame, text="Online:", font=(FONT_FAMILY_REGULAR[0], FONT_SIZE_H4), text_color=COLOR_TEXT_SECONDARY).pack(side="left")
-        self.online_users_label = ctk.CTkLabel(self.online_users_frame, text="N/A", font=(FONT_FAMILY_BOLD[0], FONT_SIZE_H4, "bold"), text_color=COLOR_TEXT_PRIMARY)
-        self.online_users_label.pack(side="left", padx=(5, 0))
 
     def create_status_indicator(self, parent):
         """Create the status indicator widget."""
@@ -323,7 +223,6 @@ class MainWindow:
         social_buttons_data = [
             {"text": "GitHub", "icon": "github", "url": "https://github.com/Jesewe/VioletWing", "fg_color": "#2c3e50", "hover_color": "#34495e", "border_color": "#34495e"},
             {"text": "Telegram", "icon": "telegram", "url": "https://t.me/cs2_jesewe", "fg_color": "#29A9EA", "hover_color": "#279cdb"},
-            {"text": "Support me on Ko-fi", "icon": "kofi", "url": "https://ko-fi.com/jesewe", "fg_color": "#FFA05A", "hover_color": "#FF5724"},
         ]
 
         for i, data in enumerate(social_buttons_data):
@@ -952,20 +851,6 @@ class MainWindow:
         except Exception:
             logger.exception("Failed to update log display in the GUI.")
 
-    def update_online_users_display(self):
-        """Fetch and display the number of online users."""
-        def fetch_and_update():
-            count = self.user_tracker.get_online_users()
-            if self.online_users_label.winfo_exists():
-                if count is not None:
-                    self.root.after(0, lambda: self.online_users_label.configure(text=str(count)))
-                else:
-                    self.root.after(0, lambda: self.online_users_label.configure(text="N/A"))
-        
-        threading.Thread(target=fetch_and_update, daemon=True).start()
-        
-        self.root.after(30000, self.update_online_users_display)
-
     def run(self):
         """Start the application main loop."""
         self.root.mainloop()
@@ -978,10 +863,6 @@ class MainWindow:
     def cleanup(self):
         """Cleanup resources before closing the application."""
         try:
-            # Stop user tracker heartbeat
-            if hasattr(self, 'user_tracker'):
-                self.user_tracker.stop_heartbeat()
-
             # Stop all running features
             self.stop_client()
             
