@@ -52,6 +52,7 @@ class MainWindow:
         self.noflash_thread = None
         self.observer = None
         self.log_timer = None
+        self._log_file_pos = 0  # track read position so we only read new bytes each poll
 
         # Configure CustomTkinter with a modern dark theme
         ctk.set_appearance_mode("dark")
@@ -60,13 +61,11 @@ class MainWindow:
         # Create the main window first to avoid a phantom Tk root window
         self.root = ctk.CTk()
 
-        # Fetch offsets and client data
-        self.offsets, self.client_data, self.buttons_data = self.fetch_offsets_or_warn()
-
-        # Create a single MemoryManager instance
+        # Offsets are fetched in a background thread so the window can render
+        # immediately. Features and the client manager are initialized once loading
+        # completes via _on_offsets_ready().
+        self.offsets, self.client_data, self.buttons_data = {}, {}, {}
         self.memory_manager = MemoryManager(self.offsets, self.client_data, self.buttons_data)
-
-        # Initialize feature instances
         self.initialize_features()
         self.root.title(f"VioletWing")
         self.root.resizable(True, True)
@@ -117,6 +116,9 @@ class MainWindow:
 
         # Initialize the client manager
         self.client_manager = ClientManager(self)
+
+        # Kick off offset loading - window is already visible at this point
+        self.fetch_offsets_async()
 
     def initialize_features(self):
         """Initialize all feature instances and create a centralized feature registry."""
@@ -211,7 +213,8 @@ class MainWindow:
         self.status_frame = ctk.CTkFrame(parent, fg_color="transparent")
         self.status_frame.pack(side="right", padx=(20, 0))
         
-        ctk.CTkFrame(self.status_frame, width=12, height=12, corner_radius=6, fg_color="#ef4444").pack(side="left", pady=(0, 2))
+        self.status_dot = ctk.CTkFrame(self.status_frame, width=12, height=12, corner_radius=6, fg_color="#ef4444")
+        self.status_dot.pack(side="left", pady=(0, 2))
         self.status_label = ctk.CTkLabel(self.status_frame, text="Inactive", font=(FONT_FAMILY_BOLD[0], FONT_SIZE_H4, "bold"), text_color=BUTTON_STYLE_DANGER["fg_color"][0])
         self.status_label.pack(side="left", padx=(8, 0))
 
@@ -223,6 +226,7 @@ class MainWindow:
         social_buttons_data = [
             {"text": "GitHub", "icon": "github", "url": "https://github.com/Jesewe/VioletWing", "fg_color": "#2c3e50", "hover_color": "#34495e", "border_color": "#34495e"},
             {"text": "Telegram", "icon": "telegram", "url": "https://t.me/cs2_jesewe", "fg_color": "#29A9EA", "hover_color": "#279cdb"},
+            {"text": "Documentation", "icon": "docs", "url": "https://violetwing.vercel.app/", "fg_color": "#8e44ad", "hover_color": "#9b59b6"}
         ]
 
         for i, data in enumerate(social_buttons_data):
@@ -413,17 +417,40 @@ class MainWindow:
         """Populate the supporters frame with supporter data."""
         populate_supporters(self, frame)
 
-    def fetch_offsets_or_warn(self):
-        """Attempt to fetch offsets; warn the user and return empty dictionaries on failure."""
-        try:
-            offsets, client_data, buttons_data = Utility.fetch_offsets()
-            if offsets is None or client_data is None or buttons_data is None:
-                raise ValueError("Failed to fetch offsets from the server.")
-            return offsets, client_data, buttons_data
-        except Exception:
-            logger.exception("Failed to fetch offsets from the server.")
-            messagebox.showerror("Offset Error", "Failed to fetch offsets. Check logs for details.")
-            return {}, {}, {}
+    def fetch_offsets_async(self):
+        """Fetch offsets in a background thread so the UI remains responsive."""
+        def _worker():
+            try:
+                offsets, client_data, buttons_data = Utility.fetch_offsets()
+                if offsets is None or client_data is None or buttons_data is None:
+                    raise ValueError("Utility.fetch_offsets() returned None.")
+                self.root.after(0, lambda: self._on_offsets_ready(offsets, client_data, buttons_data))
+            except Exception:
+                logger.exception("Failed to fetch offsets from the server.")
+                self.root.after(0, self._on_offsets_failed)
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _on_offsets_ready(self, offsets, client_data, buttons_data):
+        """Called on the main thread once offsets have loaded successfully."""
+        self.offsets = offsets
+        self.client_data = client_data
+        self.buttons_data = buttons_data
+        self.memory_manager.offsets = offsets
+        self.memory_manager.client_data = client_data
+        self.memory_manager.buttons_data = buttons_data
+        # Re-derive the offset attributes now that data is available
+        if hasattr(self.memory_manager, '_apply_offsets'):
+            self.memory_manager._apply_offsets()
+        if hasattr(self, 'loading_label'):
+            self.loading_label.destroy()
+            del self.loading_label
+
+    def _on_offsets_failed(self):
+        """Called on the main thread when offset fetching fails."""
+        messagebox.showerror("Offset Error", "Failed to fetch offsets. Check logs for details.")
+        if hasattr(self, 'loading_label'):
+            self.loading_label.configure(text="⚠ Failed to load offsets. Check logs.", text_color="#ef4444")
 
     def update_client_status(self, status, color):
         """Update client status in header and dashboard."""
@@ -431,10 +458,7 @@ class MainWindow:
         self.status_label.configure(text=status, text_color=color)
     
         # Update header status dot color
-        for widget in self.status_frame.winfo_children():
-            if isinstance(widget, ctk.CTkFrame) and widget.cget("width") == 12:
-                widget.configure(fg_color=color)
-                break
+        self.status_dot.configure(fg_color=color)
         
         # Update dashboard status label if it exists
         if hasattr(self, 'bot_status_label'):
@@ -494,24 +518,26 @@ class MainWindow:
     def _restart_feature(self, feature_name, feature_obj, feature_class, config_section, new_config):
         """Helper method to restart a single feature."""
         try:
-            # Stop the feature
             feature_obj.stop()
             thread = getattr(self, f'{feature_name.lower()}_thread', None)
             if thread and thread.is_alive():
                 thread.join(timeout=2.0)
             setattr(self, f'{feature_name.lower()}_thread', None)
-            
-            # Restart if enabled in General config
+
             if new_config["General"][config_section]:
                 new_feature = feature_class(self.memory_manager)
-                new_feature.config = new_config
+                new_feature.update_config(new_config)
+
+                # Keep both the convenience attribute and the registry in sync so
+                # stop_client() and file_watcher both see the live instance.
                 setattr(self, feature_name.lower(), new_feature)
-                
+                self.features[config_section]["instance"] = new_feature
+
                 new_thread = threading.Thread(target=new_feature.start, daemon=True)
                 new_thread.start()
                 setattr(self, f'{feature_name.lower()}_thread', new_thread)
                 logger.info(f"{feature_name} restarted with new configuration.")
-            
+
             return True
         except Exception:
             logger.exception(f"Failed to restart feature: {feature_name}")
@@ -818,31 +844,26 @@ class MainWindow:
         """Starts a timer to periodically update the log display in the GUI."""
         def read_log_file():
             try:
-                if hasattr(self, 'log_text') and os.path.exists(Logger.LOG_FILE()):
-                    with open(Logger.LOG_FILE(), 'r', encoding='utf-8') as f:
-                        # Read the entire file content
-                        log_content = f.read()
-                    
-                    # Schedule the UI update on the main thread
-                    self.root.after(0, self.update_log_display, log_content)
+                log_path = Logger.LOG_FILE()
+                if hasattr(self, 'log_text') and os.path.exists(log_path):
+                    with open(log_path, 'r', encoding='utf-8') as f:
+                        f.seek(self._log_file_pos)
+                        new_bytes = f.read()
+                        self._log_file_pos = f.tell()
+
+                    if new_bytes:
+                        self.root.after(0, self.append_log_display, new_bytes)
             except Exception:
                 logger.exception("Error reading log file for GUI display.")
-            
-            # Reschedule the timer to run again after 2 seconds
+
             self.log_timer = self.root.after(2000, read_log_file)
 
-        # Start the first run of the log reader
         read_log_file()
 
     def update_log_display(self, log_content):
-        """Updates the log display widget with new content."""
+        """Replaces the full log display content. Used for initial population."""
         try:
             if hasattr(self, 'log_text') and self.log_text.winfo_exists():
-                # Get the current content and compare to avoid unnecessary updates
-                current_content = self.log_text.get("1.0", "end-1c")
-                if current_content == log_content:
-                    return
-
                 self.log_text.configure(state="normal")
                 self.log_text.delete("1.0", "end")
                 self.log_text.insert("1.0", log_content)
@@ -850,6 +871,17 @@ class MainWindow:
                 self.log_text.configure(state="disabled")
         except Exception:
             logger.exception("Failed to update log display in the GUI.")
+
+    def append_log_display(self, new_content):
+        """Appends only newly written log lines to the display widget."""
+        try:
+            if hasattr(self, 'log_text') and self.log_text.winfo_exists():
+                self.log_text.configure(state="normal")
+                self.log_text.insert("end", new_content)
+                self.log_text.see("end")
+                self.log_text.configure(state="disabled")
+        except Exception:
+            logger.exception("Failed to append log display in the GUI.")
 
     def run(self):
         """Start the application main loop."""

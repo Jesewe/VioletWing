@@ -1,4 +1,4 @@
-import threading, time, random, ctypes, winsound
+import threading, time, random, ctypes, winsound, queue
 from typing import Optional, Dict, Any
 
 from pynput.mouse import Controller, Button, Listener as MouseListener
@@ -40,6 +40,11 @@ class CS2TriggerBot:
         self.load_configuration()
         self.update_config(self.config)
 
+        # Single long-lived audio worker to avoid spawning a thread per beep
+        self._audio_queue: queue.Queue = queue.Queue()
+        self._audio_worker = threading.Thread(target=self._run_audio_worker, daemon=True)
+        self._audio_worker.start()
+
         # Setup listeners
         self.keyboard_listener = KeyboardListener(on_press=self.on_key_press, on_release=self.on_key_release)
         self.mouse_listener = MouseListener(on_click=self.on_mouse_click)
@@ -77,19 +82,23 @@ class CS2TriggerBot:
         self.load_configuration()
         logger.debug("TriggerBot configuration updated.")
 
+    def _run_audio_worker(self) -> None:
+        """Long-lived thread that drains the audio queue. One thread, not one per beep."""
+        while True:
+            freq, duration = self._audio_queue.get()
+            try:
+                winsound.Beep(freq, duration)
+            except Exception as e:
+                logger.debug(f"Audio worker beep failed: {e}")
+            finally:
+                self._audio_queue.task_done()
+
     def play_toggle_sound(self, state: bool) -> None:
-        """Play a sound when the toggle key is pressed."""
+        """Enqueue a beep tone; the audio worker thread plays it asynchronously."""
         try:
-            # Use threading to avoid blocking
-            def play_sound():
-                if state:
-                    winsound.Beep(1000, 200)
-                else:
-                    winsound.Beep(500, 200)
-            
-            threading.Thread(target=play_sound, daemon=True).start()
+            self._audio_queue.put_nowait((1000, 200) if state else (500, 200))
         except Exception as e:
-            logger.error(f"Error playing toggle sound: {e}")
+            logger.error(f"Error enqueuing toggle sound: {e}")
 
     def on_key_press(self, key) -> None:
         """Handle key press events."""

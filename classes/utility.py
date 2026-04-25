@@ -63,126 +63,119 @@ class Utility:
     def fetch_offsets():
         """
         Fetches JSON data from remote URLs or local files based on configuration.
-        - Supports dynamic offset sources loaded from src/offsets.json
-        - Retrieves data from 'offsets.json', 'client_dll.json', and 'buttons.json'
-        - Logs an error if either request fails or the server returns a non-200 status code.
-        - Handles exceptions gracefully, ensuring no unhandled errors crash the application.
-        - Supports loading from local files if configured.
+        Falls back from local -> a2x on any failure without recursive calls.
         """
         config = ConfigManager.load_config()
         source = config["General"].get("OffsetSource", "a2x")
-        
-        if source == "local":
-            config_dir = Path(ConfigManager.CONFIG_DIRECTORY)
-            offsets_file = config.get("General", {}).get("OffsetsFile", config_dir / "offsets.json")
-            client_file = config.get("General", {}).get("ClientDLLFile", config_dir / "client_dll.json")
-            buttons_file = config.get("General", {}).get("ButtonsFile", config_dir / "buttons.json")
-            
-            try:
-                if not all(f.exists() for f in [Path(offsets_file), Path(client_file), Path(buttons_file)]):
-                    missing = [f.name for f in [Path(offsets_file), Path(client_file), Path(buttons_file)] if not f.exists()]
-                    logger.error(f"Local offset files missing: {', '.join(missing)}. Falling back to a2x.")
-                    config["General"]["OffsetSource"] = "a2x"
-                    ConfigManager.save_config(config)
-                    return Utility.fetch_offsets()  # Recursive fallback to a2x
-                
-                offset_bytes = Path(offsets_file).read_bytes()
-                client_bytes = Path(client_file).read_bytes()
-                buttons_bytes = Path(buttons_file).read_bytes()
-                
-                offset = orjson.loads(offset_bytes)
-                client = orjson.loads(client_bytes)
-                buttons = orjson.loads(buttons_bytes)
-                
-                # Validate by attempting to extract offsets
-                extracted = Utility.extract_offsets(offset, client, buttons)
-                if extracted is None:
-                    logger.error("Local offset files invalid: Missing required offsets. Falling back to a2x.")
-                    config["General"]["OffsetSource"] = "a2x"
-                    ConfigManager.save_config(config)
-                    return Utility.fetch_offsets()  # Recursive fallback to a2x
-                
-                logger.info("Loaded and validated local offsets.")
-                return offset, client, buttons
-                
-            except (orjson.JSONDecodeError, IOError) as e:
-                logger.error(f"Failed to load local offset files: {e}. Falling back to a2x.")
-                config["General"]["OffsetSource"] = "a2x"
-                ConfigManager.save_config(config)
-                return Utility.fetch_offsets()  # Recursive fallback to a2x
-            except Exception as e:
-                logger.exception(f"Unexpected error loading local offsets: {e}. Falling back to a2x.")
-                config["General"]["OffsetSource"] = "a2x"
-                ConfigManager.save_config(config)
-                return Utility.fetch_offsets()  # Recursive fallback to a2x
-        
-        # Server-based offset fetching (dynamic sources)
-        try:
-            # Load available sources
-            available_sources = Utility.load_offset_sources()
-            
-            if source not in available_sources:
-                logger.error(f"Unknown offset source '{source}'. Falling back to a2x.")
+
+        # tried prevents infinite loops if a2x itself somehow ends up misconfigured
+        tried = set()
+
+        while source not in tried:
+            tried.add(source)
+
+            if source == "local":
+                result = Utility._fetch_local_offsets(config)
+                if result is not None:
+                    return result
+                # Fall through to a2x on any local failure
+                logger.error("Local offsets failed, falling back to a2x.")
                 source = "a2x"
                 config["General"]["OffsetSource"] = source
                 ConfigManager.save_config(config)
-                
-                if source not in available_sources:
-                    logger.error("No valid offset sources available.")
-                    return None, None, None
-            
+                continue
+
+            # Remote source fetch
+            result = Utility._fetch_remote_offsets(source, config)
+            if result is not None:
+                return result
+            return None, None, None
+
+        logger.error("All offset sources exhausted.")
+        return None, None, None
+
+    @staticmethod
+    def _fetch_local_offsets(config):
+        """Load and validate offsets from local files. Returns (offset, client, buttons) or None."""
+        config_dir = Path(ConfigManager.CONFIG_DIRECTORY)
+        offsets_file = Path(config.get("General", {}).get("OffsetsFile", config_dir / "offsets.json"))
+        client_file = Path(config.get("General", {}).get("ClientDLLFile", config_dir / "client_dll.json"))
+        buttons_file = Path(config.get("General", {}).get("ButtonsFile", config_dir / "buttons.json"))
+
+        try:
+            missing = [f.name for f in [offsets_file, client_file, buttons_file] if not f.exists()]
+            if missing:
+                logger.error(f"Local offset files missing: {', '.join(missing)}.")
+                return None
+
+            offset = orjson.loads(offsets_file.read_bytes())
+            client = orjson.loads(client_file.read_bytes())
+            buttons = orjson.loads(buttons_file.read_bytes())
+
+            if Utility.extract_offsets(offset, client, buttons) is None:
+                logger.error("Local offset files invalid: missing required offsets.")
+                return None
+
+            logger.info("Loaded and validated local offsets.")
+            return offset, client, buttons
+        except (orjson.JSONDecodeError, IOError) as e:
+            logger.error(f"Failed to load local offset files: {e}.")
+            return None
+        except Exception as e:
+            logger.exception(f"Unexpected error loading local offsets: {e}.")
+            return None
+
+    @staticmethod
+    def _fetch_remote_offsets(source, config):
+        """Fetch and validate offsets from a remote source. Returns (offset, client, buttons) or None."""
+        server_name = source
+        try:
+            available_sources = Utility.load_offset_sources()
+
+            if source not in available_sources:
+                logger.error(f"Unknown offset source '{source}'.")
+                return None
+
             source_config = available_sources[source]
-            
-            # Get URLs from source configuration (with environment variable override support)
+            server_name = source_config["name"]
+
             offsets_url = os.getenv('OFFSETS_URL', source_config["offsets_url"])
             client_dll_url = os.getenv('CLIENT_DLL_URL', source_config["client_dll_url"])
             buttons_url = os.getenv('BUTTONS_URL', source_config["buttons_url"])
-            
-            server_name = source_config["name"]
-            author = source_config["author"]
-            repository = source_config["repository"]
-            
-            logger.debug(f"Fetching offsets from {server_name} (Author: {author}, Repo: {repository})...")
-            
+
+            logger.debug(f"Fetching offsets from {server_name} (author: {source_config['author']})...")
+
+            # Three sequential requests - kept sequential intentionally so failures
+            # are attributed to a specific file in the log.
             response_offset = requests.get(offsets_url)
             response_client = requests.get(client_dll_url)
             response_buttons = requests.get(buttons_url)
 
-            if response_offset.status_code != 200:
-                logger.error(f"Failed to fetch offsets from {server_name}: offsets.json request failed (status: {response_offset.status_code}).")
-                return None, None, None
+            for label, resp in [("offsets", response_offset), ("client_dll", response_client), ("buttons", response_buttons)]:
+                if resp.status_code != 200:
+                    logger.error(f"Failed to fetch {label} from {server_name} (status: {resp.status_code}).")
+                    return None
 
-            if response_client.status_code != 200:
-                logger.error(f"Failed to fetch offsets from {server_name}: client_dll.json request failed (status: {response_client.status_code}).")
-                return None, None, None
-            
-            if response_buttons.status_code != 200:
-                logger.error(f"Failed to fetch buttons from {server_name}: buttons.json request failed (status: {response_buttons.status_code}).")
-                return None, None, None
+            offset = orjson.loads(response_offset.content)
+            client = orjson.loads(response_client.content)
+            buttons = orjson.loads(response_buttons.content)
 
-            try:
-                offset = orjson.loads(response_offset.content)
-                client = orjson.loads(response_client.content)
-                buttons = orjson.loads(response_buttons.content)
-                
-                # Validate by attempting to extract offsets
-                extracted = Utility.extract_offsets(offset, client, buttons)
-                if extracted is None:
-                    logger.error(f"Offset files from {server_name} invalid: Missing required offsets.")
-                    return None, None, None
-                
-                logger.info(f"Successfully loaded and validated offsets from {server_name}.")
-                return offset, client, buttons
-            except orjson.JSONDecodeError as e:
-                logger.error(f"Failed to decode JSON response from {server_name}: {e}")
-                return None, None, None
+            if Utility.extract_offsets(offset, client, buttons) is None:
+                logger.error(f"Offset files from {server_name} invalid: missing required offsets.")
+                return None
 
+            logger.info(f"Successfully loaded and validated offsets from {server_name}.")
+            return offset, client, buttons
+
+        except orjson.JSONDecodeError as e:
+            logger.error(f"Failed to decode JSON from {server_name}: {e}")
+            return None
         except requests.exceptions.RequestException as e:
             logger.error(f"Request failed for {server_name}: {e}")
-            return None, None, None
+            return None
         except Exception as e:
-            logger.exception(f"An unexpected error occurred while fetching from {server_name}: {e}")
-            return None, None, None
+            logger.exception(f"Unexpected error fetching from {server_name}: {e}")
+            return None
         
     @staticmethod
     def get_available_offset_sources():

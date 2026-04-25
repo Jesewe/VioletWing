@@ -100,12 +100,16 @@ def populate_logs(main_window, frame):
     )
     main_window.log_text.pack(fill="both", expand=True, padx=25, pady=25)
 
-    # Load existing logs and set initial position
+    # Load existing logs and advance both position trackers to end-of-file so
+    # the polling timer in main_window doesn't re-read what we just displayed.
     _load_logs_safely(main_window)
     if os.path.exists(Logger.LOG_FILE()):
-        main_window.last_log_position = os.path.getsize(Logger.LOG_FILE())
+        eof = os.path.getsize(Logger.LOG_FILE())
+        main_window.last_log_position = eof
+        main_window._log_file_pos = eof
     else:
         main_window.last_log_position = 0
+        main_window._log_file_pos = 0
 
 def create_title_section(parent):
     """Create the title and subtitle for the settings page."""

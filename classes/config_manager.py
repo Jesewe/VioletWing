@@ -258,23 +258,28 @@ class ConfigManager:
     def get_value(cls, *keys: str, default: Any = None) -> Any:
         """
         Get a configuration value using a key path.
-        
+
+        Reads directly from the cache without deep-copying. Callers must not
+        mutate the returned value; use load_config() if mutation is required.
+
         Args:
             *keys: Key path (e.g., "General", "Trigger")
             default: Default value if key path doesn't exist
-            
+
         Returns:
             The configuration value or default
         """
-        config = cls.load_config()
-        current = config
-        
+        # Ensure cache is populated without paying for a deepcopy on every read.
+        if cls._config_cache is None:
+            cls.load_config()
+
+        current = cls._config_cache
         for key in keys:
             if isinstance(current, dict) and key in current:
                 current = current[key]
             else:
                 return default
-        
+
         return current
     
     @classmethod

@@ -190,7 +190,7 @@ class MemoryManager:
             }
             return weapon_map.get(item_id, "Rifles")
         except Exception as e:
-            # logger.error(f"Error getting weapon type: {e}")
+            logger.debug(f"Failed to get weapon type: {e}")
             return "Rifles"
         
     def write_float(self, address: int, value: float) -> None:

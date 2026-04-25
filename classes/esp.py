@@ -88,7 +88,8 @@ class Entity:
                 self.all_bones_pos_3d = None
 
             return True
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Entity update failed: {e}")
             return False
 
     def bone_pos(self, bone: int) -> Dict[str, float]:
@@ -102,7 +103,7 @@ class Entity:
             bone_array_ptr = self.memory_manager.read_longlong(game_scene + self.memory_manager.m_pBoneArray)
             return self.memory_manager.read_vec3(bone_array_ptr + bone * 32)
         except Exception as e:
-            # logger.error(f"Failed to get bone position for bone {bone}: {e}")
+            logger.debug(f"Failed to get bone position for bone {bone}: {e}")
             return {"x": 0.0, "y": 0.0, "z": 0.0}
 
     def all_bone_pos(self) -> Optional[Dict[int, Dict[str, float]]]:
@@ -129,7 +130,7 @@ class Entity:
                     continue
             return bone_positions
         except Exception as e:
-            # logger.error(f"Failed to get all bone positions: {e}")
+            logger.debug(f"Failed to get all bone positions: {e}")
             return None
 
     @staticmethod
@@ -171,6 +172,19 @@ class CS2Overlay:
         self.teammate_color_hex = settings['teammate_color_hex']
         self.target_fps = int(settings['target_fps'])
 
+        # Pre-resolve colors so draw_entity doesn't call get_color() per entity per frame.
+        # Re-resolved here whenever config changes, which is far less frequent than frame rate.
+        try:
+            self._color_box = overlay.get_color(self.box_color_hex)
+            self._color_teammate = overlay.get_color(self.teammate_color_hex)
+            self._color_text = overlay.get_color(self.text_color_hex)
+            self._color_snapline = overlay.get_color(self.snaplines_color_hex)
+        except Exception:
+            self._color_box = None
+            self._color_teammate = None
+            self._color_text = None
+            self._color_snapline = None
+
     def update_config(self, config: dict) -> None:
         """Update the configuration settings."""
         self.config = config
@@ -180,9 +194,13 @@ class CS2Overlay:
     def iterate_entities(self, local_controller_ptr: int) -> Iterator[Entity]:
         """Iterate over game entities and yield valid Entity objects."""
         try:
-            ent_list_ptr = self.memory_manager.read_longlong(self.memory_manager.client_dll_base + self.memory_manager.dwEntityList)
+            # Prefer the cached pointer on MemoryManager; fall back to a fresh read
+            # only if the cache is not yet populated (e.g. before first initialize()).
+            ent_list_ptr = self.memory_manager.ent_list or self.memory_manager.read_longlong(
+                self.memory_manager.client_dll_base + self.memory_manager.dwEntityList
+            )
         except Exception as e:
-            # logger.error(f"Error reading entity list pointer: {e}")
+            logger.debug(f"Error reading entity list pointer: {e}")
             return
 
         for i in range(1, ENTITY_COUNT + 1):
@@ -207,7 +225,8 @@ class CS2Overlay:
                 entity = Entity(controller_ptr, pawn_ptr, self.memory_manager)
                 if entity.update(self.use_transliteration, self.enable_skeleton):
                     yield entity
-            except Exception:
+            except Exception as e:
+                logger.debug(f"Failed to read entity at index {i}: {e}")
                 continue
 
     def draw_skeleton(self, entity: Entity, view_matrix: list, color: tuple, all_bones_pos_3d: Dict[int, Dict[str, float]]) -> None:
@@ -222,7 +241,8 @@ class CS2Overlay:
                     pos_3d = all_bones_pos_3d[bone_id]
                     try:
                         pos_2d = overlay.world_to_screen(view_matrix, pos_3d, 1)
-                    except Exception:
+                    except Exception as e:
+                        logger.debug(f"world_to_screen failed for bone {bone_id}: {e}")
                         pos_2d = None
                     
                     if pos_2d and entity.validate_screen_position(pos_2d):
@@ -251,7 +271,8 @@ class CS2Overlay:
             try:
                 pos2d = overlay.world_to_screen(view_matrix, entity.pos, 1)
                 head_pos2d = overlay.world_to_screen(view_matrix, head_pos_3d, 1)
-            except Exception:
+            except Exception as e:
+                logger.debug(f"world_to_screen failed for entity: {e}")
                 return
 
             if not entity.validate_screen_position(pos2d) or not entity.validate_screen_position(head_pos2d):
@@ -266,21 +287,19 @@ class CS2Overlay:
             box_width = box_height / 2
             half_width = box_width / 2
 
-            outline_color = overlay.get_color(self.teammate_color_hex if is_teammate else self.box_color_hex)
-            text_color = overlay.get_color(self.text_color_hex)
+            outline_color = self._color_teammate if is_teammate else self._color_box
+            text_color = self._color_text
 
             if self.enable_skeleton and entity.all_bones_pos_3d:
                 self.draw_skeleton(entity, view_matrix, outline_color, entity.all_bones_pos_3d)
 
             if self.draw_snaplines:
-                screen_width = overlay.get_screen_width()
-                screen_height = overlay.get_screen_height()
                 overlay.draw_line(
-                    screen_width / 2,
-                    screen_height / 2,
+                    self.screen_width / 2,
+                    self.screen_height / 2,
                     entity.head_pos2d["x"],
                     entity.head_pos2d["y"],
-                    overlay.get_color(self.snaplines_color_hex),
+                    self._color_snapline,
                     2
                 )
 
