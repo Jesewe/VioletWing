@@ -16,7 +16,6 @@ class MemoryManager:
         self.buttons_data = buttons_data
         self.pm = None
         self.client_base = None
-        self.ent_list = None  # Cache for entity list pointer
         self.config = None  # Configuration cache
         # Offset attributes
         self.dwEntityList = None
@@ -48,12 +47,17 @@ class MemoryManager:
         # Check if pymem is initialized and the client module is retrieved
         if not self.initialize_pymem() or not self.get_client_module():
             return False
-        # Cache the entity list pointer
+        # Derive offsets from the current data dictionaries
         self.load_offsets()
-        if self.dwEntityList is None:  # Ensure offsets were loaded successfully
+        if self.dwEntityList is None:
             return False
-        self.ent_list = self.read_longlong(self.client_base + self.dwEntityList)
         return True
+
+    def _apply_offsets(self) -> None:
+        """Re-derive offset attributes from current offsets/client_data/buttons_data.
+        Called after async offset fetch completes so the manager is ready before the
+        game process is attached."""
+        self.load_offsets()
 
     def initialize_pymem(self) -> bool:
         """Attach pymem to the game process."""
@@ -118,9 +122,10 @@ class MemoryManager:
     def get_entity(self, index: int):
         """Retrieve an entity from the entity list."""
         try:
-            # Use cached entity list pointer
+            # Read the entity list pointer fresh to avoid stale data after map changes
+            ent_list = self.read_longlong(self.client_base + self.dwEntityList)
             list_offset = 0x8 * (index >> 9)
-            ent_entry = self.read_longlong(self.ent_list + list_offset + 0x10)
+            ent_entry = self.read_longlong(ent_list + list_offset + 0x10)
             entity_offset = 112 * (index & 0x1FF)
             return self.read_longlong(ent_entry + entity_offset)
         except Exception as e:
@@ -167,7 +172,9 @@ class MemoryManager:
             if not weapon_handle: return "Rifles"
 
             weapon_id = weapon_handle & 0xFFFF
-            list_entry = self.read_longlong(self.ent_list + 8 * ((weapon_id & 0x7FFF) >> 9) + 16)
+            # Read entity list pointer fresh to avoid stale pointer after map changes
+            ent_list = self.read_longlong(self.client_base + self.dwEntityList)
+            list_entry = self.read_longlong(ent_list + 8 * ((weapon_id & 0x7FFF) >> 9) + 16)
             if not list_entry: return "Rifles"
 
             weapon_entity_ptr = self.read_longlong(list_entry + 112 * (weapon_id & 0x1FF))

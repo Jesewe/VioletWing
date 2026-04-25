@@ -178,74 +178,48 @@ def create_setting_item(parent, label_text, description, widget_type, key, main_
     widget_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
     widget_frame.pack(side="right", padx=(30, 0))
     
-    # Create widget based on type
     if widget_type == "entry":
-        widget = ctk.CTkEntry(
-            widget_frame,
-            justify="center",
-            **ENTRY_STYLE
-        )
+        widget = ctk.CTkEntry(widget_frame, justify="center", **ENTRY_STYLE)
         if key == "JumpKey":
-            main_window.jump_key_entry = widget
             widget.insert(0, main_window.bunnyhop.config.get('Bunnyhop', {}).get('JumpKey', 'space'))
-            widget.bind("<FocusOut>", lambda e: main_window.save_settings())
-            widget.bind("<Return>", lambda e: main_window.save_settings())
         elif key == "JumpDelay":
-            main_window.jump_delay_entry = widget
             widget.insert(0, str(main_window.bunnyhop.config.get('Bunnyhop', {}).get('JumpDelay', 0.01)))
-            widget.bind("<FocusOut>", lambda e: main_window.save_settings())
-            widget.bind("<Return>", lambda e: main_window.save_settings())
+        widget.bind("<FocusOut>", lambda e: main_window.save_settings())
+        widget.bind("<Return>", lambda e: main_window.save_settings())
+        main_window.ui_bridge.register(key, widget=widget)
         widget.pack()
-    
+
     elif widget_type == "slider":
-        # Create a container for the slider and value display
-        slider_container = ctk.CTkFrame(
-            widget_frame,
-            fg_color="transparent"
-        )
+        slider_container = ctk.CTkFrame(widget_frame, fg_color="transparent")
         slider_container.pack()
-        
-        # Create a frame for the value label with background
+
         value_frame = ctk.CTkFrame(
-            slider_container,
-            corner_radius=8,
-            fg_color=("#e2e8f0", "#374151"),
-            width=60,
-            height=35
+            slider_container, corner_radius=8,
+            fg_color=("#e2e8f0", "#374151"), width=60, height=35
         )
         value_frame.pack(side="right", padx=(15, 0))
         value_frame.pack_propagate(False)
-        
-        # Value label with improved styling
+
+        initial_val = main_window.noflash.config['NoFlash'].get(key, 0.0)
         value_label = ctk.CTkLabel(
             value_frame,
-            text=f"{main_window.noflash.config['NoFlash'].get(key, 0.0):.1f}",
+            text=f"{initial_val:.1f}",
             font=FONT_ITEM_LABEL,
             text_color=COLOR_TEXT_PRIMARY
         )
         value_label.pack(expand=True)
-        
-        # Enhanced slider with custom styling
+
         widget = ctk.CTkSlider(
             slider_container,
-            from_=0.0,
-            to=100.0,
-            number_of_steps=1000,
-            command=lambda e: update_slider_value(e, key, main_window),
+            from_=0.0, to=100.0, number_of_steps=1000,
+            command=lambda val: (
+                value_label.configure(text=f"{val:.1f}"),
+                main_window.save_settings(show_message=False)
+            ),
             **SLIDER_STYLE
         )
-        widget.set(main_window.noflash.config["NoFlash"].get(key, 0.0))
+        widget.set(initial_val)
         widget.pack(side="left")
-        
-        # Store references for later use
-        widget.value_label = value_label
-        main_window.__setattr__(f"{key}_slider", widget)
-        main_window.__setattr__(f"{key}_value_label", value_label)
+        main_window.ui_bridge.register(key, widget=widget, value_label=value_label, fmt=".1f")
 
     return item_frame
-
-def update_slider_value(event, key, main_window):
-    """Update the slider value label and save settings."""
-    value = main_window.__getattribute__(f"{key}_slider").get()
-    main_window.__getattribute__(f"{key}_slider").value_label.configure(text=f"{value:.1f}")
-    main_window.save_settings(show_message=False)

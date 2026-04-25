@@ -1,4 +1,5 @@
 import os
+import copy
 import threading
 import time
 import webbrowser
@@ -24,6 +25,7 @@ from classes.logger import Logger
 from classes.memory_manager import MemoryManager
 from classes.client_manager import ClientManager
 
+from gui.ui_config_bridge import UIConfigBridge
 from gui.home_tab import populate_dashboard
 from gui.general_settings_tab import populate_general_settings
 from gui.trigger_settings_tab import populate_trigger_settings
@@ -67,6 +69,7 @@ class MainWindow:
         self.offsets, self.client_data, self.buttons_data = {}, {}, {}
         self.memory_manager = MemoryManager(self.offsets, self.client_data, self.buttons_data)
         self.initialize_features()
+        self.ui_bridge = UIConfigBridge()
         self.root.title(f"VioletWing")
         self.root.resizable(True, True)
         self.root.minsize(1400, 800)
@@ -473,19 +476,14 @@ class MainWindow:
         self.client_manager.stop_client()
 
     def update_weapon_settings_display(self):
-        """Update UI fields based on the selected weapon type."""
-        weapon_type = self.active_weapon_type.get()
-        settings = self.triggerbot.config['Trigger']['WeaponSettings'].get(weapon_type, {})
-        
-        if hasattr(self, 'min_delay_entry'):
-            self.min_delay_entry.delete(0, "end")
-            self.min_delay_entry.insert(0, str(settings.get('ShotDelayMin', 0.01)))
-        if hasattr(self, 'max_delay_entry'):
-            self.max_delay_entry.delete(0, "end")
-            self.max_delay_entry.insert(0, str(settings.get('ShotDelayMax', 0.03)))
-        if hasattr(self, 'post_shot_delay_entry'):
-            self.post_shot_delay_entry.delete(0, "end")
-            self.post_shot_delay_entry.insert(0, str(settings.get('PostShotDelay', 0.1)))
+        """Update weapon delay fields when weapon type selection changes."""
+        weapon_type = self.ui_bridge.get_value("active_weapon_type")
+        if weapon_type is None:
+            return
+        settings = self.triggerbot.config["Trigger"]["WeaponSettings"].get(weapon_type, {})
+        self.ui_bridge.set_value("ShotDelayMin", str(settings.get("ShotDelayMin", 0.01)))
+        self.ui_bridge.set_value("ShotDelayMax", str(settings.get("ShotDelayMax", 0.03)))
+        self.ui_bridge.set_value("PostShotDelay", str(settings.get("PostShotDelay", 0.1)))
 
     def save_settings(self, show_message=False):
         """Save the configuration settings and apply to relevant features in real-time."""
@@ -494,7 +492,7 @@ class MainWindow:
             
             # Load the current configuration to ensure all parts are present
             config = ConfigManager.load_config()
-            old_config = config.copy()
+            old_config = copy.deepcopy(config)
 
             # Update the configuration from the UI
             self.update_config_from_ui(config)
@@ -577,158 +575,148 @@ class MainWindow:
     def _update_general_config_from_ui(self, config):
         """Update General settings from the UI."""
         settings = config["General"]
-        if hasattr(self, 'trigger_var'): settings["Trigger"] = self.trigger_var.get()
-        if hasattr(self, 'overlay_var'): settings["Overlay"] = self.overlay_var.get()
-        if hasattr(self, 'bunnyhop_var'): settings["Bunnyhop"] = self.bunnyhop_var.get()
-        if hasattr(self, 'noflash_var'): settings["Noflash"] = self.noflash_var.get()
-        
-        # Update OffsetSource from the dropdown
-        if hasattr(self, 'offset_source_var') and hasattr(self, 'offset_source_mapping'):
-            display_name = self.offset_source_var.get()
-            source_id = self.offset_source_mapping.get(display_name, "a2x")
+        for key in ("Trigger", "Overlay", "Bunnyhop", "Noflash"):
+            val = self.ui_bridge.get_value(key)
+            if val is not None:
+                settings[key] = val
+
+        if self.ui_bridge.registered("OffsetSource"):
+            display_name = self.ui_bridge.get_value("OffsetSource")
+            source_id = getattr(self, "offset_source_mapping", {}).get(display_name, "a2x")
             settings["OffsetSource"] = source_id
 
     def _update_trigger_config_from_ui(self, config):
         """Update Trigger settings from the UI."""
         settings = config["Trigger"]
-        if hasattr(self, 'trigger_key_entry'): settings["TriggerKey"] = self.trigger_key_entry.get().strip()
-        if hasattr(self, 'toggle_mode_var'): settings["ToggleMode"] = self.toggle_mode_var.get()
-        if hasattr(self, 'attack_teammates_var'): settings["AttackOnTeammates"] = self.attack_teammates_var.get()
+        for key in ("TriggerKey", "ToggleMode", "AttackOnTeammates"):
+            val = self.ui_bridge.get_value(key)
+            if val is not None:
+                settings[key] = val if key != "TriggerKey" else val.strip()
 
-        if hasattr(self, 'active_weapon_type'):
-            weapon_type = self.active_weapon_type.get()
-            settings['active_weapon_type'] = weapon_type
-            weapon_settings = settings['WeaponSettings'].get(weapon_type, {})
-            
-            try:
-                if hasattr(self, 'min_delay_entry'): weapon_settings['ShotDelayMin'] = float(self.min_delay_entry.get())
-                if hasattr(self, 'max_delay_entry'): weapon_settings['ShotDelayMax'] = float(self.max_delay_entry.get())
-                if hasattr(self, 'post_shot_delay_entry'): weapon_settings['PostShotDelay'] = float(self.post_shot_delay_entry.get())
-            except ValueError:
-                pass
-            
-            settings['WeaponSettings'][weapon_type] = weapon_settings
+        if self.ui_bridge.registered("active_weapon_type"):
+            weapon_type = self.ui_bridge.get_value("active_weapon_type")
+            settings["active_weapon_type"] = weapon_type
+            weapon_settings = settings["WeaponSettings"].get(weapon_type, {})
+            for delay_key in ("ShotDelayMin", "ShotDelayMax", "PostShotDelay"):
+                raw = self.ui_bridge.get_value(delay_key)
+                if raw is not None:
+                    try:
+                        weapon_settings[delay_key] = float(raw)
+                    except ValueError:
+                        pass
+            settings["WeaponSettings"][weapon_type] = weapon_settings
 
     def _update_overlay_config_from_ui(self, config):
-        """Update Overlay settings from the UI."""
+        """Update Overlay settings from the UI via the overlay_widgets registry."""
         settings = config["Overlay"]
         widgets = self.overlay_widgets
 
-        # Helper to safely get values from widgets
-        def get_widget_value(key, value_type):
-            if key in widgets:
-                widget_info = widgets[key]
-                if value_type == "var" and "variable" in widget_info:
-                    return widget_info["variable"].get()
-                if value_type == "widget" and "widget" in widget_info:
-                    return widget_info["widget"].get()
-            return None
-
-        # Update settings from widgets
-        checkbox_keys = [
+        checkbox_keys = (
             "enable_box", "enable_skeleton", "draw_snaplines",
-            "draw_health_numbers", "draw_nicknames", "use_transliteration", "draw_teammates"
-        ]
+            "draw_health_numbers", "draw_nicknames", "use_transliteration", "draw_teammates",
+        )
         for key in checkbox_keys:
-            value = get_widget_value(key, "var")
-            if value is not None:
-                settings[key] = value
+            info = widgets.get(key)
+            if info and "variable" in info:
+                settings[key] = info["variable"].get()
 
-        slider_keys = ["box_line_thickness", "target_fps"]
-        for key in slider_keys:
-            value = get_widget_value(key, "widget")
-            if value is not None:
-                settings[key] = value
+        for key in ("box_line_thickness", "target_fps"):
+            info = widgets.get(key)
+            if info and "widget" in info:
+                settings[key] = info["widget"].get()
 
-        combo_keys = {
+        color_defaults = {
             "box_color_hex": "#FFA500",
             "snaplines_color_hex": "#FFFFFF",
             "text_color_hex": "#FFFFFF",
-            "teammate_color_hex": "#00FFFF"
+            "teammate_color_hex": "#00FFFF",
         }
-        for key, default_color in combo_keys.items():
-            value = get_widget_value(key, "widget")
-            if value is not None:
-                settings[key] = COLOR_CHOICES.get(value, default_color)
+        for key, default in color_defaults.items():
+            info = widgets.get(key)
+            if info and "widget" in info:
+                settings[key] = COLOR_CHOICES.get(info["widget"].get(), default)
 
     def _update_additional_config_from_ui(self, config):
         """Update Additional (Bunnyhop, NoFlash) settings from the UI."""
-        bunnyhop_settings = config.get("Bunnyhop", {})
-        if hasattr(self, 'jump_key_entry'): bunnyhop_settings["JumpKey"] = self.jump_key_entry.get().strip()
-        try:
-            if hasattr(self, 'jump_delay_entry'): bunnyhop_settings["JumpDelay"] = float(self.jump_delay_entry.get())
-        except ValueError:
-            pass
-        
-        noflash_settings = config.get("NoFlash", {})
-        if hasattr(self, 'FlashSuppressionStrength_slider'): noflash_settings["FlashSuppressionStrength"] = self.FlashSuppressionStrength_slider.get()
+        bunnyhop = config.get("Bunnyhop", {})
+        jump_key = self.ui_bridge.get_value("JumpKey")
+        if jump_key is not None:
+            bunnyhop["JumpKey"] = jump_key.strip()
+        jump_delay = self.ui_bridge.get_value("JumpDelay")
+        if jump_delay is not None:
+            try:
+                bunnyhop["JumpDelay"] = float(jump_delay)
+            except ValueError:
+                pass
+
+        noflash = config.get("NoFlash", {})
+        strength = self.ui_bridge.get_value("FlashSuppressionStrength")
+        if strength is not None:
+            noflash["FlashSuppressionStrength"] = strength
 
     def validate_inputs(self):
         """Validate user input fields."""
-        # Validate Trigger settings
-        if hasattr(self, 'trigger_key_entry'):
-            trigger_key = self.trigger_key_entry.get().strip()
-            if not trigger_key:
-                raise ValueError("Trigger key cannot be empty.")
+        trigger_key = self.ui_bridge.get_value("TriggerKey")
+        if trigger_key is not None and not trigger_key.strip():
+            raise ValueError("Trigger key cannot be empty.")
 
-        # Validate delay fields as numbers
-        if hasattr(self, 'min_delay_entry'):
+        min_delay = None
+        raw_min = self.ui_bridge.get_value("ShotDelayMin")
+        if raw_min is not None:
             try:
-                min_delay = float(self.min_delay_entry.get())
+                min_delay = float(raw_min)
             except ValueError:
                 raise ValueError("Minimum shot delay must be a valid number.")
             if min_delay < 0:
                 raise ValueError("Minimum shot delay must be non-negative.")
-        else:
-            min_delay = None
 
-        if hasattr(self, 'max_delay_entry'):
+        raw_max = self.ui_bridge.get_value("ShotDelayMax")
+        if raw_max is not None:
             try:
-                max_delay = float(self.max_delay_entry.get())
+                max_delay = float(raw_max)
             except ValueError:
                 raise ValueError("Maximum shot delay must be a valid number.")
             if max_delay < 0:
                 raise ValueError("Maximum shot delay must be non-negative.")
             if min_delay is not None and min_delay > max_delay:
                 raise ValueError("Minimum delay cannot be greater than maximum delay.")
-        else:
-            max_delay = None
 
-        if hasattr(self, 'post_shot_delay_entry'):
+        raw_post = self.ui_bridge.get_value("PostShotDelay")
+        if raw_post is not None:
             try:
-                post_delay = float(self.post_shot_delay_entry.get())
+                post_delay = float(raw_post)
             except ValueError:
                 raise ValueError("Post-shot delay must be a valid number.")
             if post_delay < 0:
                 raise ValueError("Post-shot delay must be non-negative.")
 
-        if hasattr(self, 'target_fps_slider'):
+        fps_info = self.overlay_widgets.get("target_fps")
+        if fps_info and "widget" in fps_info:
             try:
-                target_fps = float(self.target_fps_slider.get())
+                target_fps = float(fps_info["widget"].get())
                 if not (60 <= target_fps <= 420):
                     raise ValueError("Target FPS must be between 60 and 420.")
-            except ValueError:
+            except ValueError as e:
+                if "Target FPS" in str(e):
+                    raise
                 raise ValueError("Target FPS must be a valid number.")
-            
-        # Validate Bunnyhop settings
-        if hasattr(self, 'jump_key_entry'):
-            jump_key = self.jump_key_entry.get().strip()
-            if not jump_key:
-                raise ValueError("Jump key cannot be empty.")
 
-        if hasattr(self, 'jump_delay_entry'):
+        jump_key = self.ui_bridge.get_value("JumpKey")
+        if jump_key is not None and not jump_key.strip():
+            raise ValueError("Jump key cannot be empty.")
+
+        raw_jump_delay = self.ui_bridge.get_value("JumpDelay")
+        if raw_jump_delay is not None:
             try:
-                jump_delay = float(self.jump_delay_entry.get())
+                jump_delay = float(raw_jump_delay)
             except ValueError:
                 raise ValueError("Jump delay must be a valid number.")
             if jump_delay < 0.01 or jump_delay > 0.5:
                 raise ValueError("Jump delay must be between 0.01 and 0.5 seconds.")
 
-        # Validate NoFlash settings
-        if hasattr(self, 'FlashSuppressionStrength_slider'):
-            strength = self.FlashSuppressionStrength_slider.get()
-            if not (0.0 <= strength <= 100.0):
-                raise ValueError("Flash suppression strength must be between 0.0 and 100.0.")
+        strength = self.ui_bridge.get_value("FlashSuppressionStrength")
+        if strength is not None and not (0.0 <= strength <= 100.0):
+            raise ValueError("Flash suppression strength must be between 0.0 and 100.0.")
 
     def reset_to_default_settings(self):
         """Reset all settings to their default values."""
@@ -769,58 +757,51 @@ class MainWindow:
     def _update_general_settings_ui_from_config(self):
         """Update General settings UI from the configuration."""
         settings = self.triggerbot.config["General"]
-        if hasattr(self, 'trigger_var'): self.trigger_var.set(settings["Trigger"])
-        if hasattr(self, 'overlay_var'): self.overlay_var.set(settings["Overlay"])
-        if hasattr(self, 'bunnyhop_var'): self.bunnyhop_var.set(settings["Bunnyhop"])
-        if hasattr(self, 'noflash_var'): self.noflash_var.set(settings["Noflash"])
+        for key in ("Trigger", "Overlay", "Bunnyhop", "Noflash"):
+            self.ui_bridge.set_value(key, settings.get(key, False))
 
     def _update_trigger_settings_ui_from_config(self):
         """Update Trigger settings UI from the configuration."""
         settings = self.triggerbot.config["Trigger"]
-        if hasattr(self, 'trigger_key_entry'):
-            self.trigger_key_entry.delete(0, "end")
-            self.trigger_key_entry.insert(0, settings["TriggerKey"])
-        if hasattr(self, 'toggle_mode_var'): self.toggle_mode_var.set(settings["ToggleMode"])
-        if hasattr(self, 'attack_teammates_var'): self.attack_teammates_var.set(settings["AttackOnTeammates"])
-        if hasattr(self, 'active_weapon_type'):
-            self.active_weapon_type.set(settings.get('active_weapon_type', 'Rifles'))
+        self.ui_bridge.set_value("TriggerKey", settings.get("TriggerKey", "x"))
+        self.ui_bridge.set_value("ToggleMode", settings.get("ToggleMode", False))
+        self.ui_bridge.set_value("AttackOnTeammates", settings.get("AttackOnTeammates", False))
+        if self.ui_bridge.registered("active_weapon_type"):
+            self.ui_bridge.set_value("active_weapon_type", settings.get("active_weapon_type", "Rifles"))
             self.update_weapon_settings_display()
 
     def _update_overlay_settings_ui_from_config(self):
-        """Update Overlay settings UI from the configuration."""
+        """Update Overlay settings UI from the configuration via overlay_widgets registry."""
         settings = self.overlay.config["Overlay"]
-        if hasattr(self, 'enable_box_var'): self.enable_box_var.set(settings["enable_box"])
-        if hasattr(self, 'enable_skeleton_var'): self.enable_skeleton_var.set(settings["enable_skeleton"])
-        if hasattr(self, 'box_line_thickness_slider'):
-            self.box_line_thickness_slider.set(settings["box_line_thickness"])
-            if hasattr(self, 'box_line_thickness_value_label'): self.box_line_thickness_value_label.configure(text=f"{settings['box_line_thickness']:.1f}")
-        if hasattr(self, 'box_color_hex_combo'): self.box_color_hex_combo.set(Utility.get_color_name_from_hex(settings["box_color_hex"]))
-        if hasattr(self, 'draw_snaplines_var'): self.draw_snaplines_var.set(settings["draw_snaplines"])
-        if hasattr(self, 'snaplines_color_hex_combo'): self.snaplines_color_hex_combo.set(Utility.get_color_name_from_hex(settings["snaplines_color_hex"]))
-        if hasattr(self, 'text_color_hex_combo'): self.text_color_hex_combo.set(Utility.get_color_name_from_hex(settings["text_color_hex"]))
-        if hasattr(self, 'draw_health_numbers_var'): self.draw_health_numbers_var.set(settings["draw_health_numbers"])
-        if hasattr(self, 'draw_nicknames_var'): self.draw_nicknames_var.set(settings["draw_nicknames"])
-        if hasattr(self, 'use_transliteration_var'): self.use_transliteration_var.set(settings["use_transliteration"])
-        if hasattr(self, 'draw_teammates_var'): self.draw_teammates_var.set(settings["draw_teammates"])
-        if hasattr(self, 'teammate_color_hex_combo'): self.teammate_color_hex_combo.set(Utility.get_color_name_from_hex(settings["teammate_color_hex"]))
-        if hasattr(self, 'target_fps_slider'):
-            self.target_fps_slider.set(settings["target_fps"])
-            if hasattr(self, 'target_fps_value_label'): self.target_fps_value_label.configure(text=f"{settings['target_fps']:.0f}")
+        widgets = self.overlay_widgets
+
+        for key in ("enable_box", "enable_skeleton", "draw_snaplines",
+                    "draw_health_numbers", "draw_nicknames", "use_transliteration", "draw_teammates"):
+            info = widgets.get(key)
+            if info and "variable" in info:
+                info["variable"].set(settings.get(key, False))
+
+        for key, fmt in (("box_line_thickness", ".1f"), ("target_fps", ".0f")):
+            info = widgets.get(key)
+            if info:
+                if "widget" in info:
+                    info["widget"].set(settings.get(key, 0))
+                if "value_label" in info:
+                    info["value_label"].configure(text=f"{settings.get(key, 0):{fmt}}")
+
+        for key in ("box_color_hex", "snaplines_color_hex", "text_color_hex", "teammate_color_hex"):
+            info = widgets.get(key)
+            if info and "widget" in info:
+                info["widget"].set(Utility.get_color_name_from_hex(settings.get(key, "#FFFFFF")))
 
     def _update_additional_settings_ui_from_config(self):
         """Update Additional (Bunnyhop, NoFlash) settings UI from the configuration."""
-        bunnyhop_settings = self.bunnyhop.config.get("Bunnyhop", {})
-        if hasattr(self, 'jump_key_entry'):
-            self.jump_key_entry.delete(0, "end")
-            self.jump_key_entry.insert(0, bunnyhop_settings.get("JumpKey", "space"))
-        if hasattr(self, 'jump_delay_entry'):
-            self.jump_delay_entry.delete(0, "end")
-            self.jump_delay_entry.insert(0, str(bunnyhop_settings.get("JumpDelay", 0.01)))
+        bunnyhop = self.bunnyhop.config.get("Bunnyhop", {})
+        self.ui_bridge.set_value("JumpKey", bunnyhop.get("JumpKey", "space"))
+        self.ui_bridge.set_value("JumpDelay", str(bunnyhop.get("JumpDelay", 0.01)))
 
-        noflash_settings = self.noflash.config.get("NoFlash", {})
-        if hasattr(self, 'FlashSuppressionStrength_slider'):
-            self.FlashSuppressionStrength_slider.set(noflash_settings.get("FlashSuppressionStrength", 0.0))
-            if hasattr(self, 'FlashSuppressionStrength_value_label'): self.FlashSuppressionStrength_value_label.configure(text=f"{noflash_settings.get('FlashSuppressionStrength', 0.0):.2f}")
+        noflash = self.noflash.config.get("NoFlash", {})
+        self.ui_bridge.set_value("FlashSuppressionStrength", noflash.get("FlashSuppressionStrength", 0.0))
 
     def open_config_directory(self):
         """Open the configuration directory in the file explorer."""

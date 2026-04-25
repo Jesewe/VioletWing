@@ -16,48 +16,56 @@ from classes.logger import Logger
 logger = Logger.get_logger(__name__)
 
 class Utility:
+    _offset_sources_cache: dict = None
+
     @staticmethod
     def load_offset_sources():
-        """
-        Loads available offset sources from src/offsets.json
-        Returns a dictionary with source configurations
-        """
+        """Loads available offset sources from src/offsets.json. Result is cached
+        for the lifetime of the process to avoid repeated GitHub raw fetches."""
+        if Utility._offset_sources_cache is not None:
+            return Utility._offset_sources_cache
+
+        default = {
+            "a2x": {
+                "name": "A2X Source",
+                "author": "a2x",
+                "repository": "a2x/cs2-dumper",
+                "offsets_url": "https://raw.githubusercontent.com/a2x/cs2-dumper/main/output/offsets.json",
+                "client_dll_url": "https://raw.githubusercontent.com/a2x/cs2-dumper/main/output/client_dll.json",
+                "buttons_url": "https://raw.githubusercontent.com/a2x/cs2-dumper/main/output/buttons.json"
+            },
+            "jesewe": {
+                "name": "Jesewe Source",
+                "author": "Jesewe",
+                "repository": "Jesewe/cs2-dumper",
+                "offsets_url": "https://raw.githubusercontent.com/Jesewe/cs2-dumper/main/output/offsets.json",
+                "client_dll_url": "https://raw.githubusercontent.com/Jesewe/cs2-dumper/main/output/client_dll.json",
+                "buttons_url": "https://raw.githubusercontent.com/Jesewe/cs2-dumper/main/output/buttons.json"
+            }
+        }
+
         try:
             response = requests.get('https://raw.githubusercontent.com/Jesewe/VioletWing/refs/heads/main/src/offsets.json', timeout=10)
             response.raise_for_status()
             sources_data = orjson.loads(response.content)
-            
-            # Validate structure
-            for source_id, source_config in sources_data.items():
-                required_keys = ["name", "author", "repository", "offsets_url", "client_dll_url", "buttons_url"]
-                missing_keys = [key for key in required_keys if key not in source_config]
-                if missing_keys:
-                    logger.error(f"Source '{source_id}' missing keys: {missing_keys}")
-                    continue
-            
-            logger.debug(f"Loaded {len(sources_data)} offsets sources from remote offsets.json")
-            return sources_data
-            
+
+            required_keys = {"name", "author", "repository", "offsets_url", "client_dll_url", "buttons_url"}
+            valid = {
+                sid: cfg for sid, cfg in sources_data.items()
+                if required_keys.issubset(cfg)
+            }
+            for sid in sources_data:
+                if sid not in valid:
+                    logger.error(f"Source '{sid}' missing required keys, skipping.")
+
+            logger.debug(f"Loaded {len(valid)} offsets sources from remote offsets.json")
+            Utility._offset_sources_cache = valid
+            return valid
+
         except Exception as e:
             logger.warning(f"Failed to load remote offsets sources: {e}, using default sources")
-            return {
-                "a2x": {
-                    "name": "A2X Source",
-                    "author": "a2x",
-                    "repository": "a2x/cs2-dumper",
-                    "offsets_url": "https://raw.githubusercontent.com/a2x/cs2-dumper/main/output/offsets.json",
-                    "client_dll_url": "https://raw.githubusercontent.com/a2x/cs2-dumper/main/output/client_dll.json",
-                    "buttons_url": "https://raw.githubusercontent.com/a2x/cs2-dumper/main/output/buttons.json"
-                },
-                "jesewe": {
-                    "name": "Jesewe Source", 
-                    "author": "Jesewe",
-                    "repository": "Jesewe/cs2-dumper",
-                    "offsets_url": "https://raw.githubusercontent.com/Jesewe/cs2-dumper/main/output/offsets.json",
-                    "client_dll_url": "https://raw.githubusercontent.com/Jesewe/cs2-dumper/main/output/client_dll.json",
-                    "buttons_url": "https://raw.githubusercontent.com/Jesewe/cs2-dumper/main/output/buttons.json"
-                }
-            }
+            Utility._offset_sources_cache = default
+            return default
 
     @staticmethod
     def fetch_offsets():
@@ -275,11 +283,23 @@ class Utility:
             logger.error(f"Failed to get resource path: {e}")
             return None
 
+    _game_active_cache: bool = False
+    _game_active_last_check: float = 0.0
+    _GAME_ACTIVE_TTL: float = 0.2  # recheck window focus at most every 200ms
+
     @staticmethod
-    def is_game_active():
-        """Check if the game window is active using pygetwindow."""
+    def is_game_active() -> bool:
+        """Check if the game window is active, with a 200ms TTL cache to avoid
+        enumerating all windows on every tight-loop iteration."""
+        import time
+        now = time.monotonic()
+        if now - Utility._game_active_last_check < Utility._GAME_ACTIVE_TTL:
+            return Utility._game_active_cache
         windows = gw.getWindowsWithTitle('Counter-Strike 2')
-        return any(window.isActive for window in windows)
+        result = any(window.isActive for window in windows)
+        Utility._game_active_cache = result
+        Utility._game_active_last_check = now
+        return result
 
     @staticmethod
     def is_game_running():
@@ -353,45 +373,24 @@ class Utility:
                 return name
         return "Black"
     
+    _TRANSLITERATE_TABLE = str.maketrans({
+        'А': 'A',  'а': 'a',  'Б': 'B',  'б': 'b',  'В': 'V',  'в': 'v',
+        'Г': 'G',  'г': 'g',  'Д': 'D',  'д': 'd',  'Е': 'E',  'е': 'e',
+        'Ё': 'Yo', 'ё': 'yo', 'Ж': 'Zh', 'ж': 'zh', 'З': 'Z',  'з': 'z',
+        'И': 'I',  'и': 'i',  'Й': 'I',  'й': 'i',  'К': 'K',  'к': 'k',
+        'Л': 'L',  'л': 'l',  'М': 'M',  'м': 'm',  'Н': 'N',  'н': 'n',
+        'О': 'O',  'о': 'o',  'П': 'P',  'п': 'p',  'Р': 'R',  'р': 'r',
+        'С': 'S',  'с': 's',  'Т': 'T',  'т': 't',  'У': 'U',  'у': 'u',
+        'Ф': 'F',  'ф': 'f',  'Х': 'Kh', 'х': 'kh', 'Ц': 'Ts', 'ц': 'ts',
+        'Ч': 'Ch', 'ч': 'ch', 'Ш': 'Sh', 'ш': 'sh', 'Щ': 'Shch','щ': 'shch',
+        'Ъ': '',   'ъ': '',   'Ы': 'Y',  'ы': 'y',  'Ь': '',   'ь': '',
+        'Э': 'E',  'э': 'e',  'Ю': 'Yu', 'ю': 'yu', 'Я': 'Ya', 'я': 'ya',
+    })
+
     @staticmethod
     def transliterate(text: str) -> str:
-        """Converts Cyrillic characters in the given text to their Latin equivalents."""
-        mapping = {
-            'А': 'A',  'а': 'a',
-            'Б': 'B',  'б': 'b',
-            'В': 'V',  'в': 'v',
-            'Г': 'G',  'г': 'g',
-            'Д': 'D',  'д': 'd',
-            'Е': 'E',  'е': 'e',
-            'Ё': 'Yo', 'ё': 'yo',
-            'Ж': 'Zh', 'ж': 'zh',
-            'З': 'Z',  'з': 'z',
-            'И': 'I',  'и': 'i',
-            'Й': 'I',  'й': 'i',
-            'К': 'K',  'к': 'k',
-            'Л': 'L',  'л': 'l',
-            'М': 'M',  'м': 'm',
-            'Н': 'N',  'н': 'n',
-            'О': 'O',  'о': 'o',
-            'П': 'P',  'п': 'p',
-            'Р': 'R',  'р': 'r',
-            'С': 'S',  'с': 's',
-            'Т': 'T',  'т': 't',
-            'У': 'U',  'у': 'u',
-            'Ф': 'F',  'ф': 'f',
-            'Х': 'Kh', 'х': 'kh',
-            'Ц': 'Ts', 'ц': 'ts',
-            'Ч': 'Ch', 'ч': 'ch',
-            'Ш': 'Sh', 'ш': 'sh',
-            'Щ': 'Shch', 'щ': 'shch',
-            'Ъ': '',   'ъ': '',
-            'Ы': 'Y',  'ы': 'y',
-            'Ь': '',   'ь': '',
-            'Э': 'E',  'э': 'e',
-            'Ю': 'Yu', 'ю': 'yu',
-            'Я': 'Ya', 'я': 'ya'
-        }
-        return "".join(mapping.get(char, char) for char in text)
+        """Converts Cyrillic characters to their Latin equivalents."""
+        return text.translate(Utility._TRANSLITERATE_TABLE)
 
     @staticmethod
     def get_vk_code(key: str) -> int:

@@ -1,10 +1,9 @@
 import customtkinter as ctk
 import os
-import requests
-import orjson
 from pathlib import Path
 from tkinter import filedialog, messagebox
 from classes.config_manager import ConfigManager
+from classes.utility import Utility
 from gui.theme import (
     FONT_TITLE, FONT_SUBTITLE, FONT_SECTION_TITLE, FONT_SECTION_DESCRIPTION,
     FONT_ITEM_LABEL, FONT_ITEM_DESCRIPTION, FONT_WIDGET,
@@ -129,22 +128,8 @@ def create_features_section(main_window, parent):
         )
 
 def load_dynamic_offset_sources():
-    """Load available offset sources from remote JSON file."""
-    try:
-        response = requests.get('https://raw.githubusercontent.com/Jesewe/VioletWing/refs/heads/main/src/offsets.json', timeout=10)
-        response.raise_for_status()
-        sources_data = orjson.loads(response.content)
-        
-        valid_sources = {
-            sid: config for sid, config in sources_data.items()
-            if all(k in config for k in ["name", "author", "repository", "offsets_url", "client_dll_url", "buttons_url"])
-        }
-        return valid_sources
-    except (requests.RequestException, orjson.JSONDecodeError):
-        return {
-            "a2x": {"name": "a2x Source", "author": "a2x", "repository": "a2x/cs2-dumper"},
-            "jesewe": {"name": "Jesewe Source", "author": "Jesewe", "repository": "Jesewe/cs2-dumper"}
-        }
+    """Load available offset sources. Delegates to Utility which caches the result per session."""
+    return Utility.load_offset_sources()
 
 def create_offsets_section(main_window, parent):
     """Create section for configuring offset source and local file selection."""
@@ -165,14 +150,16 @@ def create_offsets_section(main_window, parent):
     current_source = main_window.triggerbot.config["General"].get("OffsetSource", "a2x")
     current_display = next((name for name, sid in source_mapping.items() if sid == current_source), "Local Files")
 
-    main_window.offset_source_var = ctk.StringVar(value=current_display)
+    offset_source_var = ctk.StringVar(value=current_display)
+    main_window.offset_source_mapping = source_mapping
     ctk.CTkOptionMenu(
         header,
-        variable=main_window.offset_source_var,
+        variable=offset_source_var,
         values=dropdown_values,
         command=lambda dn: update_offset_source(main_window, source_mapping[dn]),
         **COMBOBOX_STYLE
     ).pack(side="right", padx=(0, 10))
+    main_window.ui_bridge.register("OffsetSource", var=offset_source_var)
 
     main_window.local_files_frame = ctk.CTkFrame(section, fg_color="transparent")
     if current_source == "local":
@@ -297,7 +284,7 @@ def create_setting_item(parent, label_text, description, widget_type, key, main_
     
     if widget_type == "checkbox":
         var = ctk.BooleanVar(value=main_window.triggerbot.config["General"].get(key, False))
-        
+
         ctk.CTkCheckBox(
             widget_frame,
             text="",
@@ -305,7 +292,7 @@ def create_setting_item(parent, label_text, description, widget_type, key, main_
             command=lambda: main_window.save_settings(show_message=False),
             **CHECKBOX_STYLE
         ).pack()
-        
-        setattr(main_window, f"{key.lower()}_var", var)
+
+        main_window.ui_bridge.register(key, var=var)
     else:
         raise ValueError(f"Unsupported widget type: {widget_type}")

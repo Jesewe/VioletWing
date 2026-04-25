@@ -179,11 +179,20 @@ class CS2Overlay:
             self._color_teammate = overlay.get_color(self.teammate_color_hex)
             self._color_text = overlay.get_color(self.text_color_hex)
             self._color_snapline = overlay.get_color(self.snaplines_color_hex)
+            # Health bar colors are constant but resolved once here to avoid per-frame lookups
+            self._color_health_bg = overlay.get_color("black")
+            self._color_health_low = overlay.get_color("red")
+            self._color_health_mid = overlay.get_color("yellow")
+            self._color_health_ok = overlay.get_color("green")
         except Exception:
             self._color_box = None
             self._color_teammate = None
             self._color_text = None
             self._color_snapline = None
+            self._color_health_bg = None
+            self._color_health_low = None
+            self._color_health_mid = None
+            self._color_health_ok = None
 
     def update_config(self, config: dict) -> None:
         """Update the configuration settings."""
@@ -194,9 +203,8 @@ class CS2Overlay:
     def iterate_entities(self, local_controller_ptr: int) -> Iterator[Entity]:
         """Iterate over game entities and yield valid Entity objects."""
         try:
-            # Prefer the cached pointer on MemoryManager; fall back to a fresh read
-            # only if the cache is not yet populated (e.g. before first initialize()).
-            ent_list_ptr = self.memory_manager.ent_list or self.memory_manager.read_longlong(
+            # Read fresh each frame - the pointer can change after map/match transitions
+            ent_list_ptr = self.memory_manager.read_longlong(
                 self.memory_manager.client_dll_base + self.memory_manager.dwEntityList
             )
         except Exception as e:
@@ -342,16 +350,16 @@ class CS2Overlay:
                 bar_y,
                 bar_width,
                 bar_height,
-                overlay.get_color("black")
+                self._color_health_bg
             )
             health_percent = max(0, min(entity.health, 100))
             fill_height = (health_percent / 100.0) * bar_height
             if health_percent <= 20:
-                fill_color = overlay.get_color("red")
+                fill_color = self._color_health_low
             elif health_percent <= 50:
-                fill_color = overlay.get_color("yellow")
+                fill_color = self._color_health_mid
             else:
-                fill_color = overlay.get_color("green")
+                fill_color = self._color_health_ok
             fill_y = bar_y + (bar_height - fill_height)
             overlay.draw_rectangle(
                 bar_x,

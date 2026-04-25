@@ -38,7 +38,6 @@ class CS2TriggerBot:
         
         # Initialize configuration settings
         self.load_configuration()
-        self.update_config(self.config)
 
         # Single long-lived audio worker to avoid spawning a thread per beep
         self._audio_queue: queue.Queue = queue.Queue()

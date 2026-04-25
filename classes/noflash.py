@@ -110,16 +110,15 @@ class CS2NoFlash:
                         reinit_backoff = 0.1
                         logged_waiting = False
 
-                    # Only write if player position changed or first time
                     if player_position != last_player_position:
                         last_player_position = player_position
 
-                    # Write flash duration
+                    # Only write when the current flash value differs from the target,
+                    # avoiding unnecessary memory writes every 10ms while not flashed
                     try:
-                        self.memory_manager.write_float(
-                            player_position + flash_offset,
-                            suppression_value
-                        )
+                        current = self.memory_manager.pm.read_float(player_position + flash_offset)
+                        if abs(current - suppression_value) > 1e-6:
+                            self.memory_manager.write_float(player_position + flash_offset, suppression_value)
                     except Exception as e:
                         logger.debug(f"Error writing flash duration: {e}")
                         failed_reads += 1
