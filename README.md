@@ -1,7 +1,7 @@
 <div align="center">
    <img src="src/img/icon.png" alt="VioletWing" width="200" height="200">
    <h1>VioletWing</h1>
-   <p>Your ultimate assistant for Counter-Strike 2</p>
+   <p>TriggerBot · ESP · Bunnyhop · NoFlash - all in one for Counter-Strike 2</p>
 
 [![Downloads](https://img.shields.io/github/downloads/jesewe/VioletWing/total?style=for-the-badge&logo=github&color=8E44AD)](https://github.com/Jesewe/VioletWing/releases)
 [![Latest Release](https://img.shields.io/github/v/release/jesewe/VioletWing?style=for-the-badge&logo=github&color=8E44AD)](https://github.com/Jesewe/VioletWing/releases/latest/)
@@ -11,129 +11,140 @@
 
 ---
 
-## What is VioletWing?
+External assistance tool for CS2. Reads game memory, draws an overlay, fires on your behalf - configurable per weapon, per key, per taste. Offsets update on startup so you stay functional after patches without touching a config file.
 
-VioletWing is a training tool for Counter-Strike 2 players. It helps analyze and improve gameplay mechanics such as aim consistency, movement, and game awareness.
+> [!WARNING]
+> Using this in online matchmaking violates CS2's Terms of Service and will get your account VAC banned. Run it offline or in private servers - that's on you.
+
+> [!IMPORTANT]
+> Antivirus software will flag this. It reads another process's memory, which looks identical to malware from AV's perspective. Read the source, build it yourself, and add an exception if you trust what you see.
 
 ---
 
-## Features
+## 🌳 Quick Start
+
+1. Download `VioletWing.exe` from the [**Releases**](https://github.com/Jesewe/VioletWing/releases) page.
+2. Launch CS2 first, then run VioletWing **as Administrator**.
+3. Configure everything through the GUI - no manual config editing needed.
+
+> [!NOTE]
+> Run CS2 in **windowed** or **borderless windowed** mode. Fullscreen exclusive breaks the overlay.
+
+---
+
+## 🔫 Features
 
 ### TriggerBot
 
-- Customizable trigger keys (`x`, `c`, `mouse4`, `mouse5`)
-- Toggle mode for single-key activation
-- Weapon-specific delays for Pistols, Rifles, Snipers, SMGs, and Heavy weapons
-- Configurable `ShotDelayMin`, `ShotDelayMax`, and `PostShotDelay`
+Fires when your crosshair lands on an enemy. Weapon-specific delays keep it looking human - Snipers wait longer than Pistols.
+
+- Keys: `x`, `c`, `mouse4`, `mouse5` (or toggle mode)
+- Per-class delays: Pistols, Rifles, Snipers, SMGs, Heavy
+- Tunable `ShotDelayMin`, `ShotDelayMax`, `PostShotDelay`
 
 ### ESP Overlay
 
-- Bounding boxes, skeletons, and snaplines
-- Health and name display
-- Customizable colors and line thickness
-- Optional teammate visualization with name transliteration
+Draws over the game window. Enemies show boxes, skeletons, snaplines, health bars, and names. Teammates optional.
+
+- Bounding boxes, skeletons, snaplines
+- Health bars and name display with Cyrillic transliteration
+- Fully customizable colors and line thickness
 
 ### Bunnyhop
 
-- Configurable jump key binding
+Auto-jumps at the right tick so you stop fighting the scroll wheel.
+
+- Custom jump key binding
 - Adjustable jump delay
-- Helps practice optimal timing for speed retention
 
 ### NoFlash
 
-- Adjustable flash suppression strength
+Caps flash opacity. Flashbangs still go off - you just stop going blind.
+
+- Adjustable suppression strength (0–100%)
 
 ### GUI
 
-- Dashboard with real-time status, offset info, and version details
-- Settings tabs for General, Trigger, Overlay, and Additional options
-- Integrated log viewer
-- Built-in FAQ
-- Automatic update checking
-- Supporters page
+Full desktop interface. No command line required.
 
-### Other
-
-- Automatic offset updates fetched on startup
-- Live config reload from `config.json` without restart
-- Logs saved to `%LOCALAPPDATA%\VioletWing\logs\`
-- Stable and pre-release version support
+- Dashboard: live status, offset version, app version
+- Tabs for General, Trigger, Overlay, and Additional settings
+- Integrated log viewer and FAQ
+- Auto-update checking with stable/pre-release toggle
 
 ---
 
-## Installation
-
-### Pre-Built (Recommended)
-
-1. Go to the [Releases Page](https://github.com/Jesewe/VioletWing/releases)
-2. Download the latest `VioletWing.exe`
-3. Run it
-
-### Build from Source
+## 🛠️ Build from Source
 
 ```bash
 git clone https://github.com/Jesewe/VioletWing.git
 cd VioletWing
 pip install -r requirements.txt
 
-# Install PyMeow (required for overlay)
-# Download from: https://github.com/qb-0/pyMeow/releases
+# PyMeow is required for the overlay - download from:
+# https://github.com/qb-0/pyMeow/releases
 pip install pyMeow*.zip
 
 python main.py
 ```
 
-To build an executable:
+To build a standalone `.exe`:
 
 ```bash
 compile.bat
 ```
 
-> System requirement: Python >= 3.8 and < 3.12.10
+**Python requirement:** `>= 3.8` and `< 3.12.10`
 
 ---
 
-## Quick Start
+## ⚙️ Configuration
 
-1. Launch Counter-Strike 2 and enter a practice match
-2. Start VioletWing
-3. Configure settings via the GUI
-4. Toggle features as needed
+All settings save to `config.json`. The GUI writes it for you, but you can edit it by hand - VioletWing picks up changes live without a restart.
 
----
-
-## Configuration
-
-Settings can be changed through the GUI or by editing `config.json` directly. Changes to `config.json` are applied automatically via file watching.
-
-- **General**: Enable/disable TriggerBot, Overlay, Bunnyhop, NoFlash
-- **Trigger**: Activation keys, delays, weapon-specific behavior
-- **Overlay**: ESP appearance, colors, display options
-- **Additional**: Bunnyhop and NoFlash parameters
+Log files go to `%LOCALAPPDATA%\VioletWing\logs\`.
 
 ---
 
-## Troubleshooting
+## 🔧 Troubleshooting
 
-| Issue                           | Solution                                                                      |
-| ------------------------------- | ----------------------------------------------------------------------------- |
-| Failed to fetch offsets         | Check internet connection and firewall settings                               |
-| Offset errors after game update | Wait for updated offsets from [cs2-dumper](https://github.com/a2x/cs2-dumper) |
-| Could not open `cs2.exe`        | Run with administrator privileges                                             |
-| Overlay not displaying          | Use windowed or borderless mode; check overlay settings                       |
-| Bunnyhop inconsistent           | Ensure CS2 window has focus; verify jump key settings                         |
-| NoFlash not working             | Confirm offsets are current and feature is enabled                            |
+| Issue                             | Fix                                                                                                                                                                                                                    |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Failed to fetch offsets           | Check your internet connection and firewall                                                                                                                                                                            |
+| Offset errors after a game update | Wait for [cs2-dumper](https://github.com/a2x/cs2-dumper) to publish new offsets                                                                                                                                        |
+| Can't open `cs2.exe`              | Run VioletWing as Administrator                                                                                                                                                                                        |
+| Overlay not visible               | Switch CS2 to windowed or borderless mode                                                                                                                                                                              |
+| ESP overlay is a black rectangle  | NVIDIA driver bug with transparent windows - open NVIDIA Control Panel → Manage 3D Settings → set **OpenGL GDI compatibility** to **Prefer compatible** ([raylib#2932](https://github.com/raysan5/raylib/issues/2932)) |
+| Bunnyhop feels inconsistent       | CS2 window must have focus; verify your jump key binding                                                                                                                                                               |
+| NoFlash does nothing              | Confirm offsets loaded correctly and the feature is enabled in General settings                                                                                                                                        |
 
-For additional help, check the FAQ tab in the application or review logs at `%LOCALAPPDATA%\VioletWing\logs\`.
-
----
-
-## Disclaimer
-
-This tool is provided for educational and training purposes only. Using automation tools in online multiplayer matches violates Counter-Strike 2's Terms of Service and may result in VAC bans or other penalties. The developers assume no responsibility for misuse. Use at your own risk and only in appropriate contexts.
+More help in the FAQ tab inside the app.
 
 ---
 
-## License
+## 💫 Credits
 
-VioletWing is licensed under the **GNU General Public License v3.0**. See the [LICENSE](LICENSE) file for details.
+- [**a2x**](https://github.com/a2x) for [cs2-dumper](https://github.com/a2x/cs2-dumper) and keeping offsets current
+- All [contributors](https://github.com/Jesewe/VioletWing/graphs/contributors) who filed issues, submitted PRs, and tested builds
+
+---
+
+## 🔖 License
+
+VioletWing is licensed under the **GNU General Public License v3.0**.
+
+```diff
++ You are free to:
+• Use, study, and modify the source code.
+• Distribute copies and modified versions.
+
++ Under the following terms:
+• Keep the same GPLv3 license on any derivative work.
+• Make source code available when you distribute binaries.
+
+- You are not allowed to:
+• Relicense under a proprietary license.
+• Distribute without source or a written offer to provide it.
+```
+
+See [LICENSE](LICENSE) for the full text.
