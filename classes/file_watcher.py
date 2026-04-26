@@ -38,6 +38,7 @@ class ConfigFileChangeHandler(FileSystemEventHandler):
     def reload_config(self):
         """Reloads the configuration file and updates all feature configurations."""
         try:
+            ConfigManager.invalidate_cache()
             new_config = ConfigManager.load_config()
 
             # update_config() triggers internal cache resets (e.g. weapon settings,

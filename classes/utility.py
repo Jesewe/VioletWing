@@ -153,11 +153,15 @@ class Utility:
 
             logger.debug(f"Fetching offsets from {server_name} (author: {source_config['author']})...")
 
-            # Three sequential requests - kept sequential intentionally so failures
-            # are attributed to a specific file in the log.
-            response_offset = requests.get(offsets_url)
-            response_client = requests.get(client_dll_url)
-            response_buttons = requests.get(buttons_url)
+            # Fire all three requests concurrently - they have no dependency on each other.
+            from concurrent.futures import ThreadPoolExecutor
+            with ThreadPoolExecutor(max_workers=3) as ex:
+                fut_offsets = ex.submit(requests.get, offsets_url)
+                fut_client  = ex.submit(requests.get, client_dll_url)
+                fut_buttons = ex.submit(requests.get, buttons_url)
+                response_offset  = fut_offsets.result()
+                response_client  = fut_client.result()
+                response_buttons = fut_buttons.result()
 
             for label, resp in [("offsets", response_offset), ("client_dll", response_client), ("buttons", response_buttons)]:
                 if resp.status_code != 200:
@@ -184,7 +188,6 @@ class Utility:
         except Exception as e:
             logger.exception(f"Unexpected error fetching from {server_name}: {e}")
             return None
-        
     @staticmethod
     def get_available_offset_sources():
         """

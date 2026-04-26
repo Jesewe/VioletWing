@@ -513,58 +513,6 @@ class MainWindow:
             logger.exception("An unexpected error occurred while saving settings.")
             messagebox.showerror("Error", "An unexpected error occurred. Check logs for details.")
 
-    def _restart_feature(self, feature_name, feature_obj, feature_class, config_section, new_config):
-        """Helper method to restart a single feature."""
-        try:
-            feature_obj.stop()
-            thread = getattr(self, f'{feature_name.lower()}_thread', None)
-            if thread and thread.is_alive():
-                thread.join(timeout=2.0)
-            setattr(self, f'{feature_name.lower()}_thread', None)
-
-            if new_config["General"][config_section]:
-                new_feature = feature_class(self.memory_manager)
-                new_feature.update_config(new_config)
-
-                # Keep both the convenience attribute and the registry in sync so
-                # stop_client() and file_watcher both see the live instance.
-                setattr(self, feature_name.lower(), new_feature)
-                self.features[config_section]["instance"] = new_feature
-
-                new_thread = threading.Thread(target=new_feature.start, daemon=True)
-                new_thread.start()
-                setattr(self, f'{feature_name.lower()}_thread', new_thread)
-                logger.info(f"{feature_name} restarted with new configuration.")
-
-            return True
-        except Exception:
-            logger.exception(f"Failed to restart feature: {feature_name}")
-            return False
-
-    def restart_affected_features(self, old_config, new_config):
-        """Restart only features affected by configuration changes."""
-        any_feature_running = False
-
-        def config_changed(section):
-            return old_config.get(section, {}) != new_config.get(section, {})
-
-        # Restart features if their config changed and they're running
-        for config_section, feature_data in self.features.items():
-            feature_obj = feature_data["instance"]
-            if hasattr(feature_obj, 'is_running') and feature_obj.is_running and \
-               (config_changed(config_section) or config_changed("General")):
-                
-                feature_name = feature_data["name"]
-                feature_class = feature_data["class"]
-                if self._restart_feature(feature_name, feature_obj, feature_class, config_section, new_config):
-                    any_feature_running = True
-
-        # Update UI status
-        if any_feature_running:
-            self.update_client_status("Active", "#22c55e")
-        else:
-            self.update_client_status("Inactive", "#ef4444")
-
     def update_config_from_ui(self, config):
         """Update the configuration from the UI elements by calling granular update methods."""
         self._update_general_config_from_ui(config)
@@ -727,21 +675,15 @@ class MainWindow:
             # Stop all running features to ensure a clean state
             self.stop_client()
 
-            # Get a fresh copy of the default configuration
-            new_config = ConfigManager.DEFAULT_CONFIG.copy()
-            
-            # Update the config for all feature instances
-            self.triggerbot.config = new_config
-            self.overlay.config = new_config
-            self.bunnyhop.config = new_config
-            self.noflash.config = new_config
-            
-            # Update the UI to reflect the new default settings
+            new_config = ConfigManager.reset_to_default()
+
+            # Sync all feature instances to the reset config via update_config so
+            # internal caches (VK codes, weapon settings, etc.) are also reset.
+            for feature_data in self.features.values():
+                feature_data["instance"].update_config(new_config)
+
             self.update_ui_from_config()
 
-            # Save the new default configuration to the file
-            ConfigManager.save_config(new_config)
-            
             messagebox.showinfo("Settings Reset", "All settings have been reset to their default values. You can now start the client again.")
         except Exception:
             logger.exception("Failed to reset settings to default.")
@@ -749,20 +691,21 @@ class MainWindow:
 
     def update_ui_from_config(self):
         """Update the UI elements from the configuration by calling granular update methods."""
-        self._update_general_settings_ui_from_config()
-        self._update_trigger_settings_ui_from_config()
-        self._update_overlay_settings_ui_from_config()
-        self._update_additional_settings_ui_from_config()
+        config = ConfigManager.load_config()
+        self._update_general_settings_ui_from_config(config)
+        self._update_trigger_settings_ui_from_config(config)
+        self._update_overlay_settings_ui_from_config(config)
+        self._update_additional_settings_ui_from_config(config)
 
-    def _update_general_settings_ui_from_config(self):
+    def _update_general_settings_ui_from_config(self, config):
         """Update General settings UI from the configuration."""
-        settings = self.triggerbot.config["General"]
+        settings = config["General"]
         for key in ("Trigger", "Overlay", "Bunnyhop", "Noflash"):
             self.ui_bridge.set_value(key, settings.get(key, False))
 
-    def _update_trigger_settings_ui_from_config(self):
+    def _update_trigger_settings_ui_from_config(self, config):
         """Update Trigger settings UI from the configuration."""
-        settings = self.triggerbot.config["Trigger"]
+        settings = config["Trigger"]
         self.ui_bridge.set_value("TriggerKey", settings.get("TriggerKey", "x"))
         self.ui_bridge.set_value("ToggleMode", settings.get("ToggleMode", False))
         self.ui_bridge.set_value("AttackOnTeammates", settings.get("AttackOnTeammates", False))
@@ -770,9 +713,9 @@ class MainWindow:
             self.ui_bridge.set_value("active_weapon_type", settings.get("active_weapon_type", "Rifles"))
             self.update_weapon_settings_display()
 
-    def _update_overlay_settings_ui_from_config(self):
+    def _update_overlay_settings_ui_from_config(self, config):
         """Update Overlay settings UI from the configuration via overlay_widgets registry."""
-        settings = self.overlay.config["Overlay"]
+        settings = config["Overlay"]
         widgets = self.overlay_widgets
 
         for key in ("enable_box", "enable_skeleton", "draw_snaplines",
@@ -794,13 +737,13 @@ class MainWindow:
             if info and "widget" in info:
                 info["widget"].set(Utility.get_color_name_from_hex(settings.get(key, "#FFFFFF")))
 
-    def _update_additional_settings_ui_from_config(self):
+    def _update_additional_settings_ui_from_config(self, config):
         """Update Additional (Bunnyhop, NoFlash) settings UI from the configuration."""
-        bunnyhop = self.bunnyhop.config.get("Bunnyhop", {})
+        bunnyhop = config.get("Bunnyhop", {})
         self.ui_bridge.set_value("JumpKey", bunnyhop.get("JumpKey", "space"))
         self.ui_bridge.set_value("JumpDelay", str(bunnyhop.get("JumpDelay", 0.01)))
 
-        noflash = self.noflash.config.get("NoFlash", {})
+        noflash = config.get("NoFlash", {})
         self.ui_bridge.set_value("FlashSuppressionStrength", noflash.get("FlashSuppressionStrength", 0.0))
 
     def open_config_directory(self):

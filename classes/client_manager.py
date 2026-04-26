@@ -17,7 +17,7 @@ class ClientManager:
         """Helper method to start a single feature."""
         if not getattr(feature_obj, 'is_running', False):
             try:
-                feature_obj.config = config
+                feature_obj.update_config(config)
                 feature_obj.is_running = True
                 thread = threading.Thread(target=feature_obj.start, daemon=True)
                 thread.start()

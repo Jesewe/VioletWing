@@ -83,9 +83,9 @@ class ConfigManager:
         }
     }
     
-    # Cache and thread safety
+    # Cache and thread safety - RLock allows set_value to re-enter load_config
     _config_cache: Optional[Dict[str, Any]] = None
-    _lock: threading.Lock = threading.Lock()
+    _lock: threading.RLock = threading.RLock()
     
     @classmethod
     def load_config(cls) -> Dict[str, Any]:
@@ -297,21 +297,20 @@ class ConfigManager:
         if not keys:
             logger.error("No keys provided to set_value")
             return False
-        
-        config = cls.load_config()
-        current = config
-        
-        # Navigate to the parent of the target key
-        for key in keys[:-1]:
-            if key not in current:
-                current[key] = {}
-            current = current[key]
-        
-        # Set the value
-        current[keys[-1]] = value
-        
-        # Save the configuration
-        return cls.save_config(config, log_info=False)
+
+        # Hold the lock for the full load→mutate→save sequence so concurrent
+        # callers cannot interleave and produce a lost-update.
+        with cls._lock:
+            config = cls.load_config()
+            current = config
+
+            for key in keys[:-1]:
+                if key not in current:
+                    current[key] = {}
+                current = current[key]
+
+            current[keys[-1]] = value
+            return cls._save_to_file(config, log_info=False)
 
 # Color choices for Overlay
 COLOR_CHOICES = {
