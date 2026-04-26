@@ -480,7 +480,10 @@ class MainWindow:
         weapon_type = self.ui_bridge.get_value("active_weapon_type")
         if weapon_type is None:
             return
-        settings = self.triggerbot.config["Trigger"]["WeaponSettings"].get(weapon_type, {})
+        # Read from the live config cache so values reflect the latest save,
+        # not the stale in-memory config that only updates when the bot runs.
+        config = ConfigManager.load_config()
+        settings = config["Trigger"]["WeaponSettings"].get(weapon_type, {})
         self.ui_bridge.set_value("ShotDelayMin", str(settings.get("ShotDelayMin", 0.01)))
         self.ui_bridge.set_value("ShotDelayMax", str(settings.get("ShotDelayMax", 0.03)))
         self.ui_bridge.set_value("PostShotDelay", str(settings.get("PostShotDelay", 0.1)))

@@ -62,6 +62,9 @@ class CS2TriggerBot:
         # Reset cached weapon settings to force fresh lookup
         self.current_weapon_settings = None
         self.last_weapon_type = None
+
+        # Allow the bot to be restarted after a stop() call
+        self.stop_event.clear()
         
         self.mouse_button_map = {
             "mouse3": Button.middle,
@@ -119,14 +122,14 @@ class CS2TriggerBot:
 
     def get_weapon_settings(self, weapon_type: str) -> Dict[str, Any]:
         """Get weapon settings with caching for performance. Always uses the actual in-game weapon type."""
-        # Always update cache when weapon type changes to ensure correct settings
         if weapon_type != self.last_weapon_type:
-            self.current_weapon_settings = self.weapon_settings_cache.get(
-                weapon_type, self.weapon_settings_cache.get("Rifles", {})
+            # Copy the inner dict so concurrent config updates can't mutate our cached reference
+            self.current_weapon_settings = dict(
+                self.weapon_settings_cache.get(weapon_type, self.weapon_settings_cache.get("Rifles", {}))
             )
             self.last_weapon_type = weapon_type
             logger.debug(f"Weapon type changed to: {weapon_type}")
-        
+
         return self.current_weapon_settings
 
     def is_trigger_key_pressed(self) -> bool:
