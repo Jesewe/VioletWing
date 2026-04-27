@@ -1,0 +1,58 @@
+name: Feature Request
+description: Propose something new.
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Check [open issues](https://github.com/Jesewe/VioletWing/issues) and [discussions](https://github.com/Jesewe/VioletWing/discussions) first - your idea may already be tracked.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - TriggerBot
+        - Overlay (ESP)
+        - Bunnyhop
+        - NoFlash
+        - GUI / Settings
+        - Configuration
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What are you trying to do that you currently can't?
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: Describe what you want. Be specific - "better delays" is not actionable, "per-key delay override" is.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other approaches you thought about and why you ruled them out.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues and this is not already tracked.
+          required: true
+        - label: This works within offline or private server use - it does not enable online competitive play.
+          required: true

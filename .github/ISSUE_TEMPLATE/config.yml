@@ -1,1 +1,5 @@
 blank_issues_enabled: false
+contact_links:
+  - name: Help Center
+    url: https://violetwing.vercel.app/
+    about: Documentation, FAQ, and setup guides.
