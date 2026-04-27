@@ -1,5 +1,5 @@
 keyboard==0.13.5
-packaging==26.0
+packaging==26.2
 psutil==7.2.2
 pymem==1.14.0
 pynput==1.8.1
