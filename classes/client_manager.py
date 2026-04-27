@@ -17,7 +17,7 @@ class ClientManager:
         """Helper method to start a single feature."""
         if not getattr(feature_obj, 'is_running', False):
             try:
-                feature_obj.config = config
+                feature_obj.update_config(config)
                 feature_obj.is_running = True
                 thread = threading.Thread(target=feature_obj.start, daemon=True)
                 thread.start()
@@ -118,12 +118,16 @@ class ClientManager:
                 self._stop_feature(feature_data["name"], feature_data["instance"])
 
     def update_running_feature_configs(self, new_config):
-        """Update the configuration for all currently running features and update UI status."""
+        """Update the configuration for all features and update UI status.
+
+        All instances are updated regardless of running state so that in-memory
+        config (e.g. triggerbot.config) is never stale between saves.
+        """
         any_feature_running = False
         for feature_data in self.features.values():
             instance = feature_data["instance"]
+            instance.update_config(new_config)
             if getattr(instance, 'is_running', False):
-                instance.update_config(new_config)
                 logger.debug(f"Configuration updated for {feature_data['name']}.")
                 any_feature_running = True
         

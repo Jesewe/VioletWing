@@ -38,16 +38,14 @@ class ConfigFileChangeHandler(FileSystemEventHandler):
     def reload_config(self):
         """Reloads the configuration file and updates all feature configurations."""
         try:
-            # Reload the updated configuration file
+            ConfigManager.invalidate_cache()
             new_config = ConfigManager.load_config()
-            
-            # Update configurations for all features
-            self.main_window.triggerbot.config = new_config
-            self.main_window.overlay.config = new_config
-            self.main_window.bunnyhop.config = new_config
-            self.main_window.noflash.config = new_config
-            
-            # Update UI in the main thread to reflect new configuration
+
+            # update_config() triggers internal cache resets (e.g. weapon settings,
+            # VK code cache) that a direct .config assignment would bypass.
+            for feature_data in self.main_window.features.values():
+                feature_data["instance"].update_config(new_config)
+
             self.main_window.root.after(0, self.main_window.update_ui_from_config)
         except Exception as e:
             logger.exception("Failed to reload configuration from %s: %s", self.config_path, e)

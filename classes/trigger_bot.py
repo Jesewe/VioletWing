@@ -1,8 +1,7 @@
-import threading, time, random, ctypes, winsound
+import threading, time, random, ctypes, winsound, queue
 from typing import Optional, Dict, Any
 
 from pynput.mouse import Controller, Button, Listener as MouseListener
-from pynput.keyboard import Listener as KeyboardListener
 
 from classes.config_manager import ConfigManager
 from classes.memory_manager import MemoryManager
@@ -26,8 +25,10 @@ class CS2TriggerBot:
         self.memory_manager = memory_manager
         self.is_running = False
         self.stop_event = threading.Event()
-        self.trigger_active = False
         self.toggle_state = False
+
+        # Used only for mouse-button triggers (pynput mouse listener sets this).
+        self.trigger_active = False
         
         # Cached weapon settings for current weapon
         self.current_weapon_settings: Optional[Dict[str, Any]] = None
@@ -35,15 +36,19 @@ class CS2TriggerBot:
         
         # Performance optimizations
         self._vk_code_cache = {}
-        
+
         # Initialize configuration settings
         self.load_configuration()
-        self.update_config(self.config)
 
-        # Setup listeners
-        self.keyboard_listener = KeyboardListener(on_press=self.on_key_press, on_release=self.on_key_release)
+        # Single long-lived audio worker to avoid spawning a thread per beep
+        self._audio_queue: queue.Queue = queue.Queue()
+        self._audio_worker = threading.Thread(target=self._run_audio_worker, daemon=True)
+        self._audio_worker.start()
+
+        # Mouse listener handles mouse-button triggers (click events).
+        # Keyboard triggers use GetAsyncKeyState polling in the main loop -
+        # no pynput keyboard listener needed.
         self.mouse_listener = MouseListener(on_click=self.on_mouse_click)
-        self.keyboard_listener.start()
         self.mouse_listener.start()
 
     def load_configuration(self) -> None:
@@ -57,6 +62,9 @@ class CS2TriggerBot:
         # Reset cached weapon settings to force fresh lookup
         self.current_weapon_settings = None
         self.last_weapon_type = None
+
+        # Allow the bot to be restarted after a stop() call
+        self.stop_event.clear()
         
         self.mouse_button_map = {
             "mouse3": Button.middle,
@@ -77,42 +85,23 @@ class CS2TriggerBot:
         self.load_configuration()
         logger.debug("TriggerBot configuration updated.")
 
+    def _run_audio_worker(self) -> None:
+        """Long-lived thread that drains the audio queue. One thread, not one per beep."""
+        while True:
+            freq, duration = self._audio_queue.get()
+            try:
+                winsound.Beep(freq, duration)
+            except Exception as e:
+                logger.debug(f"Audio worker beep failed: {e}")
+            finally:
+                self._audio_queue.task_done()
+
     def play_toggle_sound(self, state: bool) -> None:
-        """Play a sound when the toggle key is pressed."""
+        """Enqueue a beep tone; the audio worker thread plays it asynchronously."""
         try:
-            # Use threading to avoid blocking
-            def play_sound():
-                if state:
-                    winsound.Beep(1000, 200)
-                else:
-                    winsound.Beep(500, 200)
-            
-            threading.Thread(target=play_sound, daemon=True).start()
+            self._audio_queue.put_nowait((1000, 200) if state else (500, 200))
         except Exception as e:
-            logger.error(f"Error playing toggle sound: {e}")
-
-    def on_key_press(self, key) -> None:
-        """Handle key press events."""
-        if not self.is_mouse_trigger:
-            try:
-                # Check if the key pressed is the trigger key
-                if hasattr(key, 'char') and key.char == self.trigger_key:
-                    if self.toggle_mode:
-                        self.toggle_state = not self.toggle_state
-                        self.play_toggle_sound(self.toggle_state)
-                    else:
-                        self.trigger_active = True
-            except AttributeError:
-                pass
-
-    def on_key_release(self, key) -> None:
-        """Handle key release events."""
-        if not self.is_mouse_trigger and not self.toggle_mode:
-            try:
-                if hasattr(key, 'char') and key.char == self.trigger_key:
-                    self.trigger_active = False
-            except AttributeError:
-                pass
+            logger.error(f"Error enqueuing toggle sound: {e}")
 
     def on_mouse_click(self, x, y, button, pressed) -> None:
         """Handle mouse click events."""
@@ -133,14 +122,14 @@ class CS2TriggerBot:
 
     def get_weapon_settings(self, weapon_type: str) -> Dict[str, Any]:
         """Get weapon settings with caching for performance. Always uses the actual in-game weapon type."""
-        # Always update cache when weapon type changes to ensure correct settings
         if weapon_type != self.last_weapon_type:
-            self.current_weapon_settings = self.weapon_settings_cache.get(
-                weapon_type, self.weapon_settings_cache.get("Rifles", {})
+            # Copy the inner dict so concurrent config updates can't mutate our cached reference
+            self.current_weapon_settings = dict(
+                self.weapon_settings_cache.get(weapon_type, self.weapon_settings_cache.get("Rifles", {}))
             )
             self.last_weapon_type = weapon_type
             logger.debug(f"Weapon type changed to: {weapon_type}")
-        
+
         return self.current_weapon_settings
 
     def is_trigger_key_pressed(self) -> bool:
@@ -164,6 +153,9 @@ class CS2TriggerBot:
         # Pre-calculate random values to reduce computation in loop
         last_shot_time = 0
         min_shot_interval = 0.01  # Minimum time between shots to prevent spam
+
+        # Track previous key state for rising-edge detection (keyboard toggle mode).
+        _prev_key_pressed = False
         
         while not self.stop_event.is_set():
             try:
@@ -172,12 +164,22 @@ class CS2TriggerBot:
                     sleep(MAIN_LOOP_SLEEP)
                     continue
 
-                # Check trigger activation
-                trigger_ready = False
-                if self.toggle_mode:
-                    trigger_ready = self.toggle_state
+                # Trigger activation
+                if self.is_mouse_trigger:
+                    # Mouse triggers are driven by pynput events (trigger_active / toggle_state).
+                    trigger_ready = self.toggle_state if self.toggle_mode else self.trigger_active
                 else:
-                    trigger_ready = self.trigger_active or self.is_trigger_key_pressed()
+                    # Keyboard triggers use GetAsyncKeyState. For toggle mode, detect the
+                    # rising edge here so we don't need a pynput keyboard listener at all.
+                    key_down = self.is_trigger_key_pressed()
+                    if self.toggle_mode:
+                        if key_down and not _prev_key_pressed:
+                            self.toggle_state = not self.toggle_state
+                            self.play_toggle_sound(self.toggle_state)
+                        _prev_key_pressed = key_down
+                        trigger_ready = self.toggle_state
+                    else:
+                        trigger_ready = key_down
 
                 if not trigger_ready:
                     sleep(MAIN_LOOP_SLEEP)
@@ -240,8 +242,6 @@ class CS2TriggerBot:
         time.sleep(sleep_time)
         
         try:
-            if hasattr(self, 'keyboard_listener') and self.keyboard_listener.running:
-                self.keyboard_listener.stop()
             if hasattr(self, 'mouse_listener') and self.mouse_listener.running:
                 self.mouse_listener.stop()
             logger.debug("TriggerBot stopped.")

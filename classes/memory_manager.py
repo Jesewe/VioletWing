@@ -16,7 +16,6 @@ class MemoryManager:
         self.buttons_data = buttons_data
         self.pm = None
         self.client_base = None
-        self.ent_list = None  # Cache for entity list pointer
         self.config = None  # Configuration cache
         # Offset attributes
         self.dwEntityList = None
@@ -48,12 +47,17 @@ class MemoryManager:
         # Check if pymem is initialized and the client module is retrieved
         if not self.initialize_pymem() or not self.get_client_module():
             return False
-        # Cache the entity list pointer
+        # Derive offsets from the current data dictionaries
         self.load_offsets()
-        if self.dwEntityList is None:  # Ensure offsets were loaded successfully
+        if self.dwEntityList is None:
             return False
-        self.ent_list = self.read_longlong(self.client_base + self.dwEntityList)
         return True
+
+    def _apply_offsets(self) -> None:
+        """Re-derive offset attributes from current offsets/client_data/buttons_data.
+        Called after async offset fetch completes so the manager is ready before the
+        game process is attached."""
+        self.load_offsets()
 
     def initialize_pymem(self) -> bool:
         """Attach pymem to the game process."""
@@ -118,9 +122,10 @@ class MemoryManager:
     def get_entity(self, index: int):
         """Retrieve an entity from the entity list."""
         try:
-            # Use cached entity list pointer
+            # Read the entity list pointer fresh to avoid stale data after map changes
+            ent_list = self.read_longlong(self.client_base + self.dwEntityList)
             list_offset = 0x8 * (index >> 9)
-            ent_entry = self.read_longlong(self.ent_list + list_offset + 0x10)
+            ent_entry = self.read_longlong(ent_list + list_offset + 0x10)
             entity_offset = 112 * (index & 0x1FF)
             return self.read_longlong(ent_entry + entity_offset)
         except Exception as e:
@@ -155,42 +160,53 @@ class MemoryManager:
             return None
 
     def get_weapon_type(self) -> str:
-        """Get the type of the currently equipped weapon."""
+        """Get the category of the currently equipped weapon via m_iItemDefinitionIndex."""
         try:
             player = self.read_longlong(self.client_base + self.dwLocalPlayerPawn)
-            if not player: return "Rifles"
+            if not player:
+                return "Rifles"
 
-            weapon_services_ptr = self.read_longlong(player + self.m_pWeaponServices)
-            if not weapon_services_ptr: return "Rifles"
+            weapon_services = self.read_longlong(player + self.m_pWeaponServices)
+            if not weapon_services:
+                return "Rifles"
 
-            weapon_handle = self.read_longlong(weapon_services_ptr + self.m_hActiveWeapon)
-            if not weapon_handle: return "Rifles"
+            weapon_handle = self.read_longlong(weapon_services + self.m_hActiveWeapon)
+            if not weapon_handle:
+                return "Rifles"
 
-            weapon_id = weapon_handle & 0xFFFF
-            list_entry = self.read_longlong(self.ent_list + 8 * ((weapon_id & 0x7FFF) >> 9) + 16)
-            if not list_entry: return "Rifles"
+            weapon_index = weapon_handle & 0x7FFF
+            ent_list = self.read_longlong(self.client_base + self.dwEntityList)
+            list_entry = self.read_longlong(ent_list + 8 * (weapon_index >> 9) + 16)
+            if not list_entry:
+                return "Rifles"
 
-            weapon_entity_ptr = self.read_longlong(list_entry + 112 * (weapon_id & 0x1FF))
-            if not weapon_entity_ptr: return "Rifles"
+            weapon_entity = self.read_longlong(list_entry + 112 * (weapon_index & 0x1FF))
+            if not weapon_entity:
+                return "Rifles"
 
-            attribute_manager_ptr = self.read_longlong(weapon_entity_ptr + self.m_AttributeManager)
-            if not attribute_manager_ptr: return "Rifles"
-
-            item_ptr = self.read_longlong(attribute_manager_ptr + self.m_Item)
-            if not item_ptr: return "Rifles"
-
-            item_id = self.read_int(item_ptr + self.m_iItemDefinitionIndex)
+            # All three are embedded struct offsets - add them, do NOT dereference as pointers.
+            # m_iItemDefinitionIndex is uint16, mask the int read to 16 bits.
+            item_id = self.read_int(
+                weapon_entity + self.m_AttributeManager + self.m_Item + self.m_iItemDefinitionIndex
+            ) & 0xFFFF
 
             weapon_map = {
-                1: "Pistols", 2: "Pistols", 3: "Pistols", 4: "Pistols", 30: "Pistols", 32: "Pistols", 36: "Pistols", 61: "Pistols", 63: "Pistols", 64: "Pistols",
-                7: "Rifles", 8: "Rifles", 10: "Rifles", 13: "Rifles", 16: "Rifles", 39: "Rifles", 60: "Rifles",
+                1: "Pistols", 2: "Pistols", 3: "Pistols", 4: "Pistols",
+                30: "Pistols", 32: "Pistols", 36: "Pistols",
+                61: "Pistols", 63: "Pistols", 64: "Pistols",
+                7: "Rifles", 8: "Rifles", 10: "Rifles", 13: "Rifles",
+                16: "Rifles", 39: "Rifles", 60: "Rifles",
                 9: "Snipers", 11: "Snipers", 38: "Snipers", 40: "Snipers",
-                17: "SMGs", 19: "SMGs", 23: "SMGs", 24: "SMGs", 26: "SMGs", 33: "SMGs", 34: "SMGs",
-                14: "Heavy", 25: "Heavy", 27: "Heavy", 28: "Heavy", 35: "Heavy"
+                17: "SMGs", 19: "SMGs", 23: "SMGs", 24: "SMGs",
+                26: "SMGs", 33: "SMGs", 34: "SMGs",
+                14: "Heavy", 25: "Heavy", 27: "Heavy", 28: "Heavy", 29: "Heavy", 35: "Heavy",
             }
-            return weapon_map.get(item_id, "Rifles")
+            category = weapon_map.get(item_id, "Rifles")
+            logger.debug(f"ItemDefinitionIndex={item_id} → {category}")
+            return category
+
         except Exception as e:
-            # logger.error(f"Error getting weapon type: {e}")
+            logger.debug(f"Failed to get weapon type: {e}")
             return "Rifles"
         
     def write_float(self, address: int, value: float) -> None:

@@ -1,0 +1,85 @@
+name: Bug Report
+description: Something is broken.
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Search [existing issues](https://github.com/Jesewe/VioletWing/issues) before submitting. Attach logs - reports without them are hard to act on.
+
+  - type: dropdown
+    id: version
+    attributes:
+      label: VioletWing Version
+      description: Find this on the Dashboard tab or in the release tag.
+      options:
+        - Latest stable
+        - Latest pre-release
+        - Other (specify in description)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Windows Version
+      options:
+        - Windows 11
+        - Windows 10
+    validations:
+      required: true
+
+  - type: dropdown
+    id: feature
+    attributes:
+      label: Affected Feature
+      options:
+        - TriggerBot
+        - Overlay (ESP)
+        - Bunnyhop
+        - NoFlash
+        - GUI / Settings
+        - Offset fetching
+        - Startup / install
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe the bug. What did you expect, and what did you get?
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Launch VioletWing
+        2. Enable TriggerBot with key 'x'
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: |
+        Paste relevant lines from:
+        `%LOCALAPPDATA%\Requests\ItsJesewe\crashes\vw_logs.log`
+      render: text
+    validations:
+      required: false
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Screenshots, config.json excerpts, GPU model - anything that helps.
+    validations:
+      required: false
