@@ -71,7 +71,7 @@ body:
       label: Logs
       description: |
         Paste relevant lines from:
-        `%LOCALAPPDATA%\Requests\ItsJesewe\crashes\vw_logs.log`
+        `%LOCALAPPDATA%\VioletWing\logs\violetwing.log`
       render: text
     validations:
       required: false
