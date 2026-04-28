@@ -221,7 +221,7 @@ def populate_dashboard(main_window, frame):
                 guide_card,
                 width=2,
                 height=20,
-                fg_color=("#e2e8f0", "#374151")
+                fg_color=("#c4b5fd", "#2a1d4e")
             )
             connector.pack(padx=(65, 0), anchor="w")
     
@@ -234,10 +234,10 @@ def create_stat_card(main_window, parent, title, value, color, subtitle):
     # Card frame with enhanced modern styling
     card = ctk.CTkFrame(
         parent,
-        corner_radius=25,
-        fg_color=("#ffffff", "#1a1b23"),
-        border_width=3,
-        border_color=("#e2e8f0", "#2d3748")
+        corner_radius=20,
+        fg_color=("#f5f3ff", "#0d0a1a"),
+        border_width=1,
+        border_color=("#c4b5fd", "#2a1d4e")
     )
     
     # Content frame within card with more padding
