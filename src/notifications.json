@@ -30,7 +30,7 @@
   {
     "number": "5",
     "title": "VioletWing Help Center",
-    "url": "https://violetwing.featurebase.app/en/help",
+    "url": "https://violetwing.vercel.app/",
     "timestamp": "2025-09-09",
     "message": "We have launched the VioletWing Help Center to provide users with comprehensive guides, FAQs, and troubleshooting tips. Visit the Help Center to find answers to common questions and learn how to make the most of VioletWing."
   },
@@ -50,9 +50,9 @@
   },
   {
     "number": "8",
-    "title": "Support VioletWing on Ko-fi!",
-    "url": "https://ko-fi.com/jesewe",
-    "timestamp": "2025-11-28",
-    "message": "If you find VioletWing helpful and would like to support its development, consider buying me a coffee on Ko-fi! Your support helps keep the project alive and allows me to continue improving VioletWing for the community. Thank you for your generosity!"
+    "title": "VioletWing Update 1.3.0 (Redesigned)",
+    "url": "https://github.com/Jesewe/VioletWing/releases/tag/v1.3.0",
+    "timestamp": "2026-04-29",
+    "message": "VioletWing has been updated to version 1.3.0, featuring a complete redesign of the user interface and enhanced functionality. This update includes improved performance. Check out the release notes for detailed information on what's new in this version."
   }
 ]
