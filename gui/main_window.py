@@ -231,7 +231,7 @@ class MainWindow:
         social_buttons_data = [
             {"text": "GitHub",        "icon_file": "github_icon.png",    "url": "https://github.com/Jesewe/VioletWing"},
             {"text": "Telegram",      "icon_file": "telegram_icon.png",  "url": "https://t.me/cs2_jesewe"},
-            {"text": "Documentation", "icon_file": "readme_icon.png",    "url": "https://violetwing.vercel.app/"},
+            {"text": "Documentation", "icon_file": "book_open_icon.png",    "url": "https://violetwing.vercel.app/"},
         ]
 
         for i, data in enumerate(social_buttons_data):
@@ -326,15 +326,15 @@ class MainWindow:
         sidebar.grid_propagate(False)
 
         self.nav_items = [
-            ("Dashboard", "dashboard", "🏠"),
-            ("General Settings", "general_settings", "⚙️"),
-            ("Trigger Settings", "trigger_settings", "🔫"),
-            ("Overlay Settings", "overlay_settings", "🌍"),
-            ("Additional Settings", "additional_settings", "⚡"),
-            ("Logs", "logs", "📋"),
-            ("FAQ", "faq", "❓"),
-            ("Notifications", "notifications", "🔔"),
-            ("Supporters", "supporters", "🤝"),
+            ("Dashboard",          "dashboard",           "charts_icon.png"),
+            ("General Settings",   "general_settings",    "gear_icon.png"),
+            ("Trigger Settings",   "trigger_settings",    "crosshairs_icon.png"),
+            ("Overlay Settings",   "overlay_settings",    "layer_group_icon.png"),
+            ("Additional Settings","additional_settings", "bolt_icon.png"),
+            ("Logs",               "logs",                "clipboard_list_icon.png"),
+            ("FAQ",                "faq",                 "circle_question_icon.png"),
+            ("Notifications",      "notifications",       "bell_icon.png"),
+            ("Supporters",         "supporters",          "handshake_icon.png"),
         ]
 
         # Thin separator line between header and sidebar content area
@@ -343,20 +343,31 @@ class MainWindow:
 
         self.nav_buttons = {}
         self.nav_indicators = {}
+        # Keep image refs alive — CTkImage is GC'd if not stored
+        self._nav_images = {}
 
-        for name, key, icon in self.nav_items:
+        for name, key, icon_file in self.nav_items:
+            try:
+                img = Image.open(Utility.resource_path(f'src/img/{icon_file}'))
+                ctk_image = ctk.CTkImage(light_image=img, dark_image=img, size=(18, 18))
+            except FileNotFoundError:
+                ctk_image = None
+            self._nav_images[key] = ctk_image
+
             # Row wrapper holds the indicator bar + button side by side
             row = ctk.CTkFrame(sidebar, fg_color="transparent", height=50)
             row.pack(fill="x", padx=0, pady=(0, 4))
             row.pack_propagate(False)
 
-            # 3px left indicator bar - hidden by default, shown when active
+            # 3px left indicator bar — hidden by default, shown when active
             indicator = ctk.CTkFrame(row, width=3, corner_radius=2, fg_color="transparent")
             indicator.pack(side="left", fill="y", padx=(8, 0))
 
             btn = ctk.CTkButton(
                 row,
-                text=f"{icon}  {name}",
+                text=name,
+                image=ctk_image,
+                compound="left",
                 command=lambda k=key: self.switch_view(k),
                 height=46,
                 corner_radius=10,
@@ -474,7 +485,7 @@ class MainWindow:
         """Called on the main thread when offset fetching fails."""
         messagebox.showerror("Offset Error", "Failed to fetch offsets. Check logs for details.")
         if hasattr(self, 'loading_label'):
-            self.loading_label.configure(text="⚠ Failed to load offsets. Check logs.", text_color="#ef4444")
+            self.loading_label.configure(text="Failed to load offsets. Check logs.", text_color="#ef4444")
 
     def update_client_status(self, status, color):
         """Update client status in header and dashboard."""

@@ -1,4 +1,5 @@
 import customtkinter as ctk
+from gui.icon_loader import icon_label
 import os
 from classes.logger import Logger
 from gui.theme import (FONT_TITLE, FONT_SUBTITLE, FONT_SECTION_TITLE, FONT_WIDGET,
@@ -124,12 +125,15 @@ def create_title_section(parent):
     title_container = ctk.CTkFrame(header_frame, fg_color="transparent")
     title_container.pack(side="left", fill="y")
 
+    _icon_row = ctk.CTkFrame(title_container, fg_color="transparent")
+    _icon_row.pack(anchor="w", pady=(10, 0))
+    icon_label(_icon_row, "clipboard_list_icon.png", size=(32, 32), padx=(0, 14))
     ctk.CTkLabel(
-        title_container,
-        text="📋 Application Logs",
+        _icon_row,
+        text="Application Logs",
         font=FONT_TITLE,
         text_color=COLOR_TEXT_PRIMARY
-    ).pack(anchor="w", pady=(10, 0))
+    ).pack(side="left")
 
     ctk.CTkLabel(
         title_container,
@@ -210,7 +214,7 @@ def _show_error_message(main_window, error_msg):
     # Format error message with guidance
     error_display = (
         "=== Application Logs ===\n"
-        "❌ Error Loading Logs\n\n"
+        "Error Loading Logs\n\n"
         f"{error_msg}\n\n"
         "Please check the application logs directory and permissions.\n"
         "Try refreshing the logs tab or restarting the application.\n\n"

@@ -1,4 +1,5 @@
 import customtkinter as ctk
+from gui.icon_loader import icon_label, load_icon
 from gui.theme import (
     FONT_TITLE, FONT_SUBTITLE, FONT_SECTION_TITLE, FONT_ITEM_LABEL,
     FONT_ITEM_DESCRIPTION, FONT_WIDGET,
@@ -36,13 +37,16 @@ def populate_faq(main_window, frame):
     title_container.pack(side="left", fill="y")
     
     # FAQ title with icon
+    _icon_row = ctk.CTkFrame(title_container, fg_color="transparent")
+    _icon_row.pack(anchor="w", pady=(10, 0))
+    icon_label(_icon_row, "circle_question_icon.png", size=(32, 32), padx=(0, 14))
     title_label = ctk.CTkLabel(
-        title_container,
-        text="❓ Frequently Asked Questions",
+        _icon_row,
+        text="Frequently Asked Questions",
         font=FONT_TITLE,
         text_color=COLOR_TEXT_PRIMARY
     )
-    title_label.pack(anchor="w", pady=(10, 0))
+    title_label.pack(side="left")
     
     # Subtitle providing context
     subtitle_label = ctk.CTkLabel(
@@ -146,12 +150,15 @@ def populate_faq(main_window, frame):
     footer_content.pack(padx=50, pady=40)
     
     # Footer title
+    _footer_title_row = ctk.CTkFrame(footer_content, fg_color="transparent")
+    _footer_title_row.pack(pady=(0, 8))
+    icon_label(_footer_title_row, "lightbulb_icon.png", size=(20, 20), padx=(0, 10))
     ctk.CTkLabel(
-        footer_content,
-        text="💡 Still have questions?",
+        _footer_title_row,
+        text="Still have questions?",
         font=FONT_SECTION_TITLE,
         text_color=COLOR_TEXT_PRIMARY
-    ).pack(pady=(0, 8))
+    ).pack(side="left")
     
     # Footer guidance text
     ctk.CTkLabel(
@@ -170,9 +177,11 @@ def populate_faq(main_window, frame):
         import webbrowser
         webbrowser.open("https://github.com/Jesewe/VioletWing/issues")
     
+    _bug_icon = load_icon("bug_icon.png", size=(16, 16))
     github_issues_btn = ctk.CTkButton(
         links_container,
-        text="🐛 Report Issues",
+        text="Report Issues",
+        image=_bug_icon, compound="left",
         command=open_github_issues,
         width=160,
         **BUTTON_STYLE_DANGER
@@ -184,9 +193,11 @@ def populate_faq(main_window, frame):
         import webbrowser
         webbrowser.open("https://github.com/Jesewe/VioletWing/releases/latest/")
     
+    _archive_icon = load_icon("box_archive_icon.png", size=(16, 16))
     github_releases_btn = ctk.CTkButton(
         links_container,
-        text="📦 Check Updates",
+        text="Check Updates",
+        image=_archive_icon, compound="left",
         command=open_github_releases,
         width=160,
         **BUTTON_STYLE_PRIMARY
@@ -198,9 +209,11 @@ def populate_faq(main_window, frame):
         import webbrowser
         webbrowser.open("https://violetwing.vercel.app/")
     
+    _book_icon = load_icon("book_open_icon.png", size=(16, 16))
     help_center_btn = ctk.CTkButton(
         links_container,
-        text="📚 Help Center",
+        text="Help Center",
+        image=_book_icon, compound="left",
         command=open_help_center,
         width=160,
         **BUTTON_STYLE_PRIMARY

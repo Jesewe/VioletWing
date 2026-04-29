@@ -1,4 +1,5 @@
 import customtkinter as ctk
+from gui.icon_loader import icon_label, load_icon
 import os
 from pathlib import Path
 from tkinter import filedialog, messagebox
@@ -27,13 +28,19 @@ OFFSET_FILES = [
     ("Buttons File", "buttons.json", "Select buttons.json file", "ButtonsFile")
 ]
 
-def create_section_header(parent, title, subtitle):
+def create_section_header(parent, title, subtitle, icon_file=None):
     """Creates a standardized section header."""
     header = ctk.CTkFrame(parent, fg_color="transparent")
+    header.pack(fill="x", padx=0, pady=(0, 20))
+    title_row = ctk.CTkFrame(header, fg_color="transparent")
+    title_row.pack(fill="x")
+    if icon_file:
+        icon_label(title_row, icon_file, size=(22, 22), padx=(0, 10))
+    _header_title_parent = title_row
     header.pack(fill="x", padx=40, pady=(40, 30))
 
     ctk.CTkLabel(
-        header,
+        _header_title_parent,
         text=title,
         font=FONT_SECTION_TITLE,
         text_color=COLOR_TEXT_PRIMARY,
@@ -63,9 +70,10 @@ def populate_general_settings(main_window, frame):
     title_frame = ctk.CTkFrame(settings, fg_color="transparent")
     title_frame.pack(fill="x", pady=(0, 40))
 
+    icon_label(title_frame, "gear_icon.png", size=(38, 38), padx=(0, 16))
     ctk.CTkLabel(
         title_frame,
-        text="⚙️  General Settings",
+        text="General Settings",
         font=FONT_TITLE,
         text_color=COLOR_TEXT_PRIMARY,
         anchor="w"
@@ -88,22 +96,26 @@ def create_reset_section(main_window, parent):
     section = ctk.CTkFrame(parent, **SECTION_STYLE)
     section.pack(fill="x", pady=(0, 30))
 
-    create_section_header(section, "⚙️  Configuration Management", "Manage configuration files and settings")
+    create_section_header(section, "Configuration Management", "Manage configuration files and settings", icon_file="screwdriver_wrench_icon.png")
 
     button_frame = ctk.CTkFrame(section, fg_color="transparent")
     button_frame.pack(fill="x", padx=40, pady=(0, 40))
 
+    _folder_icon = load_icon("folder_open_icon.png", size=(16, 16))
     ctk.CTkButton(
         button_frame,
-        text="📁  Open Config Directory",
+        text="Open Config Directory",
+        image=_folder_icon, compound="left",
         width=280,
         command=main_window.open_config_directory,
         **BUTTON_STYLE_PRIMARY
     ).pack(side="left", padx=(0, 20))
 
+    _reset_icon = load_icon("rotate_left_icon.png", size=(16, 16))
     ctk.CTkButton(
         button_frame,
-        text="🔄  Reset All Settings",
+        text="Reset All Settings",
+        image=_reset_icon, compound="left",
         width=280,
         command=main_window.reset_to_default_settings,
         **BUTTON_STYLE_DANGER
@@ -114,7 +126,7 @@ def create_features_section(main_window, parent):
     section = ctk.CTkFrame(parent, **SECTION_STYLE)
     section.pack(fill="x", pady=(0, 30))
 
-    create_section_header(section, "🔧  Feature Configuration", "Enable or disable main application features")
+    create_section_header(section, "Feature Configuration", "Enable or disable main application features", icon_file="sliders_icon.png")
 
     for i, (label, widget, key, desc) in enumerate(FEATURE_SETTINGS):
         create_setting_item(
@@ -136,7 +148,7 @@ def create_offsets_section(main_window, parent):
     section = ctk.CTkFrame(parent, **SECTION_STYLE)
     section.pack(fill="x", pady=(0, 30))
 
-    header = create_section_header(section, "📡  Offsets Configuration", "Configure offset source and local files")
+    header = create_section_header(section, "Offsets Configuration", "Configure offset source and local files", icon_file="satellite_dish_icon.png")
 
     available_sources = load_dynamic_offset_sources()
     source_mapping = {f"{cfg['name']} ({cfg['author']})": sid for sid, cfg in available_sources.items()}

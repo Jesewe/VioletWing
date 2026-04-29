@@ -1,4 +1,5 @@
 import customtkinter as ctk
+from gui.icon_loader import icon_label, load_icon
 import orjson
 import threading
 import requests
@@ -41,13 +42,16 @@ def populate_notifications(main_window, frame):
     title_container.pack(side="left", fill="y")
 
     # Title label
+    _icon_row = ctk.CTkFrame(title_container, fg_color="transparent")
+    _icon_row.pack(anchor="w", pady=(10, 0))
+    icon_label(_icon_row, "bell_icon.png", size=(32, 32), padx=(0, 14))
     title_label = ctk.CTkLabel(
-        title_container,
-        text="🔔 Notifications",
+        _icon_row,
+        text="Notifications",
         font=FONT_TITLE,
         text_color=COLOR_TEXT_PRIMARY
     )
-    title_label.pack(anchor="w", pady=(10, 0))
+    title_label.pack(side="left")
 
     # Subtitle
     subtitle_label = ctk.CTkLabel(
@@ -80,9 +84,11 @@ def populate_notifications(main_window, frame):
     loading_indicator.pack()
 
     # Loading spinner icon
+    _spin_icon = load_icon("rotate_icon.png", size=(28, 28))
     ctk.CTkLabel(
         loading_indicator,
-        text="⟳",
+        text="" if _spin_icon else "...",
+        image=_spin_icon,
         font=("Chivo", 28, "bold"),
         text_color="#ffffff"
     ).place(relx=0.5, rely=0.5, anchor="center")
@@ -246,7 +252,8 @@ def populate_notifications(main_window, frame):
         icon.pack()
         ctk.CTkLabel(
             icon,
-            text="✕",
+            text="" if load_icon("circle_xmark_icon.png", size=(28,28)) else "x",
+            image=load_icon("circle_xmark_icon.png", size=(28,28)),
             font=("Chivo", 30, "bold"),
             text_color="#FFFFFF"
         ).place(relx=0.5, rely=0.5, anchor="center")

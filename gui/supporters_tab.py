@@ -1,4 +1,5 @@
 import customtkinter as ctk
+from gui.icon_loader import icon_label, load_icon
 import orjson
 import threading
 import requests
@@ -38,10 +39,13 @@ def populate_supporters(main_window, frame):
     hero_content.pack(fill="x", padx=48, pady=48)
 
     # Title and subtitle
+    _title_row = ctk.CTkFrame(hero_content, fg_color="transparent")
+    _title_row.pack(anchor="w")
+    icon_label(_title_row, "handshake_icon.png", size=(38, 38), padx=(0, 18))
     ctk.CTkLabel(
-        hero_content, text="🤝 Project Supporters", font=FONT_TITLE,
+        _title_row, text="Project Supporters", font=FONT_TITLE,
         text_color=COLOR_TEXT_PRIMARY
-    ).pack(anchor="w")
+    ).pack(side="left")
     ctk.CTkLabel(
         hero_content, text="Celebrating our incredible community members who fuel this project's growth",
         font=FONT_SUBTITLE, text_color=COLOR_TEXT_SECONDARY, wraplength=800
@@ -202,14 +206,17 @@ def populate_supporters(main_window, frame):
         ).pack(anchor="w", pady=(0, 16))
         
         # Title
+        _dev_title_row = ctk.CTkFrame(content, fg_color="transparent")
+        _dev_title_row.pack(anchor="w")
+        icon_label(_dev_title_row, "rocket_icon.png", size=(20, 20), padx=(0, 10))
         ctk.CTkLabel(
-            content, text="Developers", font=FONT_SECTION_TITLE, 
+            _dev_title_row, text="Developers", font=FONT_SECTION_TITLE, 
             text_color=COLOR_TEXT_PRIMARY
-        ).pack(anchor="w")
+        ).pack(side="left")
         
         # Description
         ctk.CTkLabel(
-            content, text="🚀 Core developers building and maintaining this project", 
+            content, text="Core developers building and maintaining this project", 
             font=FONT_SUBTITLE, text_color=COLOR_TEXT_SECONDARY
         ).pack(anchor="w", pady=(12, 0))
 
@@ -288,14 +295,17 @@ def populate_supporters(main_window, frame):
         ).pack(anchor="w", pady=(0, 16))
         
         # Title
+        _com_title_row = ctk.CTkFrame(content, fg_color="transparent")
+        _com_title_row.pack(anchor="w")
+        icon_label(_com_title_row, "heart_icon.png", size=(20, 20), padx=(0, 10))
         ctk.CTkLabel(
-            content, text="Community Supporters", font=FONT_SECTION_TITLE, 
+            _com_title_row, text="Community Supporters", font=FONT_SECTION_TITLE, 
             text_color=COLOR_TEXT_PRIMARY
         ).pack(anchor="w")
         
         # Description
         ctk.CTkLabel(
-            content, text="💙 Amazing community members supporting this project", 
+            content, text="Amazing community members supporting this project", 
             font=FONT_SUBTITLE, text_color=COLOR_TEXT_SECONDARY
         ).pack(anchor="w", pady=(12, 0))
 
@@ -370,7 +380,7 @@ def populate_supporters(main_window, frame):
         )
         icon.pack()
         ctk.CTkLabel(
-            icon, text="👥", font=("Chivo", 24), text_color=("#FFFFFF", "#FFFFFF")
+            icon, text="", image=load_icon("users_icon.png", size=(28,28)), font=("Chivo", 24), text_color=("#FFFFFF", "#FFFFFF")
         ).pack(expand=True)
 
         # Message
@@ -405,7 +415,7 @@ def populate_supporters(main_window, frame):
         )
         icon.pack()
         ctk.CTkLabel(
-            icon, text="✕", font=("Chivo", 24, "bold"), 
+            icon, text="", image=load_icon("circle_xmark_icon.png", size=(28,28)), font=("Chivo", 24, "bold"), 
             text_color=("#FFFFFF", "#FFFFFF")
         ).pack(expand=True)
 
