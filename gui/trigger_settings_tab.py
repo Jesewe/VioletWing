@@ -1,4 +1,5 @@
 import customtkinter as ctk
+from gui.icon_loader import icon_label
 from gui.theme import (FONT_TITLE, FONT_SUBTITLE, FONT_SECTION_TITLE, FONT_SECTION_DESCRIPTION,
                          FONT_ITEM_LABEL, FONT_ITEM_DESCRIPTION, COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY,
                          SECTION_STYLE, SETTING_ITEM_STYLE, CHECKBOX_STYLE, ENTRY_STYLE, COMBOBOX_STYLE)
@@ -24,9 +25,10 @@ def create_title_section(parent):
     title_frame = ctk.CTkFrame(parent, fg_color="transparent")
     title_frame.pack(fill="x", pady=(0, 40))
     
+    icon_label(title_frame, "crosshairs_icon.png", size=(38, 38), padx=(0, 16))
     ctk.CTkLabel(
         title_frame,
-        text="🔫  Trigger Settings",
+        text="Trigger Settings",
         font=FONT_TITLE,
         text_color=COLOR_TEXT_PRIMARY,
         anchor="w"
@@ -43,7 +45,7 @@ def create_title_section(parent):
 def create_trigger_config_section(main_window, parent):
     """Create trigger configuration section with general settings."""
     section = create_section_frame(parent)
-    create_section_header(section, "🎯  Configuration", "Control how the trigger responds")
+    create_section_header(section, "Configuration", "Control how the trigger responds", icon_file="bullseye_icon.png")
     
     settings_list = [
         ("Trigger Key", "entry", "TriggerKey", "Key to activate trigger (e.g., 'x', 'mouse4')"),
@@ -60,7 +62,7 @@ def create_trigger_config_section(main_window, parent):
 def create_timing_settings_section(main_window, parent):
     """Create timing settings section with weapon-specific delays."""
     section = create_section_frame(parent)
-    header_frame = create_section_header(section, "⏱️  Timing Settings", "Fine-tune shooting delays per weapon type")
+    header_frame = create_section_header(section, "Timing Settings", "Fine-tune shooting delays per weapon type", icon_file="stopwatch_icon.png")
 
     active_weapon_var = ctk.StringVar(value=main_window.triggerbot.config['Trigger'].get('active_weapon_type', 'Rifles'))
     main_window.ui_bridge.register("active_weapon_type", var=active_weapon_var)
@@ -160,13 +162,16 @@ def create_section_frame(parent):
     section.pack(fill="x", pady=(0, 30))
     return section
 
-def create_section_header(parent, title, subtitle):
+def create_section_header(parent, title, subtitle, icon_file=None):
     """Create a header for a settings section."""
     header = ctk.CTkFrame(parent, fg_color="transparent")
     header.pack(fill="x", padx=40, pady=(40, 30))
-    
+    _title_row = ctk.CTkFrame(header, fg_color="transparent")
+    _title_row.pack(side="left")
+    if icon_file:
+        icon_label(_title_row, icon_file, size=(22, 22), padx=(0, 10))
     ctk.CTkLabel(
-        header, text=title, font=FONT_SECTION_TITLE,
+        _title_row, text=title, font=FONT_SECTION_TITLE,
         text_color=COLOR_TEXT_PRIMARY, anchor="w"
     ).pack(side="left")
     

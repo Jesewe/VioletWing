@@ -36,7 +36,9 @@ from gui.faq_tab import populate_faq
 from gui.notifications_tab import populate_notifications
 from gui.supporters_tab import populate_supporters
 from gui.theme import (FONT_FAMILY_BOLD, FONT_FAMILY_REGULAR, FONT_SIZE_H2, FONT_SIZE_H4, FONT_SIZE_P,
-                         COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY, COLOR_BACKGROUND, COLOR_WIDGET_BACKGROUND, COLOR_ACCENT_FG,
+                         COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY, COLOR_BACKGROUND, COLOR_WIDGET_BACKGROUND,
+                         COLOR_ACCENT_FG, COLOR_HEADER_BG, COLOR_SIDEBAR_BG, COLOR_SIDEBAR_ACTIVE_BG,
+                         COLOR_SIDEBAR_INDICATOR, COLOR_VIOLET_SUBTLE, COLOR_VIOLET,
                          BUTTON_STYLE_PRIMARY, BUTTON_STYLE_DANGER)
 
 # Get a logger instance for this module
@@ -88,8 +90,8 @@ class MainWindow:
             import ctypes
             gdi32 = ctypes.WinDLL('gdi32')
             font_files = [
-                'src/fonts/Manrope-Regular.ttf',
-                'src/fonts/Manrope-Bold.ttf',
+                'src/fonts/Outfit-Regular.ttf',
+                'src/fonts/Outfit-Bold.ttf',
                 'src/fonts/JetBrainsMono-Regular.ttf',
                 'src/fonts/JetBrainsMono-Bold.ttf'
             ]
@@ -152,7 +154,7 @@ class MainWindow:
 
     def create_modern_header(self):
         """Create a sleek modern header with gradient-like appearance."""
-        header_container = ctk.CTkFrame(self.root, height=80, corner_radius=0, fg_color=("#1a1a1a", "#0d1117"))
+        header_container = ctk.CTkFrame(self.root, height=80, corner_radius=0, fg_color=COLOR_HEADER_BG)
         header_container.grid(row=0, column=0, sticky="ew")
         header_container.grid_propagate(False)
         header_container.grid_columnconfigure(1, weight=1)
@@ -174,22 +176,22 @@ class MainWindow:
             title_frame, 
             text="Violet", 
             font=(FONT_FAMILY_BOLD[0], FONT_SIZE_H2, "bold"), 
-            text_color=COLOR_ACCENT_FG[0]
+            text_color="#a78bfa"
         ).pack(side="left")
         
         ctk.CTkLabel(
             title_frame, 
             text="Wing", 
             font=(FONT_FAMILY_BOLD[0], FONT_SIZE_H2, "bold"), 
-            text_color=COLOR_TEXT_PRIMARY[1]
+            text_color="#f0ebff"
         ).pack(side="left", padx=(5, 0))
         
         # Version badge
         version_badge = ctk.CTkFrame(
             left_frame,
-            fg_color=("#f3e8ff", "#2d1b4e"),
-            corner_radius=12,
-            height=28
+            fg_color=COLOR_VIOLET_SUBTLE,
+            corner_radius=8,
+            height=26
         )
         version_badge.pack(side="left", padx=(15, 0))
         
@@ -197,9 +199,9 @@ class MainWindow:
             version_badge,
             text=f"{ConfigManager.VERSION}",
             font=(FONT_FAMILY_BOLD[0], 12, "bold"),
-            text_color=COLOR_ACCENT_FG[0],
-            padx=12,
-            pady=4
+            text_color="#a78bfa",
+            padx=10,
+            pady=3
         ).pack()
 
     def create_header_right(self, parent):
@@ -222,20 +224,20 @@ class MainWindow:
         self.status_label.pack(side="left", padx=(8, 0))
 
     def create_social_buttons(self, parent):
-        """Create and pack the social media buttons."""
+        """Create and pack the social media buttons in a unified ghost style."""
         social_frame = ctk.CTkFrame(parent, fg_color="transparent")
         social_frame.pack(side="right")
 
         social_buttons_data = [
-            {"text": "GitHub", "icon": "github", "url": "https://github.com/Jesewe/VioletWing", "fg_color": "#2c3e50", "hover_color": "#34495e", "border_color": "#34495e"},
-            {"text": "Telegram", "icon": "telegram", "url": "https://t.me/cs2_jesewe", "fg_color": "#29A9EA", "hover_color": "#279cdb"},
-            {"text": "Documentation", "icon": "docs", "url": "https://violetwing.vercel.app/", "fg_color": "#8e44ad", "hover_color": "#9b59b6"}
+            {"text": "GitHub",        "icon_file": "github_icon.png",    "url": "https://github.com/Jesewe/VioletWing"},
+            {"text": "Telegram",      "icon_file": "telegram_icon.png",  "url": "https://t.me/cs2_jesewe"},
+            {"text": "Documentation", "icon_file": "book_open_icon.png",    "url": "https://violetwing.vercel.app/"},
         ]
 
         for i, data in enumerate(social_buttons_data):
             try:
-                image = Image.open(Utility.resource_path(f'src/img/{data["icon"]}_icon.png'))
-                ctk_image = ctk.CTkImage(light_image=image, dark_image=image, size=(24, 24))
+                image = Image.open(Utility.resource_path(f'src/img/{data["icon_file"]}'))
+                ctk_image = ctk.CTkImage(light_image=image, dark_image=image, size=(18, 18))
             except FileNotFoundError:
                 ctk_image = None
 
@@ -245,38 +247,42 @@ class MainWindow:
                 image=ctk_image,
                 compound="left",
                 command=lambda u=data["url"]: webbrowser.open(u),
-                height=32,
-                corner_radius=16,
-                fg_color=data["fg_color"],
-                hover_color=data["hover_color"],
-                border_width=1 if "border_color" in data else 0,
-                border_color=data.get("border_color"),
-                font=(FONT_FAMILY_BOLD[0], FONT_SIZE_H4)
+                height=36,
+                corner_radius=10,
+                fg_color="transparent",
+                hover_color=COLOR_SIDEBAR_ACTIVE_BG,
+                border_width=1,
+                border_color=("#c4b5fd", "#3d2a6e"),
+                text_color=("#7c3aed", "#a78bfa"),
+                font=(FONT_FAMILY_BOLD[0], FONT_SIZE_P, "bold"),
             )
             btn.pack(side="left", padx=(0, 8) if i < len(social_buttons_data) - 1 else (0, 0))
-        
+
         return social_frame
 
     def create_update_button(self, parent):
         """Create the update button if an update is available."""
         try:
-            image = Image.open(Utility.resource_path(f'src/img/update_icon.png'))
-            ctk_image = ctk.CTkImage(light_image=image, dark_image=image, size=(24, 24))
+            image = Image.open(Utility.resource_path('src/img/update_icon.png'))
+            ctk_image = ctk.CTkImage(light_image=image, dark_image=image, size=(18, 18))
         except FileNotFoundError:
             ctk_image = None
 
         if self.updater.check_for_updates():
+            is_pre = self.updater.is_prerelease
             update_btn = ctk.CTkButton(
                 parent,
-                text="Pre-release Available!" if self.updater.is_prerelease else "Update Available!",
+                text="Pre-release Available!" if is_pre else "Update Available!",
                 image=ctk_image,
+                compound="left",
                 command=self.updater.handle_update,
-                width=120,
-                height=32,
-                corner_radius=16,
-                fg_color="#ef4444" if not self.updater.is_prerelease else "#f59e0b",
-                hover_color="#dc2626" if not self.updater.is_prerelease else "#d97706",
-                font=("Chivo", 14)
+                height=36,
+                corner_radius=10,
+                fg_color="#f59e0b" if is_pre else "#ef4444",
+                hover_color="#d97706" if is_pre else "#dc2626",
+                border_width=0,
+                text_color="#ffffff",
+                font=(FONT_FAMILY_BOLD[0], FONT_SIZE_P, "bold"),
             )
             update_btn.pack(side="left", padx=(8, 0))
 
@@ -315,60 +321,86 @@ class MainWindow:
 
     def create_sidebar(self, parent):
         """Create modern sidebar navigation."""
-        sidebar = ctk.CTkFrame(parent, width=280, corner_radius=0, fg_color=COLOR_BACKGROUND)
+        sidebar = ctk.CTkFrame(parent, width=280, corner_radius=0, fg_color=COLOR_SIDEBAR_BG)
         sidebar.grid(row=0, column=0, sticky="nsew")
         sidebar.grid_propagate(False)
 
         self.nav_items = [
-            ("Dashboard", "dashboard", "🏠"),
-            ("General Settings", "general_settings", "⚙️"),
-            ("Trigger Settings", "trigger_settings", "🔫"),
-            ("Overlay Settings", "overlay_settings", "🌍"),
-            ("Additional Settings", "additional_settings", "⚡"),
-            ("Logs", "logs", "📋"),
-            ("FAQ", "faq", "❓"),
-            ("Notifications", "notifications", "🔔"),
-            ("Supporters", "supporters", "🤝"),
+            ("Dashboard",          "dashboard",           "charts_icon.png"),
+            ("General Settings",   "general_settings",    "gear_icon.png"),
+            ("Trigger Settings",   "trigger_settings",    "crosshairs_icon.png"),
+            ("Overlay Settings",   "overlay_settings",    "layer_group_icon.png"),
+            ("Additional Settings","additional_settings", "bolt_icon.png"),
+            ("Logs",               "logs",                "clipboard_list_icon.png"),
+            ("FAQ",                "faq",                 "circle_question_icon.png"),
+            ("Notifications",      "notifications",       "bell_icon.png"),
+            ("Supporters",         "supporters",          "handshake_icon.png"),
         ]
 
-        self.nav_buttons = {}
-        ctk.CTkFrame(sidebar, height=30, fg_color="transparent").pack(fill="x")
+        # Thin separator line between header and sidebar content area
+        ctk.CTkFrame(sidebar, height=1, fg_color=("#c4b5fd", "#2a1d4e")).pack(fill="x")
+        ctk.CTkFrame(sidebar, height=20, fg_color="transparent").pack(fill="x")
 
-        for name, key, icon in self.nav_items:
+        self.nav_buttons = {}
+        self.nav_indicators = {}
+        # Keep image refs alive — CTkImage is GC'd if not stored
+        self._nav_images = {}
+
+        for name, key, icon_file in self.nav_items:
+            try:
+                img = Image.open(Utility.resource_path(f'src/img/{icon_file}'))
+                ctk_image = ctk.CTkImage(light_image=img, dark_image=img, size=(18, 18))
+            except FileNotFoundError:
+                ctk_image = None
+            self._nav_images[key] = ctk_image
+
+            # Row wrapper holds the indicator bar + button side by side
+            row = ctk.CTkFrame(sidebar, fg_color="transparent", height=50)
+            row.pack(fill="x", padx=0, pady=(0, 4))
+            row.pack_propagate(False)
+
+            # 3px left indicator bar — hidden by default, shown when active
+            indicator = ctk.CTkFrame(row, width=3, corner_radius=2, fg_color="transparent")
+            indicator.pack(side="left", fill="y", padx=(8, 0))
+
             btn = ctk.CTkButton(
-                sidebar,
-                text=f"{icon}  {name}",
+                row,
+                text=name,
+                image=ctk_image,
+                compound="left",
                 command=lambda k=key: self.switch_view(k),
-                width=240,
-                height=50,
-                corner_radius=12,
+                height=46,
+                corner_radius=10,
                 fg_color="transparent",
-                hover_color=COLOR_WIDGET_BACKGROUND,
+                hover_color=COLOR_SIDEBAR_ACTIVE_BG,
                 text_color=COLOR_TEXT_SECONDARY,
                 font=(FONT_FAMILY_BOLD[0], FONT_SIZE_H4),
                 anchor="w",
             )
-            btn.pack(pady=(0, 8), padx=20, fill="x")
+            btn.pack(side="left", fill="x", expand=True, padx=(6, 12))
+
             self.nav_buttons[key] = btn
+            self.nav_indicators[key] = indicator
 
         self.set_active_nav("dashboard")
 
     def set_active_nav(self, active_key):
-        """Set the active navigation button with visual feedback."""
+        """Set the active navigation button with indicator bar visual feedback."""
         for key, btn in self.nav_buttons.items():
+            indicator = self.nav_indicators[key]
             if key == active_key:
-                # Highlight the active button
                 btn.configure(
-                    fg_color=COLOR_ACCENT_FG,
-                    text_color=COLOR_TEXT_PRIMARY[1]
+                    fg_color=COLOR_SIDEBAR_ACTIVE_BG,
+                    text_color=COLOR_TEXT_PRIMARY,
                 )
+                indicator.configure(fg_color=COLOR_SIDEBAR_INDICATOR)
             else:
-                # Reset inactive buttons to default style
                 btn.configure(
                     fg_color="transparent",
                     text_color=COLOR_TEXT_SECONDARY,
-                    hover_color=COLOR_WIDGET_BACKGROUND
+                    hover_color=COLOR_SIDEBAR_ACTIVE_BG,
                 )
+                indicator.configure(fg_color="transparent")
 
     def switch_view(self, view_key):
         """Switch between different views by showing the appropriate frame."""
@@ -453,7 +485,7 @@ class MainWindow:
         """Called on the main thread when offset fetching fails."""
         messagebox.showerror("Offset Error", "Failed to fetch offsets. Check logs for details.")
         if hasattr(self, 'loading_label'):
-            self.loading_label.configure(text="⚠ Failed to load offsets. Check logs.", text_color="#ef4444")
+            self.loading_label.configure(text="Failed to load offsets. Check logs.", text_color="#ef4444")
 
     def update_client_status(self, status, color):
         """Update client status in header and dashboard."""

@@ -5,6 +5,8 @@ import requests
 import time
 from datetime import datetime
 from pathlib import Path
+from PIL import Image
+from gui.icon_loader import icon_label, load_icon
 from classes.logger import Logger
 from classes.utility import Utility
 from classes.config_manager import ConfigManager
@@ -36,9 +38,10 @@ def populate_dashboard(main_window, frame):
     title_frame.pack(fill="x", pady=(0, 30))
     
     # Dashboard title with icon
+    icon_label(title_frame, "charts_icon.png", size=(38, 38), padx=(0, 16))
     title_label = ctk.CTkLabel(
         title_frame,
-        text="🎯 Dashboard",
+        text="Dashboard",
         font=FONT_TITLE,
         text_color=COLOR_TEXT_PRIMARY
     )
@@ -66,10 +69,11 @@ def populate_dashboard(main_window, frame):
     cs2_patch_card, main_window.cs2_patch_label = create_stat_card(
         main_window,
         stats_frame,
-        "🔔 CS2 Update",
+        "CS2 Update",
         "Checking...",
         "#6b7280",
-        "Latest Counter-Strike 2 patch"
+        "Latest Counter-Strike 2 patch",
+        "crosshairs_icon.png"
     )
     cs2_patch_card.grid(row=0, column=0, sticky="ew", padx=(0, 10))
 
@@ -77,10 +81,11 @@ def populate_dashboard(main_window, frame):
     update_card, main_window.update_value_label = create_stat_card(
         main_window,
         stats_frame,
-        "🔄 Offsets Update",
+        "Offsets Update",
         "Checking...",
         "#6b7280",
-        "Last offsets synchronization"
+        "Last offsets synchronization",
+        "rotate_icon.png"
     )
     update_card.grid(row=0, column=1, sticky="ew", padx=(10, 10))
 
@@ -88,10 +93,11 @@ def populate_dashboard(main_window, frame):
     version_card, version_value_label = create_stat_card(
         main_window,
         stats_frame,
-        "📦 Version",
+        "Version",
         f"{ConfigManager.VERSION}",
         "#8e44ad",
-        "Current application version"
+        "Current application version",
+        "box_archive_icon.png"
     )
     version_card.grid(row=0, column=2, sticky="ew", padx=(10, 0))
     
@@ -104,9 +110,10 @@ def populate_dashboard(main_window, frame):
     control_header.pack(fill="x", padx=40, pady=(40, 30))
     
     # Control center title
+    icon_label(control_header, "gamepad_icon.png", size=(22, 22), padx=(0, 10))
     ctk.CTkLabel(
         control_header,
-        text="🎮 Control Center",
+        text="Control Center",
         font=FONT_SECTION_TITLE,
         text_color=COLOR_TEXT_PRIMARY
     ).pack(side="left")
@@ -116,9 +123,11 @@ def populate_dashboard(main_window, frame):
     control_buttons.pack(fill="x", padx=40, pady=(0, 40))
     
     # Start button with play icon
+    _play_icon = load_icon("play_icon.png", size=(16, 16))
     start_button = ctk.CTkButton(
         control_buttons,
-        text="▶  Start Client",
+        text="Start Client",
+        image=_play_icon, compound="left",
         command=main_window.start_client,
         width=180,
         **BUTTON_STYLE_PRIMARY
@@ -126,9 +135,11 @@ def populate_dashboard(main_window, frame):
     start_button.pack(side="left", padx=(0, 20))
     
     # Stop button with stop icon
+    _stop_icon = load_icon("stop_icon.png", size=(16, 16))
     stop_button = ctk.CTkButton(
         control_buttons,
-        text="⏹  Stop Client",
+        text="Stop Client",
+        image=_stop_icon, compound="left",
         command=main_window.stop_client,
         width=180,
         **BUTTON_STYLE_DANGER
@@ -144,9 +155,10 @@ def populate_dashboard(main_window, frame):
     guide_header.pack(fill="x", padx=40, pady=(40, 30))
     
     # Guide title with icon
+    icon_label(guide_header, "rocket_icon.png", size=(22, 22), padx=(0, 10))
     ctk.CTkLabel(
         guide_header,
-        text="🚀 Quick Start Guide",
+        text="Quick Start Guide",
         font=FONT_SECTION_TITLE,
         text_color=COLOR_TEXT_PRIMARY
     ).pack(side="left")
@@ -221,7 +233,7 @@ def populate_dashboard(main_window, frame):
                 guide_card,
                 width=2,
                 height=20,
-                fg_color=("#e2e8f0", "#374151")
+                fg_color=("#c4b5fd", "#2a1d4e")
             )
             connector.pack(padx=(65, 0), anchor="w")
     
@@ -229,31 +241,45 @@ def populate_dashboard(main_window, frame):
     fetch_last_update(main_window)
     fetch_cs2_latest_patch(main_window)
 
-def create_stat_card(main_window, parent, title, value, color, subtitle):
+def create_stat_card(main_window, parent, title, value, color, subtitle, icon_file=None):
     """Create a modern stat card and return the card and value label."""
-    # Card frame with enhanced modern styling
     card = ctk.CTkFrame(
         parent,
-        corner_radius=25,
-        fg_color=("#ffffff", "#1a1b23"),
-        border_width=3,
-        border_color=("#e2e8f0", "#2d3748")
+        corner_radius=20,
+        fg_color=("#f5f3ff", "#0d0a1a"),
+        border_width=1,
+        border_color=("#c4b5fd", "#2a1d4e")
     )
-    
-    # Content frame within card with more padding
+
     content = ctk.CTkFrame(card, fg_color="transparent")
     content.pack(fill="both", expand=True, padx=30, pady=30)
-    
-    # Card header with improved styling
+
+    # Header row: icon (optional) + title side by side
+    header_row = ctk.CTkFrame(content, fg_color="transparent")
+    header_row.pack(fill="x", pady=(0, 15))
+
+    if icon_file:
+        try:
+            img = Image.open(Utility.resource_path(f'src/img/{icon_file}'))
+            ctk_image = ctk.CTkImage(light_image=img, dark_image=img, size=(18, 18))
+            ctk.CTkLabel(
+                header_row,
+                text="",
+                image=ctk_image,
+                width=18,
+            ).pack(side="left", padx=(0, 8))
+        except FileNotFoundError:
+            pass
+
     ctk.CTkLabel(
-        content,
+        header_row,
         text=title,
         font=FONT_ITEM_LABEL,
         text_color=COLOR_TEXT_SECONDARY,
         anchor="w"
-    ).pack(fill="x", pady=(0, 15))
-    
-    # Value label with enhanced font and dynamic color
+    ).pack(side="left", fill="x", expand=True)
+
+    # Value label
     value_label = ctk.CTkLabel(
         content,
         text=value,
@@ -262,8 +288,7 @@ def create_stat_card(main_window, parent, title, value, color, subtitle):
         anchor="w"
     )
     value_label.pack(fill="x", pady=(0, 10))
-    
-    # Subtitle providing context with improved styling
+
     ctk.CTkLabel(
         content,
         text=subtitle,
@@ -271,7 +296,7 @@ def create_stat_card(main_window, parent, title, value, color, subtitle):
         text_color=COLOR_TEXT_SECONDARY,
         anchor="w"
     ).pack(fill="x")
-    
+
     return card, value_label
 
 def fetch_last_update(main_window):

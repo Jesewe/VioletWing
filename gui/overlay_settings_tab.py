@@ -1,4 +1,5 @@
 import customtkinter as ctk
+from gui.icon_loader import icon_label
 from classes.config_manager import COLOR_CHOICES
 from classes.utility import Utility
 from gui.theme import (CHECKBOX_STYLE, COMBOBOX_STYLE, ENTRY_STYLE, SLIDER_STYLE,
@@ -24,7 +25,7 @@ def populate_overlay_settings(main_window, frame):
     # Define all settings in a structured dictionary
     settings_data = {
         "Bounding Box": {
-            "icon": "📦",
+            "icon": "vector_square_icon.png",
             "title": "Bounding Box Configuration",
             "description": "Settings for enemy bounding boxes",
             "settings": [
@@ -36,7 +37,7 @@ def populate_overlay_settings(main_window, frame):
             ],
         },
         "Snaplines": {
-            "icon": "📍",
+            "icon": "crosshairs_icon.png",
             "title": "Snaplines Configuration",
             "description": "Settings for snaplines to enemies",
             "settings": [
@@ -45,7 +46,7 @@ def populate_overlay_settings(main_window, frame):
             ],
         },
         "Text": {
-            "icon": "📝",
+            "icon": "font_icon.png",
             "title": "Text Configuration",
             "description": "Settings for text display",
             "settings": [
@@ -53,7 +54,7 @@ def populate_overlay_settings(main_window, frame):
             ],
         },
         "Player Info": {
-            "icon": "👤",
+            "icon": "user_icon.png",
             "title": "Player Information",
             "description": "Settings for displaying player details",
             "settings": [
@@ -63,7 +64,7 @@ def populate_overlay_settings(main_window, frame):
             ],
         },
         "Team": {
-            "icon": "👥",
+            "icon": "users_icon.png",
             "title": "Team Configuration",
             "description": "Settings for teammate display",
             "settings": [
@@ -78,9 +79,10 @@ def populate_overlay_settings(main_window, frame):
         create_settings_section(
             main_window,
             settings,
-            f"{section_data['icon']}  {section_data['title']}",
+            section_data['title'],
             section_data["description"],
             section_data["settings"],
+            section_icon=section_data.get("icon"),
         )
 
 def create_title_section(parent):
@@ -89,9 +91,10 @@ def create_title_section(parent):
     title_frame = ctk.CTkFrame(parent, fg_color="transparent")
     title_frame.pack(fill="x", pady=(0, 40))
     
+    icon_label(title_frame, "layer_group_icon.png", size=(38, 38), padx=(0, 16))
     ctk.CTkLabel(
         title_frame,
-        text="🌍  Overlay Settings",
+        text="Overlay Settings",
         font=FONT_TITLE,
         text_color=COLOR_TEXT_PRIMARY,
         anchor="w",
@@ -106,7 +109,7 @@ def create_title_section(parent):
     ).pack(side="left", padx=(20, 0), pady=(10, 0))
 
 
-def create_settings_section(main_window, parent, title, description, settings_list):
+def create_settings_section(main_window, parent, title, description, settings_list, section_icon=None):
     """Creates a settings section with a title, description, and a list of settings."""
     section = ctk.CTkFrame(parent, **SECTION_STYLE)
     section.pack(fill="x", pady=(0, 30))
@@ -114,6 +117,7 @@ def create_settings_section(main_window, parent, title, description, settings_li
     header = ctk.CTkFrame(section, fg_color="transparent")
     header.pack(fill="x", padx=40, pady=(40, 30))
 
+    icon_label(header, section_icon, size=(22, 22), padx=(0, 10))
     ctk.CTkLabel(
         header,
         text=title,

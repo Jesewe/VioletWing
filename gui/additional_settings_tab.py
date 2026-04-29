@@ -1,4 +1,5 @@
 import customtkinter as ctk
+from gui.icon_loader import icon_label
 from gui.theme import (
     FONT_TITLE, FONT_SUBTITLE, FONT_SECTION_TITLE, FONT_SECTION_DESCRIPTION,
     FONT_ITEM_LABEL, FONT_ITEM_DESCRIPTION,
@@ -22,10 +23,10 @@ def populate_additional_settings(main_window, frame):
     title_frame = ctk.CTkFrame(settings, fg_color="transparent")
     title_frame.pack(fill="x", pady=(0, 40))
     
-    # Settings title with an icon
+    icon_label(title_frame, "bolt_icon.png", size=(38, 38), padx=(0, 16))
     title_label = ctk.CTkLabel(
         title_frame,
-        text="⚡  Additional Settings",
+        text="Additional Settings",
         font=FONT_TITLE,
         text_color=COLOR_TEXT_PRIMARY,
         anchor="w"
@@ -56,10 +57,10 @@ def create_bunnyhop_config_section(main_window, parent):
     header = ctk.CTkFrame(section, fg_color="transparent")
     header.pack(fill="x", padx=40, pady=(40, 30))
     
-    # Section title with icon
+    icon_label(header, "paw_icon.png", size=(22, 22), padx=(0, 10))
     ctk.CTkLabel(
         header,
-        text="🐰  Bunnyhop Configuration",
+        text="Bunnyhop Configuration",
         font=FONT_SECTION_TITLE,
         text_color=COLOR_TEXT_PRIMARY,
         anchor="w"
@@ -102,10 +103,10 @@ def create_noflash_config_section(main_window, parent):
     header = ctk.CTkFrame(section, fg_color="transparent")
     header.pack(fill="x", padx=40, pady=(40, 30))
     
-    # Section title with icon
+    icon_label(header, "sun_icon.png", size=(22, 22), padx=(0, 10))
     ctk.CTkLabel(
         header,
-        text="🌞  NoFlash Configuration",
+        text="NoFlash Configuration",
         font=FONT_SECTION_TITLE,
         text_color=COLOR_TEXT_PRIMARY,
         anchor="w"
