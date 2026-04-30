@@ -21,27 +21,24 @@ ENTITY_COUNT = 32
 ENTITY_ENTRY_SIZE = 112
 # Skeleton bone structure {parent_bone_id: [child_bone_ids]}
 SKELETON_BONES = {
-    # Trunk Core Chain
-    6: [5],  # Head -> Neck
-    5: [4],  # Neck -> Chest
-    4: [3, 13, 8],  # Chest -> Stomach, Right Shoulder, Left Shoulder
-    3: [2],  # Stomach -> Center Point
-    2: [1],  # Center Point -> Small Head
-    1: [0],  # Small Head -> Pelvis 
-    # Right Hand Chain (4 points)
-    13: [14],  # Right Shoulder -> Right Elbow
-    14: [15],  # Right Elbow -> Right Wrist
-    15: [16],  # Right Wrist -> Right Hand 
-    # Left Arm Chain (4 points)
-    8: [9],  # Left Shoulder -> Left Elbow
-    9: [10],  # Left Elbow -> Left Wrist
-    10: [11],  # Left Wrist -> Left Hand
-    # Legs Chain
-    0: [22, 25],  # Pelvis -> Left Hip, Right Hip
-    22: [23],  # Left Hip -> Left Knee
-    23: [24],  # Left Knee -> Left Foot
-    25: [26],  # Right Hip -> Right Knee
-    26: [27],  # Right Knee -> Right Foot
+    # Spine
+    1:  [3, 17, 20],  # pelvis -> spine_1, hip_L, hip_R
+    3:  [4],           # spine_1 -> spine_2
+    4:  [23],          # spine_2 -> chest
+    23: [6],           # chest -> neck
+    6:  [7, 9, 13],    # neck -> head, shoulder_L, shoulder_R
+    # Left arm
+    9:  [10],          # shoulder_L -> elbow_L
+    10: [11],          # elbow_L -> hand_L
+    # Right arm
+    13: [14],          # shoulder_R -> elbow_R
+    14: [15],          # elbow_R -> hand_R
+    # Left leg
+    17: [18],          # hip_L -> knee_L
+    18: [19],          # knee_L -> foot_heel_L
+    # Right leg
+    20: [21],          # hip_R -> knee_R
+    21: [22],          # knee_R -> foot_heel_R
 }
 ALL_BONE_IDS = set(SKELETON_BONES.keys())
 for _bones in SKELETON_BONES.values():
@@ -274,7 +271,7 @@ class CS2Overlay:
     def draw_entity(self, entity: Entity, view_matrix: list, is_teammate: bool = False) -> None:
         """Render the ESP overlay for a given entity."""
         try:
-            head_pos_3d = entity.bone_pos(6)
+            head_pos_3d = entity.bone_pos(7)
 
             try:
                 pos2d = overlay.world_to_screen(view_matrix, entity.pos, 1)
