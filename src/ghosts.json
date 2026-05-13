@@ -1,0 +1,37 @@
+[
+  {
+    "id": "discord_helper",
+    "name": "Discord Helper",
+    "icon": "src/ghosts/discord_helper.ico"
+  },
+  {
+    "id": "steam_service",
+    "name": "Steam Client Service",
+    "icon": "src/ghosts/steam_service.ico"
+  },
+  {
+    "id": "nvidia_container",
+    "name": "NVIDIA Container",
+    "icon": "src/ghosts/nvidia_container.ico"
+  },
+  {
+    "id": "logitech_ghub",
+    "name": "Logitech G HUB",
+    "icon": "src/ghosts/logitech_ghub.ico"
+  },
+  {
+    "id": "razer_synapse",
+    "name": "Razer Synapse 3",
+    "icon": "src/ghosts/razer_synapse.ico"
+  },
+  {
+    "id": "obs_studio",
+    "name": "OBS Studio",
+    "icon": "src/ghosts/obs_studio.ico"
+  },
+  {
+    "id": "msi_afterburner",
+    "name": "MSI Afterburner",
+    "icon": "src/ghosts/msi_afterburner.ico"
+  }
+]

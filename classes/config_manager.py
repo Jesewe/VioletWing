@@ -6,6 +6,7 @@ from typing import Dict, Any, Optional
 import threading
 
 from classes.logger import Logger
+import classes.error_codes as EC
 
 # Initialize the logger for consistent logging
 logger = Logger.get_logger(__name__)
@@ -22,7 +23,7 @@ class ConfigManager:
     """
     
     # Application version
-    VERSION = "v1.3.0"
+    VERSION = "v1.3.1"
     
     # Directory paths
     UPDATE_DIRECTORY = os.path.expanduser(r'~\AppData\Local\Requests\ItsJesewe\Update')
@@ -38,6 +39,8 @@ class ConfigManager:
             "Overlay": False,
             "Bunnyhop": False,
             "Noflash": False,
+            "Disguise": False,
+            "DetailedLogs": False,
             "OffsetSource": "a2x",
             "OffsetsFile": str(Path(OFFSETS_DIRECTORY) / "offsets.json"),
             "ClientDLLFile": str(Path(OFFSETS_DIRECTORY) / "client_dll.json"),
@@ -128,7 +131,7 @@ class ConfigManager:
             Path(cls.CONFIG_DIRECTORY).mkdir(parents=True, exist_ok=True)
             Path(cls.OFFSETS_DIRECTORY).mkdir(parents=True, exist_ok=True)
         except OSError as e:
-            logger.error(f"Failed to create directories: {e}")
+            Logger.error_code(EC.E1001, "%s", e)
     
     @classmethod
     def _create_default_config(cls) -> None:
@@ -150,7 +153,7 @@ class ConfigManager:
                 raise ValueError("Configuration file does not contain a valid dictionary")
             
             cls._config_cache = loaded_config
-            logger.info("Loaded configuration.")
+            logger.debug("Loaded configuration.")
             
             # Migrate missing keys from default config
             if cls._update_config(cls.DEFAULT_CONFIG, cls._config_cache):
@@ -158,7 +161,7 @@ class ConfigManager:
                 cls._save_to_file(cls._config_cache, log_info=False)
                 
         except (orjson.JSONDecodeError, IOError, ValueError) as e:
-            logger.error(f"Failed to load configuration: {e}. Using default configuration.")
+            Logger.error_code(EC.E1002, "%s", e)
             default_copy = copy.deepcopy(cls.DEFAULT_CONFIG)
             cls._config_cache = default_copy
             cls._save_to_file(default_copy, log_info=False)
@@ -229,7 +232,7 @@ class ConfigManager:
             return True
             
         except (OSError, IOError) as e:
-            logger.error(f"Failed to save configuration: {e}")
+            Logger.error_code(EC.E1003, "%s", e)
             return False
     
     @classmethod

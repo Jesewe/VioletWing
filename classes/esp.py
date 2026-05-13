@@ -1,44 +1,38 @@
-import threading
-import time
-import pyMeow as overlay
-import keyboard
 import struct
-from typing import Iterator, Optional, Dict
+import time
+from typing import Dict, Iterator, Optional
 
+import pyMeow as overlay
 from pynput.keyboard import Listener as KeyboardListener
+
+from classes.base_feature import BaseFeature
 from classes.config_manager import ConfigManager, Colors, COLOR_CHOICES
-from classes.memory_manager import MemoryManager
+from classes.game_process import is_game_active
 from classes.logger import Logger
+import classes.error_codes as EC
+from classes.memory_manager import MemoryManager
 from classes.utility import Utility
 
-# Initialize the logger for consistent logging
 logger = Logger.get_logger(__name__)
-# Define the main loop sleep time for reduced CPU usage
+
 MAIN_LOOP_SLEEP = 0.05
-# Number of entities to iterate over
-ENTITY_COUNT = 32
-# Size of each entity entry in memory
+ENTITY_COUNT = 64          # Full server coverage (was 32)
 ENTITY_ENTRY_SIZE = 112
-# Skeleton bone structure {parent_bone_id: [child_bone_ids]}
+
 SKELETON_BONES = {
-    # Spine
-    1:  [3, 17, 20],  # pelvis -> spine_1, hip_L, hip_R
-    3:  [4],           # spine_1 -> spine_2
-    4:  [23],          # spine_2 -> chest
-    23: [6],           # chest -> neck
-    6:  [7, 9, 13],    # neck -> head, shoulder_L, shoulder_R
-    # Left arm
-    9:  [10],          # shoulder_L -> elbow_L
-    10: [11],          # elbow_L -> hand_L
-    # Right arm
-    13: [14],          # shoulder_R -> elbow_R
-    14: [15],          # elbow_R -> hand_R
-    # Left leg
-    17: [18],          # hip_L -> knee_L
-    18: [19],          # knee_L -> foot_heel_L
-    # Right leg
-    20: [21],          # hip_R -> knee_R
-    21: [22],          # knee_R -> foot_heel_R
+    1:  [3, 17, 20],
+    3:  [4],
+    4:  [23],
+    23: [6],
+    6:  [7, 9, 13],
+    9:  [10],
+    10: [11],
+    13: [14],
+    14: [15],
+    17: [18],
+    18: [19],
+    20: [21],
+    21: [22],
 }
 ALL_BONE_IDS = set(SKELETON_BONES.keys())
 for _bones in SKELETON_BONES.values():
@@ -46,15 +40,13 @@ for _bones in SKELETON_BONES.values():
 MAX_BONE_ID = max(ALL_BONE_IDS) if ALL_BONE_IDS else 0
 
 class Entity:
-    """Represents a game entity with cached data for efficient access."""
-    def __init__(self, controller_ptr: int, pawn_ptr: int, memory_manager: MemoryManager) -> None:
+    """Game entity with cached per-frame data."""
+    def __init__(self, controller_ptr: int, pawn_ptr: int, mm: MemoryManager) -> None:
         self.controller_ptr = controller_ptr
         self.pawn_ptr = pawn_ptr
-        self.memory_manager = memory_manager
+        self.memory_manager = mm
         self.pos2d: Optional[Dict[str, float]] = None
         self.head_pos2d: Optional[Dict[str, float]] = None
-        
-        # Cached data
         self.name: str = ""
         self.health: int = 0
         self.team: int = -1
@@ -63,385 +55,321 @@ class Entity:
         self.all_bones_pos_3d: Optional[Dict[int, Dict[str, float]]] = None
 
     def update(self, use_transliteration: bool, skeleton_enabled: bool) -> bool:
-        """Update all entity data at once to minimize memory reads."""
         try:
             self.health = self.memory_manager.read_int(self.pawn_ptr + self.memory_manager.m_iHealth)
             if self.health <= 0:
                 return False
-
             self.dormant = bool(self.memory_manager.read_int(self.pawn_ptr + self.memory_manager.m_bDormant))
             if self.dormant:
                 return False
-
             self.team = self.memory_manager.read_int(self.pawn_ptr + self.memory_manager.m_iTeamNum)
             self.pos = self.memory_manager.read_vec3(self.pawn_ptr + self.memory_manager.m_vOldOrigin)
-            
-            raw_name = self.memory_manager.read_string(self.controller_ptr + self.memory_manager.m_iszPlayerName)
-            self.name = Utility.transliterate(raw_name) if use_transliteration else raw_name
-
-            if skeleton_enabled:
-                self.all_bones_pos_3d = self.all_bone_pos()
-            else:
-                self.all_bones_pos_3d = None
-
+            raw = self.memory_manager.read_string(self.controller_ptr + self.memory_manager.m_iszPlayerName)
+            self.name = Utility.transliterate(raw) if use_transliteration else raw
+            self.all_bones_pos_3d = self._all_bone_pos() if skeleton_enabled else None
             return True
-        except Exception as e:
-            logger.debug(f"Entity update failed: {e}")
+        except Exception as exc:
+            logger.debug("Entity update failed: %s", exc)
             return False
 
     def bone_pos(self, bone: int) -> Dict[str, float]:
-        """Get the 3D position of a specific bone, using cached data if available."""
         if self.all_bones_pos_3d and bone in self.all_bones_pos_3d:
             return self.all_bones_pos_3d[bone]
-        
-        # Fallback to direct read if not in cache
         try:
-            game_scene = self.memory_manager.read_longlong(self.pawn_ptr + self.memory_manager.m_pGameSceneNode)
-            bone_array_ptr = self.memory_manager.read_longlong(game_scene + self.memory_manager.m_pBoneArray)
-            return self.memory_manager.read_vec3(bone_array_ptr + bone * 32)
-        except Exception as e:
-            logger.debug(f"Failed to get bone position for bone {bone}: {e}")
+            scene = self.memory_manager.read_longlong(self.pawn_ptr + self.memory_manager.m_pGameSceneNode)
+            arr = self.memory_manager.read_longlong(scene + self.memory_manager.m_pBoneArray)
+            return self.memory_manager.read_vec3(arr + bone * 32)
+        except Exception as exc:
+            logger.debug("Failed to get bone %d: %s", bone, exc)
             return {"x": 0.0, "y": 0.0, "z": 0.0}
 
-    def all_bone_pos(self) -> Optional[Dict[int, Dict[str, float]]]:
-        """Get all bone positions by reading the bone matrix."""
+    def _all_bone_pos(self) -> Optional[Dict[int, Dict[str, float]]]:
         try:
-            game_scene = self.memory_manager.read_longlong(self.pawn_ptr + self.memory_manager.m_pGameSceneNode)
-            bone_array_ptr = self.memory_manager.read_longlong(game_scene + self.memory_manager.m_pBoneArray)
-            if not bone_array_ptr:
+            scene = self.memory_manager.read_longlong(self.pawn_ptr + self.memory_manager.m_pGameSceneNode)
+            arr = self.memory_manager.read_longlong(scene + self.memory_manager.m_pBoneArray)
+            if not arr:
                 return None
-
-            num_bones_to_read = MAX_BONE_ID + 1
-            data = self.memory_manager.pm.read_bytes(bone_array_ptr, num_bones_to_read * 32)
+            data = self.memory_manager.pm.read_bytes(arr, (MAX_BONE_ID + 1) * 32)
             if not data:
                 return None
-
-            bone_positions = {}
+            result = {}
             for i in ALL_BONE_IDS:
-                offset = i * 32
                 try:
-                    x, y, z = struct.unpack_from('fff', data, offset)
-                    bone_positions[i] = {"x": x, "y": y, "z": z}
+                    x, y, z = struct.unpack_from("fff", data, i * 32)
+                    result[i] = {"x": x, "y": y, "z": z}
                 except struct.error:
-                    # This can happen if the data is smaller than expected
                     continue
-            return bone_positions
-        except Exception as e:
-            logger.debug(f"Failed to get all bone positions: {e}")
+            return result
+        except Exception as exc:
+            logger.debug("Failed to get all bone positions: %s", exc)
             return None
 
     @staticmethod
     def validate_screen_position(pos: Dict[str, float]) -> bool:
-        """Validate if a screen position is within bounds."""
-        screen_width = overlay.get_screen_width()
-        screen_height = overlay.get_screen_height()
-        return 0 <= pos["x"] <= screen_width and 0 <= pos["y"] <= screen_height
+        return (
+            0 <= pos["x"] <= overlay.get_screen_width()
+            and 0 <= pos["y"] <= overlay.get_screen_height()
+        )
 
-class CS2Overlay:
-    """Manages the ESP overlay for Counter-Strike 2."""
+class CS2Overlay(BaseFeature):
     def __init__(self, memory_manager: MemoryManager) -> None:
-        """
-        Initialize the Overlay with a shared MemoryManager instance.
-        """
+        super().__init__(memory_manager)
         self.config = ConfigManager.load_config()
-        self.memory_manager = memory_manager
-        self.is_running = False
-        self.stop_event = threading.Event()
-        self.local_team = None
+        self.local_team: Optional[int] = None
         self.screen_width = overlay.get_screen_width()
         self.screen_height = overlay.get_screen_height()
         self.load_configuration()
 
     def load_configuration(self) -> None:
-        """Load and apply configuration settings."""
-        settings = self.config['Overlay']
-        self.enable_box = settings['enable_box']
-        self.enable_skeleton = settings.get('enable_skeleton', True)
-        self.draw_snaplines = settings['draw_snaplines']
-        self.snaplines_color_hex = settings['snaplines_color_hex']
-        self.box_line_thickness = settings['box_line_thickness']
-        self.box_color_hex = settings['box_color_hex']
-        self.text_color_hex = settings['text_color_hex']
-        self.draw_health_numbers = settings['draw_health_numbers']
-        self.use_transliteration = settings['use_transliteration']
-        self.draw_nicknames = settings['draw_nicknames']
-        self.draw_teammates = settings['draw_teammates']
-        self.teammate_color_hex = settings['teammate_color_hex']
-        self.target_fps = int(settings['target_fps'])
-
-        # Pre-resolve colors so draw_entity doesn't call get_color() per entity per frame.
-        # Re-resolved here whenever config changes, which is far less frequent than frame rate.
-        try:
-            self._color_box = overlay.get_color(self.box_color_hex)
-            self._color_teammate = overlay.get_color(self.teammate_color_hex)
-            self._color_text = overlay.get_color(self.text_color_hex)
-            self._color_snapline = overlay.get_color(self.snaplines_color_hex)
-            # Health bar colors are constant but resolved once here to avoid per-frame lookups
-            self._color_health_bg = overlay.get_color("black")
-            self._color_health_low = overlay.get_color("red")
-            self._color_health_mid = overlay.get_color("yellow")
-            self._color_health_ok = overlay.get_color("green")
-        except Exception:
-            self._color_box = None
-            self._color_teammate = None
-            self._color_text = None
-            self._color_snapline = None
-            self._color_health_bg = None
-            self._color_health_low = None
-            self._color_health_mid = None
-            self._color_health_ok = None
+        s = self.config["Overlay"]
+        self.enable_box = s["enable_box"]
+        self.enable_skeleton = s.get("enable_skeleton", True)
+        self.draw_snaplines = s["draw_snaplines"]
+        self.snaplines_color_hex = s["snaplines_color_hex"]
+        self.box_line_thickness = s["box_line_thickness"]
+        self.box_color_hex = s["box_color_hex"]
+        self.text_color_hex = s["text_color_hex"]
+        self.draw_health_numbers = s["draw_health_numbers"]
+        self.use_transliteration = s["use_transliteration"]
+        self.draw_nicknames = s["draw_nicknames"]
+        self.draw_teammates = s["draw_teammates"]
+        self.teammate_color_hex = s["teammate_color_hex"]
+        self.target_fps = int(s["target_fps"])
+        self._resolve_colors()
 
     def update_config(self, config: dict) -> None:
-        """Update the configuration settings."""
         self.config = config
         self.load_configuration()
         logger.debug("Overlay configuration updated.")
 
-    def iterate_entities(self, local_controller_ptr: int) -> Iterator[Entity]:
-        """Iterate over game entities and yield valid Entity objects."""
-        try:
-            # Read fresh each frame - the pointer can change after map/match transitions
-            ent_list_ptr = self.memory_manager.read_longlong(
-                self.memory_manager.client_dll_base + self.memory_manager.dwEntityList
-            )
-        except Exception as e:
-            logger.debug(f"Error reading entity list pointer: {e}")
-            return
-
-        for i in range(1, ENTITY_COUNT + 1):
-            try:
-                list_index = (i & 0x7FFF) >> 9
-                entity_index = i & 0x1FF
-                entry_ptr = self.memory_manager.read_longlong(ent_list_ptr + (8 * list_index) + 16)
-                if not entry_ptr: continue
-
-                controller_ptr = self.memory_manager.read_longlong(entry_ptr + ENTITY_ENTRY_SIZE * entity_index)
-                if not controller_ptr or controller_ptr == local_controller_ptr: continue
-
-                controller_pawn_ptr = self.memory_manager.read_longlong(controller_ptr + self.memory_manager.m_hPlayerPawn)
-                if not controller_pawn_ptr: continue
-
-                list_entry_ptr = self.memory_manager.read_longlong(ent_list_ptr + 8 * ((controller_pawn_ptr & 0x7FFF) >> 9) + 16)
-                if not list_entry_ptr: continue
-
-                pawn_ptr = self.memory_manager.read_longlong(list_entry_ptr + ENTITY_ENTRY_SIZE * (controller_pawn_ptr & 0x1FF))
-                if not pawn_ptr: continue
-
-                entity = Entity(controller_ptr, pawn_ptr, self.memory_manager)
-                if entity.update(self.use_transliteration, self.enable_skeleton):
-                    yield entity
-            except Exception as e:
-                logger.debug(f"Failed to read entity at index {i}: {e}")
-                continue
-
-    def draw_skeleton(self, entity: Entity, view_matrix: list, color: tuple, all_bones_pos_3d: Dict[int, Dict[str, float]]) -> None:
-        """Draw the skeleton of an entity."""
-        try:
-            if not all_bones_pos_3d:
-                return
-
-            bone_positions_2d = {}
-            for bone_id in ALL_BONE_IDS:
-                if bone_id in all_bones_pos_3d:
-                    pos_3d = all_bones_pos_3d[bone_id]
-                    try:
-                        pos_2d = overlay.world_to_screen(view_matrix, pos_3d, 1)
-                    except Exception as e:
-                        logger.debug(f"world_to_screen failed for bone {bone_id}: {e}")
-                        pos_2d = None
-                    
-                    if pos_2d and entity.validate_screen_position(pos_2d):
-                        bone_positions_2d[bone_id] = pos_2d
-
-            for start_bone, end_bones in SKELETON_BONES.items():
-                if start_bone in bone_positions_2d:
-                    for end_bone in end_bones:
-                        if end_bone in bone_positions_2d:
-                            overlay.draw_line(
-                                bone_positions_2d[start_bone]["x"],
-                                bone_positions_2d[start_bone]["y"],
-                                bone_positions_2d[end_bone]["x"],
-                                bone_positions_2d[end_bone]["y"],
-                                color,
-                                1.5
-                            )
-        except Exception as e:
-            logger.error(f"Error drawing skeleton: {e}")
-
-    def draw_entity(self, entity: Entity, view_matrix: list, is_teammate: bool = False) -> None:
-        """Render the ESP overlay for a given entity."""
-        try:
-            head_pos_3d = entity.bone_pos(7)
-
-            try:
-                pos2d = overlay.world_to_screen(view_matrix, entity.pos, 1)
-                head_pos2d = overlay.world_to_screen(view_matrix, head_pos_3d, 1)
-            except Exception as e:
-                logger.debug(f"world_to_screen failed for entity: {e}")
-                return
-
-            if not entity.validate_screen_position(pos2d) or not entity.validate_screen_position(head_pos2d):
-                return
-
-            entity.pos2d = pos2d
-            entity.head_pos2d = head_pos2d
-
-            head_y = entity.head_pos2d["y"]
-            pos_y = entity.pos2d["y"]
-            box_height = pos_y - head_y
-            box_width = box_height / 2
-            half_width = box_width / 2
-
-            outline_color = self._color_teammate if is_teammate else self._color_box
-            text_color = self._color_text
-
-            if self.enable_skeleton and entity.all_bones_pos_3d:
-                self.draw_skeleton(entity, view_matrix, outline_color, entity.all_bones_pos_3d)
-
-            if self.draw_snaplines:
-                overlay.draw_line(
-                    self.screen_width / 2,
-                    self.screen_height / 2,
-                    entity.head_pos2d["x"],
-                    entity.head_pos2d["y"],
-                    self._color_snapline,
-                    2
-                )
-
-            if self.enable_box:
-                overlay.draw_rectangle(
-                    entity.head_pos2d["x"] - half_width,
-                    entity.head_pos2d["y"] - half_width / 2,
-                    box_width,
-                    box_height + half_width / 2,
-                    Colors.grey
-                )
-                overlay.draw_rectangle_lines(
-                    entity.head_pos2d["x"] - half_width,
-                    entity.head_pos2d["y"] - half_width / 2,
-                    box_width,
-                    box_height + half_width / 2,
-                    outline_color,
-                    self.box_line_thickness
-                )
-
-            if self.draw_nicknames:
-                nickname = entity.name
-                nickname_font_size = 11
-                nickname_width = overlay.measure_text(nickname, nickname_font_size)
-                overlay.draw_text(
-                    nickname,
-                    entity.head_pos2d["x"] - nickname_width // 2,
-                    entity.head_pos2d["y"] - half_width / 2 - 15,
-                    nickname_font_size,
-                    text_color
-                )
-
-            bar_width = 4
-            bar_margin = 2
-            bar_x = entity.head_pos2d["x"] - half_width - bar_width - bar_margin
-            bar_y = entity.head_pos2d["y"] - half_width / 2
-            bar_height = box_height + half_width / 2
-            overlay.draw_rectangle(
-                bar_x,
-                bar_y,
-                bar_width,
-                bar_height,
-                self._color_health_bg
-            )
-            health_percent = max(0, min(entity.health, 100))
-            fill_height = (health_percent / 100.0) * bar_height
-            if health_percent <= 20:
-                fill_color = self._color_health_low
-            elif health_percent <= 50:
-                fill_color = self._color_health_mid
-            else:
-                fill_color = self._color_health_ok
-            fill_y = bar_y + (bar_height - fill_height)
-            overlay.draw_rectangle(
-                bar_x,
-                fill_y,
-                bar_width,
-                fill_height,
-                fill_color
-            )
-            if self.draw_health_numbers:
-                health_text = f"{entity.health}"
-                overlay.draw_text(
-                    health_text,
-                    int(bar_x - 25),
-                    int(bar_y + bar_height / 2 - 5),
-                    10,
-                    text_color
-                )
-        except Exception as e:
-            logger.debug(f"Error drawing entity: {e}")
-
     def start(self) -> None:
-        """Start the Overlay."""
         self.is_running = True
+        # Clear here so stop() can always set it reliably.
         self.stop_event.clear()
 
         try:
-            # Initialize with unlimited FPS and let our loop handle the delay
             overlay.overlay_init("Counter-Strike 2", fps=0)
-        except Exception as e:
-            logger.error(f"Overlay initialization error: {e}")
+        except Exception as exc:
+            Logger.error_code(EC.E3005, "%s", exc)
             self.is_running = False
             return
 
-        frame_time = 1.0 / self.target_fps
-        is_game_active = Utility.is_game_active
         sleep = time.sleep
 
         while not self.stop_event.is_set():
-            start_time = time.time()
-            
+            frame_time = 1.0 / max(self.target_fps, 1)
+            start = time.time()
             try:
                 if not is_game_active():
                     sleep(MAIN_LOOP_SLEEP)
                     continue
 
-                view_matrix = self.memory_manager.read_floats(self.memory_manager.client_dll_base + self.memory_manager.dwViewMatrix, 16)
-                
-                local_controller_ptr = self.memory_manager.read_longlong(self.memory_manager.client_dll_base + self.memory_manager.dwLocalPlayerController)
-                if local_controller_ptr:
-                    local_pawn_ptr = self.memory_manager.read_longlong(self.memory_manager.client_dll_base + self.memory_manager.dwLocalPlayerPawn)
-                    if local_pawn_ptr:
-                        self.local_team = self.memory_manager.read_int(local_pawn_ptr + self.memory_manager.m_iTeamNum)
-                    else:
-                        self.local_team = None
+                vm = self.memory_manager.read_floats(
+                    self.memory_manager.client_dll_base + self.memory_manager.dwViewMatrix, 16
+                )
+                local_ctrl = self.memory_manager.read_longlong(
+                    self.memory_manager.client_dll_base + self.memory_manager.dwLocalPlayerController
+                )
+                if local_ctrl:
+                    local_pawn = self.memory_manager.read_longlong(
+                        self.memory_manager.client_dll_base + self.memory_manager.dwLocalPlayerPawn
+                    )
+                    self.local_team = (
+                        self.memory_manager.read_int(local_pawn + self.memory_manager.m_iTeamNum)
+                        if local_pawn else None
+                    )
                 else:
                     self.local_team = None
 
-                entities = list(self.iterate_entities(local_controller_ptr))
+                entities = list(self._iterate_entities(local_ctrl))
 
                 if overlay.overlay_loop():
                     overlay.begin_drawing()
-                    overlay.draw_fps(0, 0)
-                    
-                    for entity in entities:
-                        is_teammate = self.local_team is not None and entity.team == self.local_team
+                    self._draw_watermark()
+                    for ent in entities:
+                        is_teammate = self.local_team is not None and ent.team == self.local_team
                         if is_teammate and not self.draw_teammates:
                             continue
-                        self.draw_entity(entity, view_matrix, is_teammate)
-                        
+                        self._draw_entity(ent, vm, is_teammate)
                     overlay.end_drawing()
 
-                elapsed_time = time.time() - start_time
-                sleep_time = frame_time - elapsed_time
-                if sleep_time > 0:
-                    sleep(sleep_time)
-            except Exception as e:
-                logger.error(f"Unexpected error in main loop: {e}", exc_info=True)
+                elapsed = time.time() - start
+                slack = frame_time - elapsed
+                if slack > 0:
+                    sleep(slack)
+
+            except Exception:
+                Logger.error_code(EC.E3006, exc_info=True)
                 sleep(MAIN_LOOP_SLEEP)
 
         overlay.overlay_close()
         logger.debug("Overlay loop ended.")
 
     def stop(self) -> None:
-        """Stop the Overlay and clean up resources."""
         self.is_running = False
         self.stop_event.set()
         time.sleep(0.1)
         logger.debug("Overlay stopped.")
+
+    def _resolve_colors(self) -> None:
+        try:
+            self._color_box        = overlay.get_color(self.box_color_hex)
+            self._color_teammate   = overlay.get_color(self.teammate_color_hex)
+            self._color_text       = overlay.get_color(self.text_color_hex)
+            self._color_snapline   = overlay.get_color(self.snaplines_color_hex)
+            self._color_health_bg  = overlay.get_color("black")
+            self._color_health_low = overlay.get_color("red")
+            self._color_health_mid = overlay.get_color("yellow")
+            self._color_health_ok  = overlay.get_color("green")
+            self._color_panel_bg   = overlay.fade_color(overlay.get_color("#1A1A1A"), 0.72)
+            self._color_panel_border = overlay.fade_color(overlay.get_color("#606060"), 0.82)
+        except Exception:
+            self._color_box = self._color_teammate = self._color_text = None
+            self._color_snapline = self._color_health_bg = None
+            self._color_health_low = self._color_health_mid = self._color_health_ok = None
+            self._color_panel_bg = self._color_panel_border = None
+
+    def _world_to_screen(self, vm: list, pos: dict) -> dict | None:
+        sx = overlay.get_screen_width() / 2
+        sy = overlay.get_screen_height() / 2
+        w = vm[12]*pos["x"] + vm[13]*pos["y"] + vm[14]*pos["z"] + vm[15]
+        if w <= 0.01:
+            return None
+        x = sx + (vm[0]*pos["x"] + vm[1]*pos["y"] + vm[2]*pos["z"] + vm[3]) / w * sx
+        y = sy - (vm[4]*pos["x"] + vm[5]*pos["y"] + vm[6]*pos["z"] + vm[7]) / w * sy
+        return {"x": x, "y": y}
+
+    def _iterate_entities(self, local_ctrl: int) -> Iterator[Entity]:
+        try:
+            ent_list = self.memory_manager.read_longlong(
+                self.memory_manager.client_dll_base + self.memory_manager.dwEntityList
+            )
+        except Exception as exc:
+            logger.debug("Error reading entity list: %s", exc)
+            return
+
+        for i in range(1, ENTITY_COUNT + 1):
+            try:
+                list_idx = (i & 0x7FFF) >> 9
+                ent_idx = i & 0x1FF
+                entry = self.memory_manager.read_longlong(ent_list + (8 * list_idx) + 16)
+                if not entry:
+                    continue
+                ctrl = self.memory_manager.read_longlong(entry + ENTITY_ENTRY_SIZE * ent_idx)
+                if not ctrl or ctrl == local_ctrl:
+                    continue
+                ctrl_pawn = self.memory_manager.read_longlong(ctrl + self.memory_manager.m_hPlayerPawn)
+                if not ctrl_pawn:
+                    continue
+                list_entry = self.memory_manager.read_longlong(
+                    ent_list + 8 * ((ctrl_pawn & 0x7FFF) >> 9) + 16
+                )
+                if not list_entry:
+                    continue
+                pawn = self.memory_manager.read_longlong(
+                    list_entry + ENTITY_ENTRY_SIZE * (ctrl_pawn & 0x1FF)
+                )
+                if not pawn:
+                    continue
+                ent = Entity(ctrl, pawn, self.memory_manager)
+                if ent.update(self.use_transliteration, self.enable_skeleton):
+                    yield ent
+            except Exception as exc:
+                logger.debug("Failed to read entity %d: %s", i, exc)
+
+    def _draw_watermark(self) -> None:
+        text = f"VioletWing | {overlay.get_fps()}"
+        size = 14
+        pad_x, pad_y = 8, 5
+        w = overlay.measure_text(text, size)
+        sw = overlay.get_screen_width()
+        fw = w + pad_x * 2
+        fh = size + pad_y * 2
+        fx = sw - fw - 10
+        fy = 8
+        overlay.draw_rectangle(fx, fy, fw, fh, self._color_panel_bg)
+        overlay.draw_rectangle_lines(fx, fy, fw, fh, self._color_panel_border, 1)
+        overlay.draw_text(text, fx + pad_x, fy + pad_y, size, self._color_text)
+
+    def _draw_skeleton(self, ent: Entity, vm: list, color: tuple) -> None:
+        if not ent.all_bones_pos_3d:
+            return
+        try:
+            pts: Dict[int, Dict[str, float]] = {}
+            for bid in ALL_BONE_IDS:
+                if bid in ent.all_bones_pos_3d:
+                    p2 = self._world_to_screen(vm, ent.all_bones_pos_3d[bid])
+                    if p2 and ent.validate_screen_position(p2):
+                        pts[bid] = p2
+            for start, ends in SKELETON_BONES.items():
+                if start in pts:
+                    for end in ends:
+                        if end in pts:
+                            overlay.draw_line(pts[start]["x"], pts[start]["y"],
+                                              pts[end]["x"], pts[end]["y"], color, 1.5)
+        except Exception as exc:
+            logger.error("Error drawing skeleton: %s", exc)
+
+    def _draw_entity(self, ent: Entity, vm: list, is_teammate: bool = False) -> None:
+        try:
+            head3d = ent.bone_pos(7)
+            pos2d = self._world_to_screen(vm, ent.pos)
+            head2d = self._world_to_screen(vm, head3d)
+            if pos2d is None or head2d is None:
+                return
+            if not ent.validate_screen_position(pos2d) or not ent.validate_screen_position(head2d):
+                return
+
+            ent.pos2d = pos2d
+            ent.head_pos2d = head2d
+
+            h = pos2d["y"] - head2d["y"]
+            w = h / 2
+            hw = w / 2
+            color = self._color_teammate if is_teammate else self._color_box
+
+            if self.enable_skeleton and ent.all_bones_pos_3d:
+                self._draw_skeleton(ent, vm, color)
+
+            if self.draw_snaplines:
+                overlay.draw_line(
+                    self.screen_width / 2, self.screen_height / 2,
+                    head2d["x"], head2d["y"], self._color_snapline, 2,
+                )
+
+            if self.enable_box:
+                overlay.draw_rectangle(
+                    head2d["x"] - hw, head2d["y"] - hw / 2, w, h + hw / 2, Colors.grey
+                )
+                overlay.draw_rectangle_lines(
+                    head2d["x"] - hw, head2d["y"] - hw / 2, w, h + hw / 2,
+                    color, self.box_line_thickness,
+                )
+
+            if self.draw_nicknames:
+                fs = 11
+                nw = overlay.measure_text(ent.name, fs)
+                overlay.draw_text(ent.name, head2d["x"] - nw // 2,
+                                  head2d["y"] - hw / 2 - 15, fs, self._color_text)
+
+            bar_w, bar_m = 4, 2
+            bx = head2d["x"] - hw - bar_w - bar_m
+            by = head2d["y"] - hw / 2
+            bh = h + hw / 2
+            overlay.draw_rectangle(bx, by, bar_w, bh, self._color_health_bg)
+            pct = max(0, min(ent.health, 100))
+            fill_h = (pct / 100.0) * bh
+            fill_color = (
+                self._color_health_low if pct <= 20
+                else self._color_health_mid if pct <= 50
+                else self._color_health_ok
+            )
+            overlay.draw_rectangle(bx, by + (bh - fill_h), bar_w, fill_h, fill_color)
+
+            if self.draw_health_numbers:
+                overlay.draw_text(
+                    str(ent.health), int(bx - 25), int(by + bh / 2 - 5),
+                    10, self._color_text,
+                )
+        except Exception as exc:
+            logger.debug("Error drawing entity: %s", exc)

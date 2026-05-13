@@ -4,6 +4,7 @@ import struct
 
 from classes.logger import Logger
 from classes.utility import Utility
+import classes.error_codes as EC
 
 # Initialize the logger for consistent logging
 logger = Logger.get_logger(__name__)
@@ -16,7 +17,8 @@ class MemoryManager:
         self.buttons_data = buttons_data
         self.pm = None
         self.client_base = None
-        self.config = None  # Configuration cache
+        self.config = None
+        self._initialized: bool = False
         # Offset attributes
         self.dwEntityList = None
         self.dwLocalPlayerPawn = None
@@ -30,7 +32,7 @@ class MemoryManager:
         self.m_pGameSceneNode = None
         self.m_bDormant = None
         self.m_hPlayerPawn = None
-        self.m_flFlashDuration = None
+        self.m_flFlashBangTime = None
         self.m_pBoneArray = None
         self.dwForceJump = None
         self.m_AttributeManager = None
@@ -39,57 +41,61 @@ class MemoryManager:
         self.m_pWeaponServices = None
         self.m_hActiveWeapon = None
 
+    @property
+    def is_initialized(self) -> bool:
+        return self._initialized
+
     def initialize(self) -> bool:
-        """
-        Initialize memory access by attaching to the process and setting up necessary data.
-        Returns True if successful, False otherwise.
-        """
+        """Initialize memory access by attaching to the process and setting up necessary data."""
         # Check if pymem is initialized and the client module is retrieved
         if not self.initialize_pymem() or not self.get_client_module():
             return False
-        # Derive offsets from the current data dictionaries
         self.load_offsets()
         if self.dwEntityList is None:
             return False
+        self._initialized = True
         return True
 
+    def reset(self) -> None:
+        """Release the pymem handle and mark as uninitialized."""
+        self._initialized = False
+        if self.pm is not None:
+            try:
+                self.pm.close_process()
+            except Exception as exc:
+                logger.debug("Error closing pymem handle: %s", exc)
+            self.pm = None
+        self.client_base = None
+
     def _apply_offsets(self) -> None:
-        """Re-derive offset attributes from current offsets/client_data/buttons_data.
-        Called after async offset fetch completes so the manager is ready before the
-        game process is attached."""
+        """Re-derive offset attributes after an async offset fetch completes."""
         self.load_offsets()
 
     def initialize_pymem(self) -> bool:
         """Attach pymem to the game process."""
         try:
-            # Attempt to attach to the cs2.exe process
             self.pm = pymem.Pymem("cs2.exe")
             logger.debug("Successfully attached to cs2.exe process.")
             return True
         except pymem.exception.ProcessNotFound:
-            # Log an error if the process is not found
-            logger.error("cs2.exe process not found. Ensure the game is running.")
+            Logger.error_code(EC.E2001)
             return False
         except Exception as e:
-            # Log any other exceptions that may occur
-            logger.error(f"Unexpected error while attaching to cs2.exe: {e}")
+            Logger.error_code(EC.E2002, "%s", e)
             return False
 
     def get_client_module(self) -> bool:
         """Retrieve the client.dll module base address."""
         try:
-            # Attempt to retrieve the client.dll module
             client_module = pymem.process.module_from_name(self.pm.process_handle, "client.dll")
             self.client_base = client_module.lpBaseOfDll
             logger.debug("client.dll module found and base address retrieved.")
             return True
         except pymem.exception.ModuleNotFoundError:
-            # Log an error if the module is not found
-            logger.error("client.dll not found. Ensure it is loaded.")
+            Logger.error_code(EC.E2003)
             return False
         except Exception as e:
-            # Log any other exceptions that may occur
-            logger.error(f"Unexpected error while retrieving client.dll module: {e}")
+            Logger.error_code(EC.E2004, "%s", e)
             return False
 
     def load_offsets(self) -> None:
@@ -109,7 +115,7 @@ class MemoryManager:
             self.m_pGameSceneNode = extracted["m_pGameSceneNode"]
             self.m_bDormant = extracted["m_bDormant"]
             self.m_hPlayerPawn = extracted["m_hPlayerPawn"]
-            self.m_flFlashDuration = extracted["m_flFlashDuration"]
+            self.m_flFlashBangTime = extracted["m_flFlashBangTime"]
             self.m_pBoneArray = extracted["m_pBoneArray"]
             self.m_AttributeManager = extracted["m_AttributeManager"]
             self.m_iItemDefinitionIndex = extracted["m_iItemDefinitionIndex"]
@@ -117,12 +123,11 @@ class MemoryManager:
             self.m_pWeaponServices = extracted["m_pWeaponServices"]
             self.m_hActiveWeapon = extracted["m_hActiveWeapon"]
         else:
-            logger.error("Failed to initialize offsets from extracted data.")
+            Logger.error_code(EC.E2005)
 
     def get_entity(self, index: int):
         """Retrieve an entity from the entity list."""
         try:
-            # Read the entity list pointer fresh to avoid stale data after map changes
             ent_list = self.read_longlong(self.client_base + self.dwEntityList)
             list_offset = 0x8 * (index >> 9)
             ent_entry = self.read_longlong(ent_list + list_offset + 0x10)
@@ -154,7 +159,7 @@ class MemoryManager:
             return None
         except Exception as e:
             if "Could not read memory at" in str(e):
-                logger.error("Game was updated, new offsets are required. Please wait for the offsets update.")
+                Logger.error_code(EC.E2006)
             else:
                 logger.error(f"Error in fire logic: {e}")
             return None
@@ -208,7 +213,7 @@ class MemoryManager:
         except Exception as e:
             logger.debug(f"Failed to get weapon type: {e}")
             return "Rifles"
-        
+
     def write_float(self, address: int, value: float) -> None:
         """Write a float to memory."""
         try:
@@ -242,9 +247,7 @@ class MemoryManager:
             return {"x": 0.0, "y": 0.0, "z": 0.0}
 
     def read_string(self, address: int, max_length: int = 256) -> str:
-        """
-        Reads a null-terminated string from memory at the specified address.
-        """
+        """Reads a null-terminated string from memory at the specified address."""
         try:
             data = self.pm.read_bytes(address, max_length)
             string_data = data.split(b'\x00')[0]

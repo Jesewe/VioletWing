@@ -1,381 +1,63 @@
 import os
-import requests
-import psutil
 import sys
-import subprocess
-import pygetwindow as gw
-import orjson
-from packaging import version
-from dateutil.parser import parse as parse_date
-from pathlib import Path
 
 from classes.config_manager import ConfigManager, COLOR_CHOICES
 from classes.logger import Logger
+import classes.error_codes as EC
 
-# Initialize the logger for consistent logging
+from classes import game_process as _gp
+from classes import offset_fetcher as _of
+from constants.vk_codes import get_vk_code as _get_vk_code
+
 logger = Logger.get_logger(__name__)
 
 class Utility:
-    _offset_sources_cache: dict = None
+    @staticmethod
+    def is_game_active() -> bool:
+        return _gp.is_game_active()
 
     @staticmethod
-    def load_offset_sources():
-        """Loads available offset sources from src/offsets.json. Result is cached
-        for the lifetime of the process to avoid repeated GitHub raw fetches."""
-        if Utility._offset_sources_cache is not None:
-            return Utility._offset_sources_cache
+    def is_game_running() -> bool:
+        return _gp.is_game_running()
 
-        default = {
-            "a2x": {
-                "name": "A2X Source",
-                "author": "a2x",
-                "repository": "a2x/cs2-dumper",
-                "offsets_url": "https://raw.githubusercontent.com/a2x/cs2-dumper/main/output/offsets.json",
-                "client_dll_url": "https://raw.githubusercontent.com/a2x/cs2-dumper/main/output/client_dll.json",
-                "buttons_url": "https://raw.githubusercontent.com/a2x/cs2-dumper/main/output/buttons.json"
-            },
-            "jesewe": {
-                "name": "Jesewe Source",
-                "author": "Jesewe",
-                "repository": "Jesewe/cs2-dumper",
-                "offsets_url": "https://raw.githubusercontent.com/Jesewe/cs2-dumper/main/output/offsets.json",
-                "client_dll_url": "https://raw.githubusercontent.com/Jesewe/cs2-dumper/main/output/client_dll.json",
-                "buttons_url": "https://raw.githubusercontent.com/Jesewe/cs2-dumper/main/output/buttons.json"
-            }
-        }
-
-        try:
-            response = requests.get('https://raw.githubusercontent.com/Jesewe/VioletWing/refs/heads/main/src/offsets.json', timeout=10)
-            response.raise_for_status()
-            sources_data = orjson.loads(response.content)
-
-            required_keys = {"name", "author", "repository", "offsets_url", "client_dll_url", "buttons_url"}
-            valid = {
-                sid: cfg for sid, cfg in sources_data.items()
-                if required_keys.issubset(cfg)
-            }
-            for sid in sources_data:
-                if sid not in valid:
-                    logger.error(f"Source '{sid}' missing required keys, skipping.")
-
-            logger.debug(f"Loaded {len(valid)} offsets sources from remote offsets.json")
-            Utility._offset_sources_cache = valid
-            return valid
-
-        except Exception as e:
-            logger.warning(f"Failed to load remote offsets sources: {e}, using default sources")
-            Utility._offset_sources_cache = default
-            return default
+    @staticmethod
+    def load_offset_sources() -> dict:
+        return _of.load_offset_sources()
 
     @staticmethod
     def fetch_offsets():
-        """
-        Fetches JSON data from remote URLs or local files based on configuration.
-        Falls back from local -> a2x on any failure without recursive calls.
-        """
-        config = ConfigManager.load_config()
-        source = config["General"].get("OffsetSource", "a2x")
-
-        # tried prevents infinite loops if a2x itself somehow ends up misconfigured
-        tried = set()
-
-        while source not in tried:
-            tried.add(source)
-
-            if source == "local":
-                result = Utility._fetch_local_offsets(config)
-                if result is not None:
-                    return result
-                # Fall through to a2x on any local failure
-                logger.error("Local offsets failed, falling back to a2x.")
-                source = "a2x"
-                config["General"]["OffsetSource"] = source
-                ConfigManager.save_config(config)
-                continue
-
-            # Remote source fetch
-            result = Utility._fetch_remote_offsets(source, config)
-            if result is not None:
-                return result
-            return None, None, None
-
-        logger.error("All offset sources exhausted.")
-        return None, None, None
+        return _of.fetch_offsets()
 
     @staticmethod
-    def _fetch_local_offsets(config):
-        """Load and validate offsets from local files. Returns (offset, client, buttons) or None."""
-        config_dir = Path(ConfigManager.CONFIG_DIRECTORY)
-        offsets_file = Path(config.get("General", {}).get("OffsetsFile", config_dir / "offsets.json"))
-        client_file = Path(config.get("General", {}).get("ClientDLLFile", config_dir / "client_dll.json"))
-        buttons_file = Path(config.get("General", {}).get("ButtonsFile", config_dir / "buttons.json"))
+    def get_available_offset_sources() -> list[dict]:
+        return _of.get_available_offset_sources()
 
+    @staticmethod
+    def check_for_updates(current_version: str) -> tuple:
+        return _of.check_for_updates(current_version)
+
+    @staticmethod
+    def get_vk_code(key: str) -> int:
+        return _get_vk_code(key)
+
+    @staticmethod
+    def resource_path(relative_path: str) -> str:
+        """Return the absolute path to a bundled resource."""
         try:
-            missing = [f.name for f in [offsets_file, client_file, buttons_file] if not f.exists()]
-            if missing:
-                logger.error(f"Local offset files missing: {', '.join(missing)}.")
-                return None
-
-            offset = orjson.loads(offsets_file.read_bytes())
-            client = orjson.loads(client_file.read_bytes())
-            buttons = orjson.loads(buttons_file.read_bytes())
-
-            if Utility.extract_offsets(offset, client, buttons) is None:
-                logger.error("Local offset files invalid: missing required offsets.")
-                return None
-
-            logger.info("Loaded and validated local offsets.")
-            return offset, client, buttons
-        except (orjson.JSONDecodeError, IOError) as e:
-            logger.error(f"Failed to load local offset files: {e}.")
-            return None
-        except Exception as e:
-            logger.exception(f"Unexpected error loading local offsets: {e}.")
-            return None
-
-    @staticmethod
-    def _fetch_remote_offsets(source, config):
-        """Fetch and validate offsets from a remote source. Returns (offset, client, buttons) or None."""
-        server_name = source
-        try:
-            available_sources = Utility.load_offset_sources()
-
-            if source not in available_sources:
-                logger.error(f"Unknown offset source '{source}'.")
-                return None
-
-            source_config = available_sources[source]
-            server_name = source_config["name"]
-
-            offsets_url = os.getenv('OFFSETS_URL', source_config["offsets_url"])
-            client_dll_url = os.getenv('CLIENT_DLL_URL', source_config["client_dll_url"])
-            buttons_url = os.getenv('BUTTONS_URL', source_config["buttons_url"])
-
-            logger.debug(f"Fetching offsets from {server_name} (author: {source_config['author']})...")
-
-            # Fire all three requests concurrently - they have no dependency on each other.
-            from concurrent.futures import ThreadPoolExecutor
-            with ThreadPoolExecutor(max_workers=3) as ex:
-                fut_offsets = ex.submit(requests.get, offsets_url)
-                fut_client  = ex.submit(requests.get, client_dll_url)
-                fut_buttons = ex.submit(requests.get, buttons_url)
-                response_offset  = fut_offsets.result()
-                response_client  = fut_client.result()
-                response_buttons = fut_buttons.result()
-
-            for label, resp in [("offsets", response_offset), ("client_dll", response_client), ("buttons", response_buttons)]:
-                if resp.status_code != 200:
-                    logger.error(f"Failed to fetch {label} from {server_name} (status: {resp.status_code}).")
-                    return None
-
-            offset = orjson.loads(response_offset.content)
-            client = orjson.loads(response_client.content)
-            buttons = orjson.loads(response_buttons.content)
-
-            if Utility.extract_offsets(offset, client, buttons) is None:
-                logger.error(f"Offset files from {server_name} invalid: missing required offsets.")
-                return None
-
-            logger.info(f"Successfully loaded and validated offsets from {server_name}.")
-            return offset, client, buttons
-
-        except orjson.JSONDecodeError as e:
-            logger.error(f"Failed to decode JSON from {server_name}: {e}")
-            return None
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Request failed for {server_name}: {e}")
-            return None
-        except Exception as e:
-            logger.exception(f"Unexpected error fetching from {server_name}: {e}")
-            return None
-    @staticmethod
-    def get_available_offset_sources():
-        """
-        Returns list of available offset sources for UI dropdown
-        """
-        sources = Utility.load_offset_sources()
-        source_list = []
-        
-        # Add dynamic sources
-        for source_id, source_config in sources.items():
-            source_list.append({
-                "id": source_id,
-                "name": source_config["name"],
-                "author": source_config["author"],
-                "display": f"{source_config['name']} ({source_config['author']})"
-            })
-        
-        # Add local option
-        source_list.append({
-            "id": "local",
-            "name": "Local Files",
-            "author": "User",
-            "display": "Local Files"
-        })
-        
-        return source_list
-
-    @staticmethod
-    def check_for_updates(current_version):
-        """Checks GitHub for the latest stable and pre-release versions and returns the download URL of 'VioletWing.exe' if an update is available."""
-        try:
-            # Fetch all releases to check both stable and pre-releases
-            response = requests.get("https://api.github.com/repos/Jesewe/VioletWing/releases")
-            response.raise_for_status()
-            releases = orjson.loads(response.content)
-
-            latest_stable = None
-            latest_prerelease = None
-            stable_download_url = None
-            prerelease_download_url = None
-
-            for release in releases:
-                release_version = release.get("tag_name")
-                if not release_version:
-                    continue
-                try:
-                    parsed_version = version.parse(release_version)
-                except version.InvalidVersion:
-                    logger.warning(f"Invalid version format: {release_version}")
-                    continue
-
-                # Check if release is a pre-release
-                is_prerelease = release.get("prerelease", False)
-                for asset in release.get("assets", []):
-                    if asset.get("name") == "VioletWing.exe":
-                        download_url = asset.get("browser_download_url")
-                        if download_url:
-                            if is_prerelease:
-                                if not latest_prerelease or parsed_version > version.parse(latest_prerelease):
-                                    latest_prerelease = release_version
-                                    prerelease_download_url = download_url
-                            else:
-                                if not latest_stable or parsed_version > version.parse(latest_stable):
-                                    latest_stable = release_version
-                                    stable_download_url = download_url
-
-            current = version.parse(current_version)
-
-            # Prioritize stable release if it's newer than current version
-            if latest_stable and version.parse(latest_stable) > current:
-                logger.info(f"New stable version available: {latest_stable}")
-                return stable_download_url, False  # False indicates stable release
-            # If no newer stable release, check pre-release
-            elif latest_prerelease and version.parse(latest_prerelease) > current:
-                logger.info(f"New pre-release version available: {latest_prerelease}")
-                return prerelease_download_url, True  # True indicates pre-release
-            else:
-                logger.info("No new updates available.")
-                return None, False
-
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Update check failed: {e}")
-            return None, False
-        except Exception as e:
-            logger.error(f"An unexpected error occurred during update check: {e}")
-            return None, False
-
-    @staticmethod
-    def resource_path(relative_path):
-        """Returns the path to a resource, supporting both normal startup and frozen .exe."""
-        try:
-            if hasattr(sys, '_MEIPASS'):
+            if hasattr(sys, "_MEIPASS"):
                 return os.path.join(sys._MEIPASS, relative_path)
             return os.path.join(os.path.abspath("."), relative_path)
-        except Exception as e:
-            logger.error(f"Failed to get resource path: {e}")
-            return None
+        except Exception as exc:
+            Logger.error_code(EC.E0001, "%s", exc)
+            return relative_path
 
-    _game_active_cache: bool = False
-    _game_active_last_check: float = 0.0
-    _GAME_ACTIVE_TTL: float = 0.2  # recheck window focus at most every 200ms
-
-    @staticmethod
-    def is_game_active() -> bool:
-        """Check if the game window is active, with a 200ms TTL cache to avoid
-        enumerating all windows on every tight-loop iteration."""
-        import time
-        now = time.monotonic()
-        if now - Utility._game_active_last_check < Utility._GAME_ACTIVE_TTL:
-            return Utility._game_active_cache
-        windows = gw.getWindowsWithTitle('Counter-Strike 2')
-        result = any(window.isActive for window in windows)
-        Utility._game_active_cache = result
-        Utility._game_active_last_check = now
-        return result
-
-    @staticmethod
-    def is_game_running():
-        """Check if the game process is running using psutil."""
-        return any(proc.info['name'] == 'cs2.exe' for proc in psutil.process_iter(attrs=['name']))
-    
-    @staticmethod
-    def extract_offsets(offsets: dict, client_data: dict, buttons_data: dict) -> dict | None:
-        """Load memory offsets for game functionality."""
-        try:
-            client = offsets.get("client.dll", {})
-            buttons = buttons_data.get("client.dll", {})
-            classes = client_data.get("client.dll", {}).get("classes", {})
-
-            def get_field(class_name, field_name):
-                """Recursively search for a field in a class and its parents."""
-                class_info = classes.get(class_name)
-                if not class_info:
-                    raise KeyError(f"Class '{class_name}' not found")
-
-                field = class_info.get("fields", {}).get(field_name)
-                if field is not None:
-                    return field
-                
-                parent_class_name = class_info.get("parent")
-                if parent_class_name:
-                    return get_field(parent_class_name, field_name)
-                    
-                raise KeyError(f"'{field_name}' not found in '{class_name}' or its parents")
-
-            extracted_offsets = {
-                "dwEntityList": client.get("dwEntityList"),
-                "dwLocalPlayerPawn": client.get("dwLocalPlayerPawn"),
-                "dwLocalPlayerController": client.get("dwLocalPlayerController"),
-                "dwViewMatrix": client.get("dwViewMatrix"),
-                "dwForceJump": buttons.get("jump"),
-                "m_iHealth": get_field("C_BaseEntity", "m_iHealth"),
-                "m_iTeamNum": get_field("C_BaseEntity", "m_iTeamNum"),
-                "m_pGameSceneNode": get_field("C_BaseEntity", "m_pGameSceneNode"),
-                "m_vOldOrigin": get_field("C_BasePlayerPawn", "m_vOldOrigin"),
-                "m_vecAbsOrigin": get_field("CGameSceneNode", "m_vecAbsOrigin"),
-                "m_pWeaponServices": get_field("C_BasePlayerPawn", "m_pWeaponServices"),
-                "m_iIDEntIndex": get_field("C_CSPlayerPawn", "m_iIDEntIndex"),
-                "m_flFlashDuration": get_field("C_CSPlayerPawnBase", "m_flFlashDuration"),
-                "m_hPlayerPawn": get_field("CCSPlayerController", "m_hPlayerPawn"),
-                "m_iszPlayerName": get_field("CBasePlayerController", "m_iszPlayerName"),
-                "m_hActiveWeapon": get_field("CPlayer_WeaponServices", "m_hActiveWeapon"),
-                "m_bDormant": get_field("CGameSceneNode", "m_bDormant"),
-                "m_AttributeManager": get_field("C_EconEntity", "m_AttributeManager"),
-                "m_Item": get_field("C_AttributeContainer", "m_Item"),
-                "m_iItemDefinitionIndex": get_field("C_EconItemView", "m_iItemDefinitionIndex"),
-                "m_pBoneArray": get_field("CSkeletonInstance", "m_modelState") + 0x80
-            }
-
-            missing_keys = [k for k, v in extracted_offsets.items() if v is None]
-            if missing_keys:
-                logger.error(f"Offset initialization error: Missing top-level keys {missing_keys}")
-                return None
-
-            return extracted_offsets
-
-        except KeyError as e:
-            logger.error(f"Offset initialization error: Missing key {e}")
-            return None
-        
     @staticmethod
     def get_color_name_from_hex(hex_color: str) -> str:
-        """Get color name from hex value."""
-        for name, hex_code in COLOR_CHOICES.items():
-            if hex_code == hex_color:
+        for name, code in COLOR_CHOICES.items():
+            if code == hex_color:
                 return name
         return "Black"
-    
+
     _TRANSLITERATE_TABLE = str.maketrans({
         'А': 'A',  'а': 'a',  'Б': 'B',  'б': 'b',  'В': 'V',  'в': 'v',
         'Г': 'G',  'г': 'g',  'Д': 'D',  'д': 'd',  'Е': 'E',  'е': 'e',
@@ -385,48 +67,65 @@ class Utility:
         'О': 'O',  'о': 'o',  'П': 'P',  'п': 'p',  'Р': 'R',  'р': 'r',
         'С': 'S',  'с': 's',  'Т': 'T',  'т': 't',  'У': 'U',  'у': 'u',
         'Ф': 'F',  'ф': 'f',  'Х': 'Kh', 'х': 'kh', 'Ц': 'Ts', 'ц': 'ts',
-        'Ч': 'Ch', 'ч': 'ch', 'Ш': 'Sh', 'ш': 'sh', 'Щ': 'Shch','щ': 'shch',
+        'Ч': 'Ch', 'ч': 'ch', 'Ш': 'Sh', 'ш': 'sh', 'Щ': 'Shch', 'щ': 'shch',
         'Ъ': '',   'ъ': '',   'Ы': 'Y',  'ы': 'y',  'Ь': '',   'ь': '',
         'Э': 'E',  'э': 'e',  'Ю': 'Yu', 'ю': 'yu', 'Я': 'Ya', 'я': 'ya',
     })
 
     @staticmethod
     def transliterate(text: str) -> str:
-        """Converts Cyrillic characters to their Latin equivalents."""
         return text.translate(Utility._TRANSLITERATE_TABLE)
 
     @staticmethod
-    def get_vk_code(key: str) -> int:
-        """Convert a key string to its corresponding virtual key code."""
-        key = key.lower()
-        vk_codes = {
-            # Mouse buttons
-            "mouse1": 0x01,        # Left mouse button
-            "mouse2": 0x02,        # Right mouse button
-            "mouse3": 0x04,        # Middle mouse button
-            "mouse4": 0x05,        # X1 mouse button
-            "mouse5": 0x06,        # X2 mouse button
-            # Common keyboard keys
-            "space": 0x20,         # Spacebar
-            "enter": 0x0D,         # Enter key
-            "shift": 0x10,         # Shift key
-            "ctrl": 0x11,          # Control key
-            "alt": 0x12,           # Alt key
-            "tab": 0x09,           # Tab key
-            "backspace": 0x08,     # Backspace key
-            "esc": 0x1B,           # Escape key
-            # Alphabet keys
-            "a": 0x41, "b": 0x42, "c": 0x43, "d": 0x44, "e": 0x45, "f": 0x46,
-            "g": 0x47, "h": 0x48, "i": 0x49, "j": 0x4A, "k": 0x4B, "l": 0x4C,
-            "m": 0x4D, "n": 0x4E, "o": 0x4F, "p": 0x50, "q": 0x51, "r": 0x52,
-            "s": 0x53, "t": 0x54, "u": 0x55, "v": 0x56, "w": 0x57, "x": 0x58,
-            "y": 0x59, "z": 0x5A,
-            # Number keys
-            "0": 0x30, "1": 0x31, "2": 0x32, "3": 0x33, "4": 0x34,
-            "5": 0x35, "6": 0x36, "7": 0x37, "8": 0x38, "9": 0x39,
-            # Function keys
-            "f1": 0x70, "f2": 0x71, "f3": 0x72, "f4": 0x73, "f5": 0x74,
-            "f6": 0x75, "f7": 0x76, "f8": 0x77, "f9": 0x78, "f10": 0x79,
-            "f11": 0x7A, "f12": 0x7B
-        }
-        return vk_codes.get(key, 0x20)  # Default to space key
+    def extract_offsets(offsets: dict, client_data: dict, buttons_data: dict) -> dict | None:
+        try:
+            client = offsets.get("client.dll", {})
+            buttons = buttons_data.get("client.dll", {})
+            classes = client_data.get("client.dll", {}).get("classes", {})
+
+            def get_field(class_name: str, field_name: str):
+                class_info = classes.get(class_name)
+                if not class_info:
+                    raise KeyError(f"Class '{class_name}' not found")
+                field = class_info.get("fields", {}).get(field_name)
+                if field is not None:
+                    return field
+                parent = class_info.get("parent")
+                if parent:
+                    return get_field(parent, field_name)
+                raise KeyError(f"'{field_name}' not found in '{class_name}' or its parents")
+
+            extracted = {
+                "dwEntityList":           client.get("dwEntityList"),
+                "dwLocalPlayerPawn":      client.get("dwLocalPlayerPawn"),
+                "dwLocalPlayerController": client.get("dwLocalPlayerController"),
+                "dwViewMatrix":           client.get("dwViewMatrix"),
+                "dwForceJump":            buttons.get("jump"),
+                "m_iHealth":              get_field("C_BaseEntity", "m_iHealth"),
+                "m_iTeamNum":             get_field("C_BaseEntity", "m_iTeamNum"),
+                "m_pGameSceneNode":       get_field("C_BaseEntity", "m_pGameSceneNode"),
+                "m_vOldOrigin":           get_field("C_BasePlayerPawn", "m_vOldOrigin"),
+                "m_vecAbsOrigin":         get_field("CGameSceneNode", "m_vecAbsOrigin"),
+                "m_pWeaponServices":      get_field("C_BasePlayerPawn", "m_pWeaponServices"),
+                "m_iIDEntIndex":          get_field("C_CSPlayerPawn", "m_iIDEntIndex"),
+                "m_flFlashBangTime":      get_field("C_CSPlayerPawnBase", "m_flFlashBangTime"),
+                "m_hPlayerPawn":          get_field("CCSPlayerController", "m_hPlayerPawn"),
+                "m_iszPlayerName":        get_field("CBasePlayerController", "m_iszPlayerName"),
+                "m_hActiveWeapon":        get_field("CPlayer_WeaponServices", "m_hActiveWeapon"),
+                "m_bDormant":             get_field("CGameSceneNode", "m_bDormant"),
+                "m_AttributeManager":     get_field("C_EconEntity", "m_AttributeManager"),
+                "m_Item":                 get_field("C_AttributeContainer", "m_Item"),
+                "m_iItemDefinitionIndex": get_field("C_EconItemView", "m_iItemDefinitionIndex"),
+                "m_pBoneArray":           get_field("CSkeletonInstance", "m_modelState") + 0x80,
+            }
+
+            missing = [k for k, v in extracted.items() if v is None]
+            if missing:
+                Logger.error_code(EC.E2007, "Missing: %s", missing)
+                return None
+
+            return extracted
+
+        except KeyError as exc:
+            Logger.error_code(EC.E2007, "Key: %s", exc)
+            return None

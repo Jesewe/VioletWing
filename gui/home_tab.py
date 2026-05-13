@@ -15,546 +15,270 @@ from gui.theme import (
     FONT_TITLE, FONT_SUBTITLE, FONT_SECTION_TITLE, FONT_SECTION_DESCRIPTION,
     FONT_ITEM_LABEL, FONT_ITEM_DESCRIPTION, FONT_WIDGET,
     COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY, COLOR_ACCENT_FG,
-    SECTION_STYLE, BUTTON_STYLE_PRIMARY, BUTTON_STYLE_DANGER
+    SECTION_STYLE, BUTTON_STYLE_PRIMARY, BUTTON_STYLE_DANGER,
 )
 
-# Cache the logger instance
 logger = Logger.get_logger(__name__)
 
 def populate_dashboard(main_window, frame):
-    """Populate the dashboard frame with status cards, controls, and a quick start guide."""
-    # Scrollable container for dashboard content
-    dashboard = ctk.CTkScrollableFrame(
-        frame,
-        fg_color="transparent"
-    )
+    """Populate the dashboard frame."""
+    dashboard = ctk.CTkScrollableFrame(frame, fg_color="transparent")
     dashboard.pack(fill="both", expand=True, padx=40, pady=40)
-    
-    # Configure faster scroll speed by modifying canvas
     dashboard._parent_canvas.configure(yscrollincrement=5)
-    
-    # Frame for page title and subtitle
+
     title_frame = ctk.CTkFrame(dashboard, fg_color="transparent")
     title_frame.pack(fill="x", pady=(0, 30))
-    
-    # Dashboard title with icon
     icon_label(title_frame, "charts_icon.png", size=(38, 38), padx=(0, 16))
-    title_label = ctk.CTkLabel(
-        title_frame,
-        text="Dashboard",
-        font=FONT_TITLE,
-        text_color=COLOR_TEXT_PRIMARY
-    )
-    title_label.pack(side="left")
-    
-    # Subtitle providing context
-    subtitle_label = ctk.CTkLabel(
-        title_frame,
-        text="Monitor and control your CS2 client",
-        font=FONT_SUBTITLE,
-        text_color=COLOR_TEXT_SECONDARY
-    )
-    subtitle_label.pack(side="left", padx=(20, 0), pady=(10, 0))
-    
-    # Frame for status cards - using grid layout for better responsiveness (now 3 columns)
+    ctk.CTkLabel(title_frame, text="Dashboard", font=FONT_TITLE,
+                 text_color=COLOR_TEXT_PRIMARY).pack(side="left")
+    ctk.CTkLabel(title_frame, text="Monitor and control your CS2 client",
+                 font=FONT_SUBTITLE, text_color=COLOR_TEXT_SECONDARY).pack(
+        side="left", padx=(20, 0), pady=(10, 0))
+
     stats_frame = ctk.CTkFrame(dashboard, fg_color="transparent")
     stats_frame.pack(fill="x", pady=(0, 40))
-    
-    # Configure grid columns to be equal width (reduced to 3 columns)
-    stats_frame.grid_columnconfigure(0, weight=1)
-    stats_frame.grid_columnconfigure(1, weight=1)
-    stats_frame.grid_columnconfigure(2, weight=1)
-    
-    # CS2 latest patch card - moved to first position
-    cs2_patch_card, main_window.cs2_patch_label = create_stat_card(
-        main_window,
-        stats_frame,
-        "CS2 Update",
-        "Checking...",
-        "#6b7280",
-        "Latest Counter-Strike 2 patch",
-        "crosshairs_icon.png"
-    )
-    cs2_patch_card.grid(row=0, column=0, sticky="ew", padx=(0, 10))
+    for col in range(3):
+        stats_frame.grid_columnconfigure(col, weight=1)
 
-    # Last update card with stored label reference - moved to second position
-    update_card, main_window.update_value_label = create_stat_card(
-        main_window,
-        stats_frame,
-        "Offsets Update",
-        "Checking...",
-        "#6b7280",
-        "Last offsets synchronization",
-        "rotate_icon.png"
-    )
-    update_card.grid(row=0, column=1, sticky="ew", padx=(10, 10))
+    cs2_card, main_window.cs2_patch_label = _stat_card(
+        main_window, stats_frame, "CS2 Update", "Checking...", "#6b7280",
+        "Latest Counter-Strike 2 patch", "crosshairs_icon.png")
+    cs2_card.grid(row=0, column=0, sticky="ew", padx=(0, 10))
 
-    # Version card - moved to third position
-    version_card, version_value_label = create_stat_card(
-        main_window,
-        stats_frame,
-        "Version",
-        f"{ConfigManager.VERSION}",
-        "#8e44ad",
-        "Current application version",
-        "box_archive_icon.png"
-    )
-    version_card.grid(row=0, column=2, sticky="ew", padx=(10, 0))
-    
-    # Control panel section
-    control_panel = ctk.CTkFrame(dashboard, **SECTION_STYLE)
-    control_panel.pack(fill="x", pady=(0, 40))
-    
-    # Header for control panel
-    control_header = ctk.CTkFrame(control_panel, fg_color="transparent")
-    control_header.pack(fill="x", padx=40, pady=(40, 30))
-    
-    # Control center title
-    icon_label(control_header, "gamepad_icon.png", size=(22, 22), padx=(0, 10))
-    ctk.CTkLabel(
-        control_header,
-        text="Control Center",
-        font=FONT_SECTION_TITLE,
-        text_color=COLOR_TEXT_PRIMARY
-    ).pack(side="left")
-    
-    # Frame for control buttons
-    control_buttons = ctk.CTkFrame(control_panel, fg_color="transparent")
-    control_buttons.pack(fill="x", padx=40, pady=(0, 40))
-    
-    # Start button with play icon
-    _play_icon = load_icon("play_icon.png", size=(16, 16))
-    start_button = ctk.CTkButton(
-        control_buttons,
-        text="Start Client",
-        image=_play_icon, compound="left",
-        command=main_window.start_client,
-        width=180,
-        **BUTTON_STYLE_PRIMARY
-    )
-    start_button.pack(side="left", padx=(0, 20))
-    
-    # Stop button with stop icon
-    _stop_icon = load_icon("stop_icon.png", size=(16, 16))
-    stop_button = ctk.CTkButton(
-        control_buttons,
-        text="Stop Client",
-        image=_stop_icon, compound="left",
-        command=main_window.stop_client,
-        width=180,
-        **BUTTON_STYLE_DANGER
-    )
-    stop_button.pack(side="left")
-    
-    # Quick start guide section
-    guide_card = ctk.CTkFrame(dashboard, **SECTION_STYLE)
-    guide_card.pack(fill="x")
-    
-    # Header for quick start guide
-    guide_header = ctk.CTkFrame(guide_card, fg_color="transparent")
-    guide_header.pack(fill="x", padx=40, pady=(40, 30))
-    
-    # Guide title with icon
-    icon_label(guide_header, "rocket_icon.png", size=(22, 22), padx=(0, 10))
-    ctk.CTkLabel(
-        guide_header,
-        text="Quick Start Guide",
-        font=FONT_SECTION_TITLE,
-        text_color=COLOR_TEXT_PRIMARY
-    ).pack(side="left")
-    
-    # Guide subtitle
-    ctk.CTkLabel(
-        guide_header,
-        text="Follow these steps to get started",
-        font=FONT_SECTION_DESCRIPTION,
-        text_color=COLOR_TEXT_SECONDARY
-    ).pack(side="right")
-    
-    # List of guide steps
+    upd_card, main_window.update_value_label = _stat_card(
+        main_window, stats_frame, "Offsets Update", "Checking...", "#6b7280",
+        "Last offsets synchronisation", "rotate_icon.png")
+    upd_card.grid(row=0, column=1, sticky="ew", padx=(10, 10))
+
+    ver_card, _ = _stat_card(
+        main_window, stats_frame, "Version", ConfigManager.VERSION, "#8e44ad",
+        "Current application version", "box_archive_icon.png")
+    ver_card.grid(row=0, column=2, sticky="ew", padx=(10, 0))
+
+    # Control panel
+    ctrl = ctk.CTkFrame(dashboard, **SECTION_STYLE)
+    ctrl.pack(fill="x", pady=(0, 40))
+    ctrl_header = ctk.CTkFrame(ctrl, fg_color="transparent")
+    ctrl_header.pack(fill="x", padx=40, pady=(40, 30))
+    icon_label(ctrl_header, "gamepad_icon.png", size=(22, 22), padx=(0, 10))
+    ctk.CTkLabel(ctrl_header, text="Control Center", font=FONT_SECTION_TITLE,
+                 text_color=COLOR_TEXT_PRIMARY).pack(side="left")
+
+    btns = ctk.CTkFrame(ctrl, fg_color="transparent")
+    btns.pack(fill="x", padx=40, pady=(0, 40))
+    ctk.CTkButton(btns, text="Start Client", image=load_icon("play_icon.png", (16, 16)),
+                  compound="left", command=main_window.start_client,
+                  width=180, **BUTTON_STYLE_PRIMARY).pack(side="left", padx=(0, 20))
+    ctk.CTkButton(btns, text="Stop Client", image=load_icon("stop_icon.png", (16, 16)),
+                  compound="left", command=main_window.stop_client,
+                  width=180, **BUTTON_STYLE_DANGER).pack(side="left")
+
+    # Quick-start guide
+    guide = ctk.CTkFrame(dashboard, **SECTION_STYLE)
+    guide.pack(fill="x")
+    gh = ctk.CTkFrame(guide, fg_color="transparent")
+    gh.pack(fill="x", padx=40, pady=(40, 30))
+    icon_label(gh, "rocket_icon.png", size=(22, 22), padx=(0, 10))
+    ctk.CTkLabel(gh, text="Quick Start Guide", font=FONT_SECTION_TITLE,
+                 text_color=COLOR_TEXT_PRIMARY).pack(side="left")
+    ctk.CTkLabel(gh, text="Follow these steps to get started",
+                 font=FONT_SECTION_DESCRIPTION, text_color=COLOR_TEXT_SECONDARY).pack(side="right")
+
     steps = [
-        ("1", "Launch CS2", "Open Counter-Strike 2 and ensure it's running"),
-        ("2", "Configure Features", "Enable TriggerBot, Overlay (ESP), Bunnyhop, or NoFlash"),
-        ("3", "Adjust Settings", "Customize trigger keys, delays, colors, and other preferences"),
-        ("4", "Start VioletWing", "Click the Start Client button to activate your assistant"),
-        ("5", "Monitor Status", "Check Dashboard status and Logs tab for real-time updates")
+        ("1", "Launch CS2",          "Open Counter-Strike 2 and ensure it's running"),
+        ("2", "Configure Features",  "Enable TriggerBot, Overlay (ESP), Bunnyhop, or NoFlash"),
+        ("3", "Adjust Settings",     "Customise trigger keys, delays, colours, and preferences"),
+        ("4", "Start VioletWing",    "Click the Start Client button to activate your assistant"),
+        ("5", "Monitor Status",      "Check Dashboard status and Logs tab for real-time updates"),
     ]
-    
-    # Create each step
-    for i, (step_num, step_title, step_desc) in enumerate(steps):
-        # Frame for the step
-        step_frame = ctk.CTkFrame(guide_card, fg_color="transparent")
-        step_frame.pack(fill="x", padx=40, pady=(0, 25 if i < len(steps)-1 else 40))
-        
-        # Step number badge
-        step_badge = ctk.CTkFrame(
-            step_frame,
-            width=50,
-            height=50,
-            corner_radius=25,
-            fg_color=COLOR_ACCENT_FG
-        )
-        step_badge.pack(side="left", padx=(0, 25))
-        step_badge.pack_propagate(False)
-        
-        # Step number inside badge
-        ctk.CTkLabel(
-            step_badge,
-            text=step_num,
-            font=FONT_WIDGET,
-            text_color="#ffffff"
-        ).place(relx=0.5, rely=0.5, anchor="center")
-        
-        # Frame for step content
-        step_content = ctk.CTkFrame(step_frame, fg_color="transparent")
-        step_content.pack(side="left", fill="x", expand=True)
-        
-        # Step title
-        ctk.CTkLabel(
-            step_content,
-            text=step_title,
-            font=FONT_ITEM_LABEL,
-            text_color=COLOR_TEXT_PRIMARY,
-            anchor="w"
-        ).pack(fill="x")
-        
-        # Step description
-        ctk.CTkLabel(
-            step_content,
-            text=step_desc,
-            font=FONT_ITEM_DESCRIPTION,
-            text_color=COLOR_TEXT_SECONDARY,
-            anchor="w"
-        ).pack(fill="x", pady=(4, 0))
-        
-        # Connector line between steps (except last)
+    for i, (num, title, desc) in enumerate(steps):
+        sf = ctk.CTkFrame(guide, fg_color="transparent")
+        sf.pack(fill="x", padx=40, pady=(0, 25 if i < len(steps) - 1 else 40))
+        badge = ctk.CTkFrame(sf, width=50, height=50, corner_radius=25, fg_color=COLOR_ACCENT_FG)
+        badge.pack(side="left", padx=(0, 25))
+        badge.pack_propagate(False)
+        ctk.CTkLabel(badge, text=num, font=FONT_WIDGET, text_color="#ffffff").place(
+            relx=0.5, rely=0.5, anchor="center")
+        sc = ctk.CTkFrame(sf, fg_color="transparent")
+        sc.pack(side="left", fill="x", expand=True)
+        ctk.CTkLabel(sc, text=title, font=FONT_ITEM_LABEL,
+                     text_color=COLOR_TEXT_PRIMARY, anchor="w").pack(fill="x")
+        ctk.CTkLabel(sc, text=desc, font=FONT_ITEM_DESCRIPTION,
+                     text_color=COLOR_TEXT_SECONDARY, anchor="w").pack(fill="x", pady=(4, 0))
         if i < len(steps) - 1:
-            connector = ctk.CTkFrame(
-                guide_card,
-                width=2,
-                height=20,
-                fg_color=("#c4b5fd", "#2a1d4e")
-            )
-            connector.pack(padx=(65, 0), anchor="w")
-    
-    # Fetch last offset update and CS2 patch
+            ctk.CTkFrame(guide, width=2, height=20,
+                         fg_color=("#c4b5fd", "#2a1d4e")).pack(padx=(65, 0), anchor="w")
+
     fetch_last_update(main_window)
     fetch_cs2_latest_patch(main_window)
 
-def create_stat_card(main_window, parent, title, value, color, subtitle, icon_file=None):
-    """Create a modern stat card and return the card and value label."""
-    card = ctk.CTkFrame(
-        parent,
-        corner_radius=20,
-        fg_color=("#f5f3ff", "#0d0a1a"),
-        border_width=1,
-        border_color=("#c4b5fd", "#2a1d4e")
-    )
-
+def _stat_card(main_window, parent, title, value, color, subtitle, icon_file=None):
+    card = ctk.CTkFrame(parent, corner_radius=20, fg_color=("#f5f3ff", "#0d0a1a"),
+                        border_width=1, border_color=("#c4b5fd", "#2a1d4e"))
     content = ctk.CTkFrame(card, fg_color="transparent")
     content.pack(fill="both", expand=True, padx=30, pady=30)
 
-    # Header row: icon (optional) + title side by side
-    header_row = ctk.CTkFrame(content, fg_color="transparent")
-    header_row.pack(fill="x", pady=(0, 15))
-
+    hr = ctk.CTkFrame(content, fg_color="transparent")
+    hr.pack(fill="x", pady=(0, 15))
     if icon_file:
-        try:
-            img = Image.open(Utility.resource_path(f'src/img/{icon_file}'))
-            ctk_image = ctk.CTkImage(light_image=img, dark_image=img, size=(18, 18))
-            ctk.CTkLabel(
-                header_row,
-                text="",
-                image=ctk_image,
-                width=18,
-            ).pack(side="left", padx=(0, 8))
-        except FileNotFoundError:
-            pass
+        icon_label(hr, icon_file, size=(18, 18), padx=(0, 8))
+    ctk.CTkLabel(hr, text=title, font=FONT_ITEM_LABEL,
+                 text_color=COLOR_TEXT_SECONDARY, anchor="w").pack(side="left", fill="x", expand=True)
 
-    ctk.CTkLabel(
-        header_row,
-        text=title,
-        font=FONT_ITEM_LABEL,
-        text_color=COLOR_TEXT_SECONDARY,
-        anchor="w"
-    ).pack(side="left", fill="x", expand=True)
-
-    # Value label
-    value_label = ctk.CTkLabel(
-        content,
-        text=value,
-        font=FONT_SECTION_TITLE,
-        text_color=color,
-        anchor="w"
-    )
-    value_label.pack(fill="x", pady=(0, 10))
-
-    ctk.CTkLabel(
-        content,
-        text=subtitle,
-        font=FONT_ITEM_DESCRIPTION,
-        text_color=COLOR_TEXT_SECONDARY,
-        anchor="w"
-    ).pack(fill="x")
-
-    return card, value_label
+    val_label = ctk.CTkLabel(content, text=value, font=FONT_SECTION_TITLE,
+                             text_color=color, anchor="w")
+    val_label.pack(fill="x", pady=(0, 10))
+    ctk.CTkLabel(content, text=subtitle, font=FONT_ITEM_DESCRIPTION,
+                 text_color=COLOR_TEXT_SECONDARY, anchor="w").pack(fill="x")
+    return card, val_label
 
 def fetch_last_update(main_window):
-    """Fetch and display the last offset update time based on selected source with retry, caching, and authentication."""
-    def update_callback():
+    """Fetch last offset commit date in a background thread."""
+    stop_event = threading.Event()
+    main_window._fetch_update_stop = stop_event
+
+    def _run():
         max_retries = 3
-        retry_delay = 5  # seconds
+        retry_delay = 5
         cache_file = Path(ConfigManager.CONFIG_DIRECTORY) / "last_update_cache.txt"
 
-        def load_cached_timestamp():
+        def _update_ui(text, color):
             try:
-                with open(cache_file, 'r') as f:
-                    return f.read().strip()
+                if main_window.root.winfo_exists() and hasattr(main_window, "update_value_label"):
+                    main_window.root.after(
+                        0, lambda: main_window.update_value_label.configure(
+                            text=text, text_color=color))
+            except Exception:
+                pass
+
+        def _load_cache():
+            try:
+                return cache_file.read_text().strip()
             except FileNotFoundError:
                 return None
 
-        def save_cached_timestamp(timestamp):
+        def _save_cache(ts):
             try:
-                with open(cache_file, 'w') as f:
-                    f.write(timestamp)
-            except IOError as e:
-                logger.error("Failed to save cached timestamp: %s", e)
+                cache_file.write_text(ts)
+            except IOError as exc:
+                logger.error("Failed to save update cache: %s", exc)
 
-        def update_ui(text, color):
-            # Schedule UI update in the main thread
-            try:
-                main_window.root.after(0, lambda: (
-                    main_window.update_value_label.configure(text=text, text_color=color)
-                    if main_window.root.winfo_exists() and hasattr(main_window, 'update_value_label')
-                    else None
-                ))
-            except Exception as e:
-                pass
+        cached = _load_cache()
+        if cached:
+            _update_ui(cached, "#22c55e")
 
-        def load_offset_sources():
-            """Load available offset sources from remote or fallback to defaults."""
-            try:
-                response = requests.get(
-                    'https://raw.githubusercontent.com/Jesewe/VioletWing/refs/heads/main/src/offsets.json',
-                    timeout=10
-                )
-                response.raise_for_status()
-                return orjson.loads(response.content)
-            except (requests.RequestException, orjson.JSONDecodeError):
-                # Fallback to default sources
-                return {
-                    "a2x": {
-                        "name": "a2x Source",
-                        "author": "a2x",
-                        "repository": "a2x/cs2-dumper"
-                    },
-                    "jesewe": {
-                        "name": "Jesewe Source",
-                        "author": "Jesewe",
-                        "repository": "Jesewe/cs2-dumper"
-                    },
-                    "sezzyaep": {
-                        "name": "sezzyaep Source",
-                        "author": "sezzyaep",
-                        "repository": "sezzyaep/CS2-OFFSETS"
-                    }
-                }
-
-        # Try loading cached timestamp first
-        cached_timestamp = load_cached_timestamp()
-        if cached_timestamp:
-            logger.debug("Using cached timestamp: %s", cached_timestamp)
-            update_ui(cached_timestamp, "#22c55e")
-
-        # Load config to determine offset source
         config = ConfigManager.load_config()
-        offset_source = config.get("General", {}).get("OffsetSource", "a2x")
+        source = config.get("General", {}).get("OffsetSource", "a2x")
 
-        # Handle local files case
-        if offset_source == "local":
-            try:
-                offsets_file = config.get("General", {}).get("OffsetsFile", "")
-                if offsets_file and Path(offsets_file).exists():
-                    file_mtime = Path(offsets_file).stat().st_mtime
-                    file_dt = datetime.fromtimestamp(file_mtime)
-                    formatted_timestamp = file_dt.strftime("%m/%d/%Y %H:%M")
-                    
-                    # Cache and update UI
-                    save_cached_timestamp(formatted_timestamp)
-                    update_ui(formatted_timestamp, "#22c55e")
-                    logger.debug("Using local file modification time: %s", formatted_timestamp)
-                else:
-                    update_ui("No Local File", "#ef4444")
-                    logger.warning("Local offsets file not found or not configured")
-            except Exception as e:
-                logger.error("Failed to get local file timestamp: %s", e)
-                update_ui("Error", "#ef4444")
+        if source == "local":
+            offsets_file = Path(config.get("General", {}).get("OffsetsFile", ""))
+            if offsets_file.exists():
+                mtime = datetime.fromtimestamp(offsets_file.stat().st_mtime)
+                ts = mtime.strftime("%m/%d/%Y %H:%M")
+                _save_cache(ts)
+                _update_ui(ts, "#22c55e")
+            else:
+                _update_ui("No Local File", "#ef4444")
             return
 
-        # Load offset sources to get repository information
-        offset_sources = load_offset_sources()
-        
-        if offset_source not in offset_sources:
-            logger.error("Unknown offset source: %s", offset_source)
-            update_ui("Unknown Source", "#ef4444")
+        sources = Utility.load_offset_sources()
+        if source not in sources:
+            _update_ui("Unknown Source", "#ef4444")
             return
 
-        repository = offset_sources[offset_source].get("repository", "a2x/cs2-dumper")
-        
-        # Set up headers for GitHub API
-        github_token = config.get("GitHub", {}).get("AccessToken", None)
+        repo = sources[source].get("repository", "a2x/cs2-dumper")
+        github_token = config.get("GitHub", {}).get("AccessToken")
         headers = {
             "Accept": "application/vnd.github+json",
             "X-GitHub-Api-Version": "2022-11-28",
-            "User-Agent": "VioletWing-App"
+            "User-Agent": "VioletWing-App",
         }
         if github_token:
             headers["Authorization"] = f"Bearer {github_token}"
 
-        # Fetch from GitHub API
         for attempt in range(max_retries):
+            if stop_event.is_set():
+                return
             try:
-                api_url = f"https://api.github.com/repos/{repository}/commits/main"
-                response = requests.get(api_url, headers=headers, timeout=10)
-                response.raise_for_status()
-                commit_data = orjson.loads(response.content)
-                commit_timestamp = commit_data["commit"]["committer"]["date"]
-
-                # Parse and format the timestamp
-                last_update_dt = parse_date(commit_timestamp)
-                formatted_timestamp = last_update_dt.strftime("%m/%d/%Y %H:%M")
-
-                # Cache the timestamp
-                save_cached_timestamp(formatted_timestamp)
-
-                # Update UI
-                update_ui(formatted_timestamp, "#22c55e")
-                logger.debug("Successfully fetched last update from %s: %s", repository, formatted_timestamp)
+                resp = requests.get(
+                    f"https://api.github.com/repos/{repo}/commits/main",
+                    headers=headers, timeout=10)
+                resp.raise_for_status()
+                data = orjson.loads(resp.content)
+                ts = parse_date(data["commit"]["committer"]["date"]).strftime("%m/%d/%Y %H:%M")
+                _save_cache(ts)
+                _update_ui(ts, "#22c55e")
                 return
-
-            except requests.exceptions.HTTPError as e:
-                if e.response.status_code == 403:
-                    logger.warning("GitHub API rate limit exceeded. Attempt %d/%d", attempt + 1, max_retries)
-                    if attempt < max_retries - 1:
-                        time.sleep(retry_delay)
-                        continue
-                    else:
-                        logger.error("Max retries reached for GitHub API rate limit.")
-                        update_ui("Rate Limit Exceeded", "#ef4444")
-                        return
-                else:
-                    logger.error("HTTP error fetching last update from %s: %s", repository, e)
-                    update_ui("Error", "#ef4444")
-                    return
-            except Exception as e:
-                logger.error("Failed to fetch last update from %s: %s", repository, e)
-                if attempt < max_retries - 1:
-                    time.sleep(retry_delay)
+            except requests.exceptions.HTTPError as exc:
+                if exc.response.status_code == 403 and attempt < max_retries - 1:
+                    for _ in range(retry_delay * 10):
+                        if stop_event.is_set():
+                            return
+                        time.sleep(0.1)
                     continue
-                update_ui("Error", "#ef4444")
+                _update_ui("Rate Limit" if getattr(exc.response, "status_code", 0) == 403
+                           else "Error", "#ef4444")
                 return
+            except Exception as exc:
+                logger.error("Failed to fetch last update: %s", exc)
+                if attempt < max_retries - 1:
+                    for _ in range(retry_delay * 10):
+                        if stop_event.is_set():
+                            return
+                        time.sleep(0.1)
+                    continue
+                _update_ui("Error", "#ef4444")
 
-    # Run fetch in a separate thread
-    threading.Thread(target=update_callback, daemon=True).start()
+    threading.Thread(target=_run, daemon=True).start()
 
 def fetch_cs2_latest_patch(main_window):
-    """Fetch and display the latest Counter-Strike 2 patch date from Steam Web API."""
-    def patch_callback():
+    """Fetch latest CS2 patch date from Steam API in a background thread."""
+    stop_event = threading.Event()
+    main_window._fetch_patch_stop = stop_event
+
+    def _run():
         max_retries = 3
-        retry_delay = 5  # seconds
+        retry_delay = 5
         cache_file = Path(ConfigManager.CONFIG_DIRECTORY) / "cs2_patch_cache.txt"
 
-        def load_cached_patch():
+        def _update_ui(text, color):
             try:
-                with open(cache_file, 'r') as f:
-                    return f.read().strip()
-            except FileNotFoundError:
-                return None
-
-        def save_cached_patch(patch_date):
-            try:
-                with open(cache_file, 'w') as f:
-                    f.write(patch_date)
-            except IOError as e:
-                logger.error("Failed to save cached patch date: %s", e)
-
-        def update_ui(text, color):
-            # Schedule UI update in the main thread
-            try:
-                main_window.root.after(0, lambda: (
-                    main_window.cs2_patch_label.configure(text=text, text_color=color)
-                    if main_window.root.winfo_exists() and hasattr(main_window, 'cs2_patch_label')
-                    else None
-                ))
-            except Exception as e:
+                if main_window.root.winfo_exists() and hasattr(main_window, "cs2_patch_label"):
+                    main_window.root.after(
+                        0, lambda: main_window.cs2_patch_label.configure(
+                            text=text, text_color=color))
+            except Exception:
                 pass
 
-        # Try loading cached patch date first
-        cached_patch = load_cached_patch()
-        if cached_patch:
-            logger.debug("Using cached CS2 patch date: %s", cached_patch)
-            update_ui(cached_patch, "#22c55e")
+        cached = cache_file.read_text().strip() if cache_file.exists() else None
+        if cached:
+            _update_ui(cached, "#22c55e")
 
-        # Headers for Steam API request (minimal, as it's public)
-        headers = {
-            "User-Agent": "VioletWing-App"
-        }
+        url = ("https://api.steampowered.com/ISteamNews/GetNewsForApp/v2/"
+               "?appid=730&count=1&maxlength=1&format=json")
 
         for attempt in range(max_retries):
+            if stop_event.is_set():
+                return
             try:
-                response = requests.get(
-                    "https://api.steampowered.com/ISteamNews/GetNewsForApp/v2/?appid=730&count=1&maxlength=1&format=json",
-                    headers=headers,
-                    timeout=10
-                )
-                response.raise_for_status()
-                
-                # Parse JSON response
-                data = orjson.loads(response.content)
-                
-                if 'appnews' in data and 'newsitems' in data['appnews'] and data['appnews']['newsitems']:
-                    news_item = data['appnews']['newsitems'][0]
-                    timestamp = news_item['date']
-                    
-                    # Convert Unix timestamp to datetime
-                    patch_date = datetime.fromtimestamp(timestamp)
-                    formatted_date = patch_date.strftime("%m/%d/%Y")
-
-                    # Cache the patch date
-                    save_cached_patch(formatted_date)
-
-                    # Update UI
-                    update_ui(formatted_date, "#22c55e")
-                    logger.debug("Successfully fetched CS2 patch date: %s", formatted_date)
-                    return
-                else:
-                    raise ValueError("No news items found in Steam API response")
-
-            except requests.exceptions.HTTPError as e:
-                logger.error("HTTP error fetching CS2 patch: %s", e)
-                if attempt < max_retries - 1:
-                    time.sleep(retry_delay)
-                    continue
-                update_ui("Error", "#ef4444")
+                resp = requests.get(url, headers={"User-Agent": "VioletWing-App"}, timeout=10)
+                resp.raise_for_status()
+                data = orjson.loads(resp.content)
+                items = data.get("appnews", {}).get("newsitems", [])
+                if not items:
+                    raise ValueError("No news items in Steam API response")
+                date_str = datetime.fromtimestamp(items[0]["date"]).strftime("%m/%d/%Y")
+                cache_file.write_text(date_str)
+                _update_ui(date_str, "#22c55e")
                 return
-            except Exception as e:
-                logger.error("Failed to fetch CS2 patch: %s", e)
+            except Exception as exc:
+                logger.error("Failed to fetch CS2 patch date: %s", exc)
                 if attempt < max_retries - 1:
-                    time.sleep(retry_delay)
+                    for _ in range(retry_delay * 10):
+                        if stop_event.is_set():
+                            return
+                        time.sleep(0.1)
                     continue
-                update_ui("Error", "#ef4444")
-                return
+                _update_ui("Error", "#ef4444")
 
-    # Run fetch in a separate thread
-    threading.Thread(target=patch_callback, daemon=True).start()
-
-def update_client_status(self, status, color):
-    """Update the client status indicators across the dashboard."""
-    # Update header status label
-    self.status_label.configure(text=status, text_color=color)
-
-    # Update status dot color in header
-    for widget in self.status_frame.winfo_children():
-        if isinstance(widget, ctk.CTkFrame) and widget.cget("width") == 12:
-            widget.configure(fg_color=color)
-            break
+    threading.Thread(target=_run, daemon=True).start()
