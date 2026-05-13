@@ -1,11 +1,28 @@
 import sys
 import signal
+import platform
+import locale
 from pathlib import Path
 
 from classes.logger import Logger
 from classes.config_manager import ConfigManager
 
 from gui.main_window import MainWindow
+
+def _log_system_info(logger) -> None:
+    win_ver = platform.version()
+    _, _, win32_build, _ = platform.win32_ver()
+    logger.debug("Windows version: %s (build %s)", win_ver, win32_build)
+
+    if not getattr(sys, "frozen", False):
+        logger.debug("Python version: %s", sys.version)
+
+    import psutil
+    ram_gb = psutil.virtual_memory().total / (1024 ** 3)
+    logger.debug("Total RAM: %.1f GB", ram_gb)
+
+    lang, encoding = locale.getlocale()
+    logger.debug("Locale: %s / %s", lang, encoding)
 
 def setup_signal_handlers(logger):
     """Set up signal handlers for graceful shutdown."""
@@ -38,6 +55,7 @@ def main():
 
     # Log application startup
     logger.info("Starting application...")
+    _log_system_info(logger)
 
     exit_code = 0
     window = None

@@ -297,6 +297,34 @@ class Logger:
         return Logger._logger
     
     @staticmethod
+    def error_code(entry, *args, **kwargs) -> None:
+        """Log an error prefixed with its structured ID.
+
+        Keeps the catalog as the single source of truth: the ID and base
+        message come from the _Entry; call-site args are appended via the
+        standard % formatting pipeline so the detailed log still captures
+        them correctly.
+
+        Usage:
+            Logger.error_code(EC.E2001)
+            Logger.error_code(EC.E4006, "HTTP %d", resp.status_code)
+        """
+        from classes.error_codes import _Entry  # local import avoids circular deps at module load
+        if not isinstance(entry, _Entry):
+            Logger.get_logger().error("[INVALID_EC] %s", entry)
+            return
+
+        base = f"[{entry.id}] {entry.label}"
+        if args:
+            # Append caller detail after the catalog label
+            detail_fmt = args[0]
+            detail_args = args[1:]
+            msg = f"{base} — {detail_fmt}"
+            Logger.get_logger().error(msg, *detail_args, **kwargs)
+        else:
+            Logger.get_logger().error(base, **kwargs)
+
+    @staticmethod
     def shutdown() -> None:
         """Properly shut down the logging system."""
         logger = Logger.get_logger()

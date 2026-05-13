@@ -1,18 +1,19 @@
-"""
-Shared icon loading utility for tab UI components.
-Wraps Utility.resource_path + PIL so tabs don't repeat try/except.
-Returns None on missing file — callers skip rendering, nothing crashes.
-"""
 from PIL import Image
 import customtkinter as ctk
 from classes.utility import Utility
+from classes.logger import Logger
+
+logger = Logger.get_logger(__name__)
+
+ASSETS_DIR = "src/assets"
 
 def load_icon(filename, size=(18, 18)):
-    """Load a PNG from src/img/ and return a CTkImage, or None if not found."""
+    """Load a PNG from ASSETS_DIR and return a CTkImage, or None if not found."""
     try:
-        img = Image.open(Utility.resource_path(f'src/img/{filename}'))
+        img = Image.open(Utility.resource_path(f"{ASSETS_DIR}/{filename}"))
         return ctk.CTkImage(light_image=img, dark_image=img, size=size)
     except FileNotFoundError:
+        logger.debug("Icon file not found: %s", filename)
         return None
 
 def icon_label(parent, filename, size=(18, 18), padx=(0, 10), side="left"):

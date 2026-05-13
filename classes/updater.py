@@ -1,63 +1,68 @@
 import os
-import threading
-import sys
 import subprocess
+import sys
+import threading
+
 import requests
 from tkinter import messagebox
+
 from classes.config_manager import ConfigManager
 from classes.logger import Logger
-from classes.utility import Utility
+from classes.offset_fetcher import check_for_updates
 
 logger = Logger.get_logger(__name__)
 
 class Updater:
-    def __init__(self, main_window):
+    def __init__(self, main_window) -> None:
         self.main_window = main_window
-        self.download_url = None
-        self.is_prerelease = False
+        self.download_url: str | None = None
+        self.is_prerelease: bool = False
 
-    def check_for_updates(self):
-        if getattr(sys, 'frozen', False):
-            logger.info("Running from executable. Checking for updates...")
-            download_url, is_prerelease = Utility.check_for_updates(ConfigManager.VERSION)
-            if download_url:
-                self.download_url = download_url
-                self.is_prerelease = is_prerelease
-                return True
-        else:
-            logger.info("Running from source code. Auto-update disabled.")
+    def check_for_updates(self) -> bool:
+        if not getattr(sys, "frozen", False):
+            logger.info("Running from source - auto-update disabled.")
+            return False
+
+        logger.info("Running from executable - checking for updates…")
+        url, is_pre = check_for_updates(ConfigManager.VERSION)
+        if url:
+            self.download_url = url
+            self.is_prerelease = is_pre
+            return True
         return False
 
-    def handle_update(self):
+    def handle_update(self) -> None:
         if not self.download_url:
             messagebox.showerror("Error", "No update available.")
             return
+        label = "pre-release" if self.is_prerelease else "stable release"
+        if messagebox.askyesno("Update Available",
+                               f"A new {label} is available. Ready to update?"):
+            messagebox.showinfo("Updating",
+                                "Downloading update in the background. "
+                                "You will be notified when complete.")
+            threading.Thread(target=self._download_and_apply,
+                             args=(self.download_url,), daemon=True).start()
 
-        update_type = "pre-release" if self.is_prerelease else "stable release"
-        response = messagebox.askyesno("Update Available", f"A new {update_type} is available. Are you ready to update?")
-        if response:
-            messagebox.showinfo("Updating", "Downloading update in background. You will be notified when the update is complete.")
-            threading.Thread(target=self.download_and_update, args=(self.download_url,)).start()
-
-    def download_and_update(self, download_url):
+    def _download_and_apply(self, url: str) -> None:
         try:
-            logger.info(f"Downloading update from {download_url}")
-            response = requests.get(download_url, stream=True)
-            response.raise_for_status()
-            
+            logger.info("Downloading update from %s", url)
+            resp = requests.get(url, stream=True)
+            resp.raise_for_status()
+
             current_exe = sys.executable
             exe_name = os.path.basename(current_exe)
             temp_exe = os.path.join(ConfigManager.UPDATE_DIRECTORY, "new_VioletWing.exe")
             bat_file = os.path.join(ConfigManager.UPDATE_DIRECTORY, "update.bat")
-            
-            with open(temp_exe, 'wb') as f:
-                for chunk in response.iter_content(chunk_size=8192):
-                    f.write(chunk)
-            
-            logger.info("Update downloaded successfully")
-            
-            with open(bat_file, 'w') as f:
-                f.write(f'''@echo off
+
+            os.makedirs(ConfigManager.UPDATE_DIRECTORY, exist_ok=True)
+            with open(temp_exe, "wb") as fh:
+                for chunk in resp.iter_content(chunk_size=8192):
+                    fh.write(chunk)
+
+            logger.info("Update downloaded - writing updater script.")
+            with open(bat_file, "w") as fh:
+                fh.write(f"""@echo off
 title VioletWing Updater
 echo Updating VioletWing...
 echo.
@@ -88,12 +93,11 @@ timeout /t 3 /nobreak >nul
 echo Cleaning up...
 del "{current_exe}.backup" 2>nul
 del "%~f0" 2>nul
-''')
-            
-            logger.info(f".bat file created at {bat_file}")
-            
+""")
+
             subprocess.Popen(bat_file, shell=True)
             self.main_window.root.quit()
-        except Exception as e:
-            logger.error(f"Failed to update: {e}")
-            messagebox.showerror("Update Error", f"Failed to update: {str(e)}")
+
+        except Exception as exc:
+            logger.error("Update failed: %s", exc)
+            messagebox.showerror("Update Error", f"Failed to update: {exc}")

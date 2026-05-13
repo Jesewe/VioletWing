@@ -6,6 +6,104 @@ from gui.theme import (
     COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY, COLOR_ACCENT_FG,
     SECTION_STYLE, BUTTON_STYLE_PRIMARY, BUTTON_STYLE_DANGER
 )
+from classes.error_codes import CATALOG
+
+_CATEGORY_LABELS = {
+    "E0": "Startup / Init",
+    "E1": "Config & File I/O",
+    "E2": "Memory & Offsets",
+    "E3": "Features",
+    "E4": "Network & Updates",
+}
+
+def _render_error_reference(container) -> None:
+    """Render the Error Reference section from the live error catalog."""
+    section = ctk.CTkFrame(container, **SECTION_STYLE)
+    section.pack(fill="x", pady=(40, 0))
+
+    header_row = ctk.CTkFrame(section, fg_color="transparent")
+    header_row.pack(fill="x", padx=30, pady=(25, 5))
+    icon_label(header_row, "circle_exclamation_icon.png", size=(24, 24), padx=(0, 12))
+    ctk.CTkLabel(
+        header_row,
+        text="Error Code Reference",
+        font=FONT_SECTION_TITLE,
+        text_color=COLOR_TEXT_PRIMARY,
+    ).pack(side="left")
+
+    ctk.CTkLabel(
+        section,
+        text="If VioletWing logs an [EXXX] code, find it below for the cause and fix.",
+        font=FONT_ITEM_DESCRIPTION,
+        text_color=COLOR_TEXT_SECONDARY,
+        anchor="w",
+    ).pack(fill="x", padx=30, pady=(0, 20))
+
+    # Group entries by category prefix (E0, E1, …)
+    grouped: dict[str, list] = {}
+    for entry in CATALOG.values():
+        prefix = entry.id[:2]
+        grouped.setdefault(prefix, []).append(entry)
+
+    for prefix in sorted(grouped):
+        cat_label = _CATEGORY_LABELS.get(prefix, prefix)
+        entries = grouped[prefix]
+
+        # Category sub-header
+        cat_row = ctk.CTkFrame(section, fg_color="transparent")
+        cat_row.pack(fill="x", padx=30, pady=(10, 4))
+        ctk.CTkLabel(
+            cat_row,
+            text=f"— {cat_label}",
+            font=FONT_WIDGET,
+            text_color=COLOR_ACCENT_FG,
+            anchor="w",
+        ).pack(side="left")
+
+        for entry in entries:
+            row = ctk.CTkFrame(section, fg_color="transparent")
+            row.pack(fill="x", padx=30, pady=(2, 8))
+
+            # ID badge
+            badge = ctk.CTkFrame(
+                row,
+                width=64,
+                height=26,
+                corner_radius=6,
+                fg_color=COLOR_ACCENT_FG,
+            )
+            badge.pack(side="left", padx=(0, 14))
+            badge.pack_propagate(False)
+            ctk.CTkLabel(
+                badge,
+                text=entry.id,
+                font=FONT_ITEM_DESCRIPTION,
+                text_color="#ffffff",
+            ).place(relx=0.5, rely=0.5, anchor="center")
+
+            # Label + solution stacked
+            text_col = ctk.CTkFrame(row, fg_color="transparent")
+            text_col.pack(side="left", fill="x", expand=True)
+            ctk.CTkLabel(
+                text_col,
+                text=entry.label,
+                font=FONT_ITEM_LABEL,
+                text_color=COLOR_TEXT_PRIMARY,
+                anchor="w",
+            ).pack(anchor="w")
+            ctk.CTkLabel(
+                text_col,
+                text=entry.solution,
+                font=FONT_ITEM_DESCRIPTION,
+                text_color=COLOR_TEXT_SECONDARY,
+                anchor="w",
+                wraplength=750,
+                justify="left",
+            ).pack(anchor="w")
+
+    # Bottom padding
+    ctk.CTkFrame(section, fg_color="transparent", height=20).pack()
+
 
 def populate_faq(main_window, frame):
     """Populate the FAQ frame with questions and answers."""
@@ -137,7 +235,11 @@ def populate_faq(main_window, frame):
     for i, (question, answer) in enumerate(faqs):
         is_last = (i == len(faqs) - 1)
         create_faq_card(faq_container, i + 1, question, answer, is_last)
-    
+
+    # Error Reference section — rendered from the live catalog so it
+    # stays in sync with the code automatically.
+    _render_error_reference(faq_container)
+
     # Footer with additional help information
     footer_frame = ctk.CTkFrame(
         faq_container,
@@ -172,10 +274,10 @@ def populate_faq(main_window, frame):
     links_container = ctk.CTkFrame(footer_content, fg_color="transparent")
     links_container.pack()
     
-    # GitHub Issues link
+    # Issues link
     def open_github_issues():
         import webbrowser
-        webbrowser.open("https://github.com/Jesewe/VioletWing/issues")
+        webbrowser.open("https://discord.gg/G4t9u489WW")
     
     _bug_icon = load_icon("bug_icon.png", size=(16, 16))
     github_issues_btn = ctk.CTkButton(
@@ -188,10 +290,10 @@ def populate_faq(main_window, frame):
     )
     github_issues_btn.pack(side="left", padx=(0, 15))
 
-    # GitHub Releases link
+    # Releases link
     def open_github_releases():
         import webbrowser
-        webbrowser.open("https://github.com/Jesewe/VioletWing/releases/latest/")
+        webbrowser.open("https://violetwing.vercel.app")
     
     _archive_icon = load_icon("box_archive_icon.png", size=(16, 16))
     github_releases_btn = ctk.CTkButton(
@@ -207,7 +309,7 @@ def populate_faq(main_window, frame):
     # Help Center link
     def open_help_center():
         import webbrowser
-        webbrowser.open("https://violetwing.vercel.app/")
+        webbrowser.open("https://violetwing.vercel.app/docs/get-started/introduction")
     
     _book_icon = load_icon("book_open_icon.png", size=(16, 16))
     help_center_btn = ctk.CTkButton(

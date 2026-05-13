@@ -1,181 +1,98 @@
-import threading, time, random, ctypes, winsound, queue
-from typing import Optional, Dict, Any
+import ctypes
+import queue
+import random
+import threading
+import time
+import winsound
+from typing import Any, Dict, Optional
 
-from pynput.mouse import Controller, Button, Listener as MouseListener
+from pynput.mouse import Button, Controller, Listener as MouseListener
 
+from classes.base_feature import BaseFeature
 from classes.config_manager import ConfigManager
-from classes.memory_manager import MemoryManager
+from classes.game_process import is_game_active
 from classes.logger import Logger
-from classes.utility import Utility
+from classes.memory_manager import MemoryManager
+from constants.vk_codes import get_vk_code
 
-# Initialize mouse controller and logger
 mouse = Controller()
-# Initialize the logger for consistent logging
 logger = Logger.get_logger(__name__)
-# Define the main loop sleep time for reduced CPU usage
-MAIN_LOOP_SLEEP = 0.001  # Reduced for better responsiveness
 
-class CS2TriggerBot:
+MAIN_LOOP_SLEEP = 0.001
+
+class CS2TriggerBot(BaseFeature):
     def __init__(self, memory_manager: MemoryManager) -> None:
-        """
-        Initialize the TriggerBot with a shared MemoryManager instance.
-        """
-        # Load the configuration settings
+        super().__init__(memory_manager)
         self.config = ConfigManager.load_config()
-        self.memory_manager = memory_manager
-        self.is_running = False
-        self.stop_event = threading.Event()
         self.toggle_state = False
-
-        # Used only for mouse-button triggers (pynput mouse listener sets this).
         self.trigger_active = False
-        
-        # Cached weapon settings for current weapon
         self.current_weapon_settings: Optional[Dict[str, Any]] = None
         self.last_weapon_type: Optional[str] = None
-        
-        # Performance optimizations
-        self._vk_code_cache = {}
 
-        # Initialize configuration settings
-        self.load_configuration()
-
-        # Single long-lived audio worker to avoid spawning a thread per beep
-        self._audio_queue: queue.Queue = queue.Queue()
+        self._audio_queue: queue.Queue = queue.Queue(maxsize=1)
         self._audio_worker = threading.Thread(target=self._run_audio_worker, daemon=True)
         self._audio_worker.start()
 
-        # Mouse listener handles mouse-button triggers (click events).
-        # Keyboard triggers use GetAsyncKeyState polling in the main loop -
-        # no pynput keyboard listener needed.
-        self.mouse_listener = MouseListener(on_click=self.on_mouse_click)
-        self.mouse_listener.start()
+        self._mouse_listener: Optional[MouseListener] = None
+
+        self.load_configuration()
 
     def load_configuration(self) -> None:
-        """Load and apply configuration settings."""
-        settings = self.config['Trigger']
-        self.trigger_key = settings['TriggerKey']
-        self.toggle_mode = settings['ToggleMode']
-        self.attack_on_teammates = settings['AttackOnTeammates']
+        settings = self.config["Trigger"]
+        self.trigger_key = settings["TriggerKey"]
+        self.toggle_mode = settings["ToggleMode"]
+        self.attack_on_teammates = settings["AttackOnTeammates"]
         self.weapon_settings_cache = settings["WeaponSettings"]
-        
-        # Reset cached weapon settings to force fresh lookup
+
+        # Reset weapon cache so the next shot recalculates for the new config.
         self.current_weapon_settings = None
         self.last_weapon_type = None
 
-        # Allow the bot to be restarted after a stop() call
-        self.stop_event.clear()
-        
         self.mouse_button_map = {
             "mouse3": Button.middle,
             "mouse4": Button.x1,
             "mouse5": Button.x2,
         }
-
-        # Check if the trigger key is a mouse button
         self.is_mouse_trigger = self.trigger_key in self.mouse_button_map
-        
-        # Cache VK code for keyboard trigger
-        if not self.is_mouse_trigger:
-            self._trigger_vk_code = Utility.get_vk_code(self.trigger_key)
 
-    def update_config(self, config):
-        """Update the configuration settings."""
+        if not self.is_mouse_trigger:
+            self._trigger_vk_code = get_vk_code(self.trigger_key)
+
+    def update_config(self, config: dict) -> None:
         self.config = config
         self.load_configuration()
         logger.debug("TriggerBot configuration updated.")
 
-    def _run_audio_worker(self) -> None:
-        """Long-lived thread that drains the audio queue. One thread, not one per beep."""
-        while True:
-            freq, duration = self._audio_queue.get()
-            try:
-                winsound.Beep(freq, duration)
-            except Exception as e:
-                logger.debug(f"Audio worker beep failed: {e}")
-            finally:
-                self._audio_queue.task_done()
-
-    def play_toggle_sound(self, state: bool) -> None:
-        """Enqueue a beep tone; the audio worker thread plays it asynchronously."""
-        try:
-            self._audio_queue.put_nowait((1000, 200) if state else (500, 200))
-        except Exception as e:
-            logger.error(f"Error enqueuing toggle sound: {e}")
-
-    def on_mouse_click(self, x, y, button, pressed) -> None:
-        """Handle mouse click events."""
-        if not self.is_mouse_trigger:
-            return
-
-        expected_btn = self.mouse_button_map.get(self.trigger_key)
-        if button == expected_btn:
-            if self.toggle_mode and pressed:
-                self.toggle_state = not self.toggle_state
-                self.play_toggle_sound(self.toggle_state)
-            else:
-                self.trigger_active = pressed
-
-    def should_trigger(self, entity_team: int, player_team: int, entity_health: int) -> bool:
-        """Determine if the bot should fire."""
-        return (self.attack_on_teammates or entity_team != player_team) and entity_health > 0
-
-    def get_weapon_settings(self, weapon_type: str) -> Dict[str, Any]:
-        """Get weapon settings with caching for performance. Always uses the actual in-game weapon type."""
-        if weapon_type != self.last_weapon_type:
-            # Copy the inner dict so concurrent config updates can't mutate our cached reference
-            self.current_weapon_settings = dict(
-                self.weapon_settings_cache.get(weapon_type, self.weapon_settings_cache.get("Rifles", {}))
-            )
-            self.last_weapon_type = weapon_type
-            logger.debug(f"Weapon type changed to: {weapon_type}")
-
-        return self.current_weapon_settings
-
-    def is_trigger_key_pressed(self) -> bool:
-        """Check if trigger key is pressed using optimized method."""
-        if self.is_mouse_trigger:
-            return self.trigger_active
-        else:
-            # Use direct Windows API call for better performance
-            return bool(ctypes.windll.user32.GetAsyncKeyState(self._trigger_vk_code) & 0x8000)
-
     def start(self) -> None:
-        """Start the TriggerBot."""
         self.is_running = True
+        # Clear here — the only correct place — so stop() can always set it.
+        self.stop_event.clear()
 
-        # Define local variables for utility functions
-        is_game_active = Utility.is_game_active
+        if self._mouse_listener is None or not self._mouse_listener.running:
+            self._mouse_listener = MouseListener(on_click=self._on_mouse_click)
+            self._mouse_listener.start()
+
         sleep = time.sleep
         get_fire_logic_data = self.memory_manager.get_fire_logic_data
-        mouse_click = mouse.click
-        
-        # Pre-calculate random values to reduce computation in loop
-        last_shot_time = 0
-        min_shot_interval = 0.01  # Minimum time between shots to prevent spam
 
-        # Track previous key state for rising-edge detection (keyboard toggle mode).
+        last_shot_time = 0.0
+        min_shot_interval = 0.01
         _prev_key_pressed = False
-        
+
         while not self.stop_event.is_set():
             try:
-                # Quick exit conditions
                 if not is_game_active():
                     sleep(MAIN_LOOP_SLEEP)
                     continue
 
-                # Trigger activation
                 if self.is_mouse_trigger:
-                    # Mouse triggers are driven by pynput events (trigger_active / toggle_state).
                     trigger_ready = self.toggle_state if self.toggle_mode else self.trigger_active
                 else:
-                    # Keyboard triggers use GetAsyncKeyState. For toggle mode, detect the
-                    # rising edge here so we don't need a pynput keyboard listener at all.
-                    key_down = self.is_trigger_key_pressed()
+                    key_down = self._is_key_pressed()
                     if self.toggle_mode:
                         if key_down and not _prev_key_pressed:
                             self.toggle_state = not self.toggle_state
-                            self.play_toggle_sound(self.toggle_state)
+                            self._enqueue_toggle_sound(self.toggle_state)
                         _prev_key_pressed = key_down
                         trigger_ready = self.toggle_state
                     else:
@@ -185,65 +102,113 @@ class CS2TriggerBot:
                     sleep(MAIN_LOOP_SLEEP)
                     continue
 
-                # Get game data
                 data = get_fire_logic_data()
                 if not data:
                     sleep(MAIN_LOOP_SLEEP)
                     continue
 
-                # Check if should trigger
-                if not self.should_trigger(data["entity_team"], data["player_team"], data["entity_health"]):
+                if not self._should_fire(data["entity_team"], data["player_team"], data["entity_health"]):
                     sleep(MAIN_LOOP_SLEEP)
                     continue
 
-                # Rate limiting to prevent excessive shooting
-                current_time = time.time()
-                if current_time - last_shot_time < min_shot_interval:
+                now = time.time()
+                if now - last_shot_time < min_shot_interval:
                     sleep(MAIN_LOOP_SLEEP)
                     continue
 
-                # Get weapon settings - CRITICAL: Use the actual weapon type from game data
                 weapon_type = data.get("weapon_type", "Rifles")
-                weapon_settings = self.get_weapon_settings(weapon_type)
-                
-                # Ensure weapon_settings is valid
-                if not weapon_settings:
-                    logger.warning(f"No settings found for weapon type: {weapon_type}, using Rifles defaults")
-                    weapon_settings = self.weapon_settings_cache.get("Rifles", {})
-                
-                shot_delay_min = weapon_settings.get('ShotDelayMin', 0.0)
-                shot_delay_max = weapon_settings.get('ShotDelayMax', 0.0)
-                post_shot_delay = weapon_settings.get('PostShotDelay', 0.0)
+                ws = self._weapon_settings(weapon_type)
+                delay_min = ws.get("ShotDelayMin", 0.0)
+                delay_max = ws.get("ShotDelayMax", 0.0)
+                post_delay = ws.get("PostShotDelay", 0.0)
 
-                # Pre-shot delay
-                if shot_delay_max > shot_delay_min:
-                    delay = random.uniform(shot_delay_min, shot_delay_max)
-                    sleep(delay)
+                if delay_max > delay_min:
+                    sleep(random.uniform(delay_min, delay_max))
 
-                # Fire the shot
-                mouse_click(Button.left)
+                mouse.click(Button.left)
                 last_shot_time = time.time()
-                
-                # Post-shot delay
-                if post_shot_delay > 0:
-                    sleep(post_shot_delay)
 
-            except Exception as e:
-                logger.error(f"Unexpected error in main loop: {e}", exc_info=True)
+                if post_delay > 0:
+                    sleep(post_delay)
+
+            except Exception:
+                logger.error("Unexpected error in TriggerBot loop.", exc_info=True)
                 sleep(MAIN_LOOP_SLEEP)
 
     def stop(self) -> None:
-        """Stops the TriggerBot and cleans up resources."""
         self.is_running = False
         self.stop_event.set()
-        
-        # Give threads time to cleanup
-        sleep_time = 0.1
-        time.sleep(sleep_time)
-        
+        time.sleep(0.1)
+
+        if self._mouse_listener is not None:
+            try:
+                if self._mouse_listener.running:
+                    self._mouse_listener.stop()
+            except Exception as exc:
+                logger.error("Error stopping mouse listener: %s", exc)
+            finally:
+                self._mouse_listener = None
+
+        logger.debug("TriggerBot stopped.")
+
+    def _run_audio_worker(self) -> None:
+        while True:
+            freq, duration = self._audio_queue.get()
+            try:
+                winsound.Beep(freq, duration)
+            except Exception as exc:
+                logger.debug("Audio worker beep failed: %s", exc)
+            finally:
+                self._audio_queue.task_done()
+
+    def _enqueue_toggle_sound(self, state: bool) -> None:
+        tone = (1000, 200) if state else (500, 200)
         try:
-            if hasattr(self, 'mouse_listener') and self.mouse_listener.running:
-                self.mouse_listener.stop()
-            logger.debug("TriggerBot stopped.")
-        except Exception as e:
-            logger.error(f"Error stopping TriggerBot: {e}")
+            self._audio_queue.put_nowait(tone)
+        except queue.Full:
+            pass
+
+    def _on_mouse_click(self, x, y, button, pressed) -> None:
+        if not self.is_mouse_trigger:
+            return
+        expected = self.mouse_button_map.get(self.trigger_key)
+        if button == expected:
+            if self.toggle_mode and pressed:
+                self.toggle_state = not self.toggle_state
+                self._enqueue_toggle_sound(self.toggle_state)
+            else:
+                self.trigger_active = pressed
+
+    def _is_key_pressed(self) -> bool:
+        if self.is_mouse_trigger:
+            return self.trigger_active
+        return bool(ctypes.windll.user32.GetAsyncKeyState(self._trigger_vk_code) & 0x8000)
+
+    def _should_fire(self, entity_team: int, player_team: int, entity_health: int) -> bool:
+        return (self.attack_on_teammates or entity_team != player_team) and entity_health > 0
+
+    def _weapon_settings(self, weapon_type: str) -> Dict[str, Any]:
+        if weapon_type != self.last_weapon_type:
+            self.current_weapon_settings = dict(
+                self.weapon_settings_cache.get(
+                    weapon_type,
+                    self.weapon_settings_cache.get("Rifles", {}),
+                )
+            )
+            self.last_weapon_type = weapon_type
+        return self.current_weapon_settings
+
+    def play_toggle_sound(self, state: bool) -> None:
+        self._enqueue_toggle_sound(state)
+
+    def on_mouse_click(self, x, y, button, pressed) -> None:
+        self._on_mouse_click(x, y, button, pressed)
+
+    def is_trigger_key_pressed(self) -> bool:
+        return self._is_key_pressed()
+
+    def should_trigger(self, entity_team, player_team, entity_health) -> bool:
+        return self._should_fire(entity_team, player_team, entity_health)
+
+    def get_weapon_settings(self, weapon_type: str) -> Dict[str, Any]:
+        return self._weapon_settings(weapon_type)

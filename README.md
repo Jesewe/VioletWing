@@ -1,5 +1,5 @@
 <div align="center">
-   <img src="src/img/icon.png" alt="VioletWing" width="200" height="200">
+   <img src="src/assets/icon.png" alt="VioletWing" width="200" height="200">
    <h1>VioletWing</h1>
    <p>TriggerBot · ESP · Bunnyhop · NoFlash - all in one for Counter-Strike 2</p>
 

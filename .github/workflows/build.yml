@@ -41,7 +41,19 @@ jobs:
 
       - name: Package Application
         run: |
-          pyinstaller --noconfirm --onefile --windowed --icon "src\img\icon.ico" --name "VioletWing" --version-file "version.txt" --add-data "classes;classes/" --add-data "gui;gui/" --add-data "src/img/*;src/img" --add-data "src/fonts/*;src/fonts" --add-data "src/*;src" "main.py"
+          pyinstaller --noconfirm \
+            --onefile \
+            --windowed \
+            --icon "src\img\icon.ico" \
+            --name "VioletWing" \
+            --version-file "version.txt" \
+            --add-data "classes;classes/" \
+            --add-data "gui;gui/" \
+            --add-data "constants;constants/" \
+            --add-data "src/assets/*;src/assets" \
+            --add-data "src/fonts/*;src/fonts" \
+            --add-data "src/*;src" \
+            "main.py"
 
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
@@ -92,7 +104,6 @@ jobs:
           files: |
             ./artifact-download/VioletWing.exe
           prerelease: ${{ github.event.inputs.prerelease }}
-
       - name: Send Telegram Notification
         if: success()
         run: |
