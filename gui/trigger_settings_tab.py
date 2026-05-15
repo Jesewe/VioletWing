@@ -1,8 +1,10 @@
 import customtkinter as ctk
 from gui.icon_loader import icon_label
-from gui.theme import (FONT_TITLE, FONT_SUBTITLE, FONT_SECTION_TITLE, FONT_SECTION_DESCRIPTION,
-                         FONT_ITEM_LABEL, FONT_ITEM_DESCRIPTION, COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY,
-                         SECTION_STYLE, SETTING_ITEM_STYLE, CHECKBOX_STYLE, ENTRY_STYLE, COMBOBOX_STYLE)
+from gui.components import create_section_frame, create_section_header, build_item_scaffold
+from gui.theme import (
+    FONT_TITLE, FONT_SUBTITLE, COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY,
+    CHECKBOX_STYLE, ENTRY_STYLE, COMBOBOX_STYLE,
+)
 
 WEAPON_TYPES = ["Pistols", "Rifles", "Snipers", "SMGs", "Heavy"]
 
@@ -43,140 +45,68 @@ def create_title_section(parent):
     ).pack(side="left", padx=(20, 0), pady=(10, 0))
 
 def create_trigger_config_section(main_window, parent):
-    """Create trigger configuration section with general settings."""
     section = create_section_frame(parent)
-    create_section_header(section, "Configuration", "Control how the trigger responds", icon_file="bullseye_icon.png")
-    
+    create_section_header(section, "Configuration", "Control how the trigger responds",
+                          icon_file="bullseye_icon.png")
+
     settings_list = [
-        ("Trigger Key", "entry", "TriggerKey", "Key to activate trigger (e.g., 'x', 'mouse4')"),
-        ("Toggle Mode", "checkbox", "ToggleMode", "Enable toggle mode instead of hold mode"),
-        ("Attack Teammates", "checkbox", "AttackOnTeammates", "Allow triggering on teammates")
+        ("Trigger Key",       "entry",    "TriggerKey",        "Key to activate trigger (e.g., 'x', 'mouse4')"),
+        ("Toggle Mode",       "checkbox", "ToggleMode",        "Enable toggle mode instead of hold mode"),
+        ("Attack Teammates",  "checkbox", "AttackOnTeammates", "Allow triggering on teammates"),
     ]
-    
     for i, (label, widget_type, key, desc) in enumerate(settings_list):
-        create_setting_item(
-            section, main_window, label, desc, widget_type, key, 
-            is_last=(i == len(settings_list) - 1)
-        )
+        create_setting_item(section, main_window, label, desc, widget_type, key,
+                            is_last=(i == len(settings_list) - 1))
 
 def create_timing_settings_section(main_window, parent):
-    """Create timing settings section with weapon-specific delays."""
     section = create_section_frame(parent)
-    header_frame = create_section_header(section, "Timing Settings", "Fine-tune shooting delays per weapon type", icon_file="stopwatch_icon.png")
+    header_frame = create_section_header(section, "Timing Settings",
+                                         "Fine-tune shooting delays per weapon type",
+                                         icon_file="stopwatch_icon.png")
 
-    active_weapon_var = ctk.StringVar(value=main_window.triggerbot.config['Trigger'].get('active_weapon_type', 'Rifles'))
+    active_weapon_var = ctk.StringVar(
+        value=main_window.triggerbot.config["Trigger"].get("active_weapon_type", "Rifles")
+    )
     main_window.ui_bridge.register("active_weapon_type", var=active_weapon_var)
-
-    weapon_dropdown = ctk.CTkOptionMenu(
+    ctk.CTkOptionMenu(
         header_frame,
         variable=active_weapon_var,
         values=WEAPON_TYPES,
         command=lambda e: main_window.update_weapon_settings_display(),
-        **COMBOBOX_STYLE
-    )
-    weapon_dropdown.pack(side="right", padx=(0, 10))
+        **COMBOBOX_STYLE,
+    ).pack(side="right", padx=(0, 10))
 
     settings_list = [
-        ("Min Shot Delay", "entry", "ShotDelayMin", "Minimum delay before shooting (seconds)"),
-        ("Max Shot Delay", "entry", "ShotDelayMax", "Maximum delay before shooting (seconds)"),
-        ("Post Shot Delay", "entry", "PostShotDelay", "Delay after shooting (seconds)")
+        ("Min Shot Delay",  "entry", "ShotDelayMin",  "Minimum delay before shooting (seconds)"),
+        ("Max Shot Delay",  "entry", "ShotDelayMax",  "Maximum delay before shooting (seconds)"),
+        ("Post Shot Delay", "entry", "PostShotDelay", "Delay after shooting (seconds)"),
     ]
-    
     for i, (label, widget_type, key, desc) in enumerate(settings_list):
-        create_setting_item(
-            section, main_window, label, desc, widget_type, key, 
-            is_last=(i == len(settings_list) - 1), is_weapon_specific=True
-        )
+        create_setting_item(section, main_window, label, desc, widget_type, key,
+                            is_last=(i == len(settings_list) - 1), is_weapon_specific=True)
     main_window.update_weapon_settings_display()
 
-def create_setting_item(parent, main_window, label_text, description, widget_type, key, is_last=False, is_weapon_specific=False):
-    """Create a standardized setting item."""
-    item_frame = ctk.CTkFrame(parent, fg_color="transparent")
-    item_frame.pack(fill="x", padx=40, pady=(0, 30 if not is_last else 40))
-    
-    container = ctk.CTkFrame(
-        item_frame,
-        **SETTING_ITEM_STYLE
-    )
-    container.pack(fill="x")
-    
-    content_frame = ctk.CTkFrame(container, fg_color="transparent")
-    content_frame.pack(fill="x", padx=25, pady=25)
-    
-    create_label_and_description(content_frame, label_text, description)
-    create_widget(content_frame, main_window, widget_type, key, is_weapon_specific)
+def create_setting_item(parent, main_window, label_text, description, widget_type, key,
+                        is_last=False, is_weapon_specific=False):
+    wf = build_item_scaffold(parent, label_text, description, is_last)
+    _populate_widget(wf, main_window, widget_type, key, is_weapon_specific)
 
-def create_label_and_description(parent, label_text, description):
-    """Create the label and description part of a setting item."""
-    label_frame = ctk.CTkFrame(parent, fg_color="transparent")
-    label_frame.pack(side="left", fill="x", expand=True)
-    
-    ctk.CTkLabel(
-        label_frame, text=label_text, font=FONT_ITEM_LABEL,
-        text_color=COLOR_TEXT_PRIMARY, anchor="w"
-    ).pack(fill="x", pady=(0, 4))
-    
-    ctk.CTkLabel(
-        label_frame, text=description, font=FONT_ITEM_DESCRIPTION,
-        text_color=COLOR_TEXT_SECONDARY, anchor="w", wraplength=400
-    ).pack(fill="x")
 
-def create_widget(parent, main_window, widget_type, key, is_weapon_specific):
-    """Create the input widget for a setting item."""
-    widget_frame = ctk.CTkFrame(parent, fg_color="transparent")
-    widget_frame.pack(side="right", padx=(30, 0))
-
+def _populate_widget(wf, main_window, widget_type, key, is_weapon_specific):
+    """Create the input widget directly inside the pre-built widget frame."""
     if widget_type == "entry":
-        if key == "TriggerKey":
-            widget = ctk.CTkEntry(widget_frame, justify="center", **ENTRY_STYLE)
-        else:
-            widget = ctk.CTkEntry(widget_frame, **ENTRY_STYLE)
+        widget = ctk.CTkEntry(wf, justify="center", **ENTRY_STYLE)
         widget.bind("<FocusOut>", lambda e: main_window.save_settings())
-        widget.bind("<Return>", lambda e: main_window.save_settings())
-
+        widget.bind("<Return>",   lambda e: main_window.save_settings())
         if is_weapon_specific:
             defaults = {"ShotDelayMin": 0.01, "ShotDelayMax": 0.03, "PostShotDelay": 0.1}
             widget.insert(0, str(defaults.get(key, "")))
         elif key == "TriggerKey":
-            widget.insert(0, main_window.triggerbot.config['Trigger'].get('TriggerKey', ''))
-
+            widget.insert(0, main_window.triggerbot.config["Trigger"].get("TriggerKey", ""))
         main_window.ui_bridge.register(key, widget=widget)
         widget.pack()
-
     elif widget_type == "checkbox":
-        var = ctk.BooleanVar(value=main_window.triggerbot.config['Trigger'].get(key, False))
-        widget = ctk.CTkCheckBox(
-            widget_frame, text="", variable=var,
-            **CHECKBOX_STYLE,
-            command=main_window.save_settings
-        )
+        var = ctk.BooleanVar(value=main_window.triggerbot.config["Trigger"].get(key, False))
+        ctk.CTkCheckBox(wf, text="", variable=var,
+                        command=main_window.save_settings, **CHECKBOX_STYLE).pack()
         main_window.ui_bridge.register(key, var=var)
-        widget.pack()
-
-def create_section_frame(parent):
-    """Create a styled section frame."""
-    section = ctk.CTkFrame(
-        parent,
-        **SECTION_STYLE
-    )
-    section.pack(fill="x", pady=(0, 30))
-    return section
-
-def create_section_header(parent, title, subtitle, icon_file=None):
-    """Create a header for a settings section."""
-    header = ctk.CTkFrame(parent, fg_color="transparent")
-    header.pack(fill="x", padx=40, pady=(40, 30))
-    _title_row = ctk.CTkFrame(header, fg_color="transparent")
-    _title_row.pack(side="left")
-    if icon_file:
-        icon_label(_title_row, icon_file, size=(22, 22), padx=(0, 10))
-    ctk.CTkLabel(
-        _title_row, text=title, font=FONT_SECTION_TITLE,
-        text_color=COLOR_TEXT_PRIMARY, anchor="w"
-    ).pack(side="left")
-    
-    ctk.CTkLabel(
-        header, text=subtitle, font=FONT_SECTION_DESCRIPTION,
-        text_color=COLOR_TEXT_SECONDARY, anchor="e"
-    ).pack(side="right")
-    return header
