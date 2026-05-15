@@ -61,6 +61,14 @@ class MainWindow:
         self._log_file_pos = 0
         self._active_log_file: str = Logger.LOG_FILE()
 
+        # Log buffer: each element is one logical entry (may span multiple lines).
+        # The widget is a read-only view of this buffer filtered by level + search.
+        self._log_lines: list[str] = []
+        self._log_filter_level: str = "ALL"
+        self._log_search_term: str = ""
+        self._log_filter_chips: dict = {}
+        self._search_debounce: str | None = None
+
         # Stop events for dashboard network threads - set in cleanup()
         self._fetch_update_stop: threading.Event | None = None
         self._fetch_patch_stop: threading.Event | None = None
@@ -688,25 +696,147 @@ class MainWindow:
         _initial_load(self)
 
     def update_log_display(self, content: str) -> None:
-        try:
-            if hasattr(self, "log_text") and self.log_text.winfo_exists():
-                self.log_text.configure(state="normal")
-                self.log_text.delete("1.0", "end")
-                self.log_text.insert("1.0", content)
-                self.log_text.see("end")
-                self.log_text.configure(state="disabled")
-        except Exception:
-            logger.exception("Failed to update log display.")
+        """Replace the entire log buffer and re-render. Kept for external callers."""
+        self._reset_log_buffer(content)
 
     def append_log_display(self, content: str) -> None:
+        """Append new log text to the buffer and re-render."""
+        self._append_to_log_buffer(content)
+
+    def _parse_log_entries(self, text: str) -> list[str]:
+        """Split raw log text into logical entries.
+
+        Continuation lines (tracebacks, etc.) that don't start with a level
+        tag are attached to their parent entry so filtering keeps them together.
+        """
+        from gui.logs_tab import _LEVEL_LINE_RE
+        entries: list[str] = []
+        current: list[str] = []
+        for line in text.splitlines(keepends=True):
+            if _LEVEL_LINE_RE.match(line):
+                if current:
+                    entries.append("".join(current))
+                current = [line]
+            else:
+                if current:
+                    current.append(line)
+                else:
+                    # Header/placeholder text that has no level tag
+                    entries.append(line)
+        if current:
+            entries.append("".join(current))
+        return entries
+
+    def _reset_log_buffer(self, text: str) -> None:
+        """Replace the entire buffer and re-render the widget."""
+        self._log_lines = self._parse_log_entries(text)
+        self._apply_log_filter()
+
+    def _append_to_log_buffer(self, text: str) -> None:
+        """Append new entries to the buffer (capped at 10 000) and re-render."""
+        self._log_lines.extend(self._parse_log_entries(text))
+        if len(self._log_lines) > 10_000:
+            self._log_lines = self._log_lines[-10_000:]
+        self._apply_log_filter()
+
+    def _apply_log_filter(self) -> None:
+        """Render the log widget from the buffer with active level and search filters."""
+        if not hasattr(self, "log_text") or not self.log_text.winfo_exists():
+            return
+        level = self._log_filter_level
+        term  = self._log_search_term.lower().strip()
+
+        visible = [
+            e for e in self._log_lines
+            if (level == "ALL" or f"[{level}]" in e)
+            and (not term or term in e.lower())
+        ]
+        content = "".join(visible)
+
         try:
-            if hasattr(self, "log_text") and self.log_text.winfo_exists():
-                self.log_text.configure(state="normal")
-                self.log_text.insert("end", content)
-                self.log_text.see("end")
-                self.log_text.configure(state="disabled")
+            self.log_text.configure(state="normal")
+            self.log_text.delete("1.0", "end")
+            if content:
+                self.log_text.insert("1.0", content)
+            if term:
+                self._apply_search_tags(term)
+            self.log_text.see("end")
+            self.log_text.configure(state="disabled")
         except Exception:
-            logger.exception("Failed to append log display.")
+            logger.exception("Failed to render log view.")
+
+    def _apply_search_tags(self, term: str) -> None:
+        """Highlight all occurrences of term with amber background in the widget."""
+        widget = self.log_text._textbox
+        widget.tag_remove("search_hl", "1.0", "end")
+        start = "1.0"
+        while True:
+            pos = widget.search(term, start, nocase=True, stopindex="end")
+            if not pos:
+                break
+            end = f"{pos}+{len(term)}c"
+            widget.tag_add("search_hl", pos, end)
+            start = end
+
+    def set_log_filter(self, level: str) -> None:
+        """Set the active level filter and re-render."""
+        self._log_filter_level = level
+        self._refresh_log_chips()
+        self._apply_log_filter()
+
+    def set_log_search(self, term: str) -> None:
+        """Debounced search: waits 200 ms of inactivity before re-rendering."""
+        if self._search_debounce:
+            self.root.after_cancel(self._search_debounce)
+        self._search_debounce = self.root.after(200, self._commit_log_search, term)
+
+    def _commit_log_search(self, term: str) -> None:
+        self._log_search_term = term
+        self._apply_log_filter()
+
+    def _refresh_log_chips(self) -> None:
+        """Update filter chip visuals to reflect the currently active level."""
+        from gui.logs_tab import _CHIP_COLORS, _CHIP_INACTIVE_FG, _CHIP_INACTIVE_HOVER, _CHIP_INACTIVE_BORDER, _CHIP_INACTIVE_TEXT
+        for level, btn in self._log_filter_chips.items():
+            if level == self._log_filter_level:
+                fg, hover = _CHIP_COLORS[level]
+                btn.configure(
+                    fg_color=fg, hover_color=hover,
+                    border_width=0, text_color="#ffffff",
+                )
+            else:
+                btn.configure(
+                    fg_color=_CHIP_INACTIVE_FG, hover_color=_CHIP_INACTIVE_HOVER,
+                    border_width=1, border_color=_CHIP_INACTIVE_BORDER,
+                    text_color=_CHIP_INACTIVE_TEXT,
+                )
+
+    def clear_log_display(self) -> None:
+        """Clear the display buffer and advance the file pointer to EOF.
+
+        Only the in-memory view is cleared; the log file on disk is untouched.
+        """
+        self._log_lines = []
+        try:
+            if os.path.exists(self._active_log_file):
+                with open(self._active_log_file, "rb") as fh:
+                    fh.seek(0, 2)
+                    self._log_file_pos = fh.tell()
+        except Exception:
+            logger.exception("Failed to advance log file position on clear.")
+        self._apply_log_filter()
+
+    def export_log_to_clipboard(self) -> None:
+        """Copy the currently visible (filtered) log content to the clipboard."""
+        try:
+            if not hasattr(self, "log_text") or not self.log_text.winfo_exists():
+                return
+            content = self.log_text.get("1.0", "end-1c")
+            self.root.clipboard_clear()
+            self.root.clipboard_append(content)
+            logger.info("Log exported to clipboard (%d chars).", len(content))
+        except Exception:
+            logger.exception("Failed to export log to clipboard.")
 
     def run(self) -> None:
         self.root.mainloop()
