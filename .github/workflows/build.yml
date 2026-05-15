@@ -40,11 +40,12 @@ jobs:
         run: pip install pyinstaller
 
       - name: Package Application
+        shell: bash
         run: |
           pyinstaller --noconfirm \
             --onefile \
             --windowed \
-            --icon "src\img\icon.ico" \
+            --icon "src/img/icon.ico" \
             --name "VioletWing" \
             --version-file "version.txt" \
             --add-data "classes;classes/" \
