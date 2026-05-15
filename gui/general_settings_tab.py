@@ -5,11 +5,11 @@ from pathlib import Path
 from tkinter import filedialog, messagebox
 from classes.config_manager import ConfigManager
 from classes.utility import Utility
+from gui.components import create_section_frame, create_section_header, build_item_scaffold
 from gui.theme import (
-    FONT_TITLE, FONT_SUBTITLE, FONT_SECTION_TITLE, FONT_SECTION_DESCRIPTION,
-    FONT_ITEM_LABEL, FONT_ITEM_DESCRIPTION, FONT_WIDGET,
+    FONT_TITLE, FONT_SUBTITLE, FONT_ITEM_LABEL, FONT_ITEM_DESCRIPTION, FONT_WIDGET,
     COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY, COLOR_ACCENT_FG, COLOR_ACCENT_HOVER,
-    SECTION_STYLE, SETTING_ITEM_STYLE, CHECKBOX_STYLE, COMBOBOX_STYLE,
+    SETTING_ITEM_STYLE, CHECKBOX_STYLE, COMBOBOX_STYLE,
     BUTTON_STYLE_PRIMARY, BUTTON_STYLE_DANGER,
 )
 
@@ -31,29 +31,6 @@ OFFSET_FILES = [
     ("Buttons File",    "buttons.json",    "Select buttons.json file",    "ButtonsFile"),
 ]
 
-def create_section_header(parent, title, subtitle, icon_file=None):
-    """Create a standardised section header packed once with consistent geometry."""
-    header = ctk.CTkFrame(parent, fg_color="transparent")
-    # Single pack call - no duplicate geometry constraint.
-    header.pack(fill="x", padx=40, pady=(40, 30))
-
-    title_row = ctk.CTkFrame(header, fg_color="transparent")
-    title_row.pack(side="left", fill="y")
-
-    if icon_file:
-        icon_label(title_row, icon_file, size=(22, 22), padx=(0, 10))
-
-    ctk.CTkLabel(
-        title_row, text=title, font=FONT_SECTION_TITLE,
-        text_color=COLOR_TEXT_PRIMARY, anchor="w",
-    ).pack(side="left")
-
-    ctk.CTkLabel(
-        header, text=subtitle, font=FONT_SECTION_DESCRIPTION,
-        text_color=COLOR_TEXT_SECONDARY, anchor="e",
-    ).pack(side="right")
-
-    return header
 
 def populate_general_settings(main_window, frame):
     settings = ctk.CTkScrollableFrame(frame, fg_color="transparent")
@@ -75,8 +52,7 @@ def populate_general_settings(main_window, frame):
     create_reset_section(main_window, settings)
 
 def create_program_section(main_window, parent):
-    section = ctk.CTkFrame(parent, **SECTION_STYLE)
-    section.pack(fill="x", pady=(0, 30))
+    section = create_section_frame(parent)
     create_section_header(section, "Program Settings",
                           "Configure core program behaviour and disguise",
                           icon_file="user_secret_icon.png")
@@ -87,39 +63,16 @@ def create_program_section(main_window, parent):
             is_last=False,
         )
 
-    item_frame = ctk.CTkFrame(section, fg_color="transparent")
-    item_frame.pack(fill="x", padx=40, pady=(0, 40))
-
-    container = ctk.CTkFrame(item_frame, **SETTING_ITEM_STYLE)
-    container.pack(fill="x")
-
-    content = ctk.CTkFrame(container, fg_color="transparent")
-    content.pack(fill="x", padx=25, pady=25)
-
-    lf = ctk.CTkFrame(content, fg_color="transparent")
-    lf.pack(side="left", fill="x", expand=True)
-    ctk.CTkLabel(lf, text="Active Profile", font=FONT_ITEM_LABEL,
-                 text_color=COLOR_TEXT_PRIMARY, anchor="w").pack(fill="x", pady=(0, 4))
-    ctk.CTkLabel(lf, text="The program this instance is currently disguised as.", font=FONT_ITEM_DESCRIPTION,
-                 text_color=COLOR_TEXT_SECONDARY, anchor="w", wraplength=400).pack(fill="x")
-
-    wf = ctk.CTkFrame(content, fg_color="transparent")
-    wf.pack(side="right", padx=(30, 0))
-
+    wf = build_item_scaffold(section, "Active Profile",
+                             "The program this instance is currently disguised as.",
+                             is_last=True)
     disguise_name = main_window.ghost["name"] if getattr(main_window, "ghost", None) else "None"
     color = COLOR_TEXT_PRIMARY if main_window.ghost else COLOR_TEXT_SECONDARY
-    
-    ctk.CTkLabel(
-        wf, 
-        text=disguise_name,
-        font=FONT_WIDGET,
-        text_color=color,
-        fg_color="transparent"
-    ).pack()
+    ctk.CTkLabel(wf, text=disguise_name, font=FONT_WIDGET,
+                 text_color=color, fg_color="transparent").pack()
 
 def create_features_section(main_window, parent):
-    section = ctk.CTkFrame(parent, **SECTION_STYLE)
-    section.pack(fill="x", pady=(0, 30))
+    section = create_section_frame(parent)
     create_section_header(section, "Feature Configuration",
                           "Enable or disable main application features",
                           icon_file="sliders_icon.png")
@@ -130,8 +83,7 @@ def create_features_section(main_window, parent):
         )
 
 def create_offsets_section(main_window, parent):
-    section = ctk.CTkFrame(parent, **SECTION_STYLE)
-    section.pack(fill="x", pady=(0, 30))
+    section = create_section_frame(parent)
     header = create_section_header(section, "Offsets Configuration",
                                    "Configure offset source and local files",
                                    icon_file="satellite_dish_icon.png")
@@ -166,8 +118,7 @@ def create_offsets_section(main_window, parent):
                               label, filename, desc, config_key)
 
 def create_reset_section(main_window, parent):
-    section = ctk.CTkFrame(parent, **SECTION_STYLE)
-    section.pack(fill="x", pady=(0, 30))
+    section = create_section_frame(parent)
     create_section_header(section, "Configuration Management",
                           "Manage configuration files and settings",
                           icon_file="screwdriver_wrench_icon.png")
@@ -189,25 +140,7 @@ def create_reset_section(main_window, parent):
 
 def _create_setting_item(parent, label_text, description, widget_type, key,
                          main_window, is_last=False):
-    item_frame = ctk.CTkFrame(parent, fg_color="transparent")
-    item_frame.pack(fill="x", padx=40, pady=(0, 30 if not is_last else 40))
-
-    container = ctk.CTkFrame(item_frame, **SETTING_ITEM_STYLE)
-    container.pack(fill="x")
-
-    content = ctk.CTkFrame(container, fg_color="transparent")
-    content.pack(fill="x", padx=25, pady=25)
-
-    lf = ctk.CTkFrame(content, fg_color="transparent")
-    lf.pack(side="left", fill="x", expand=True)
-    ctk.CTkLabel(lf, text=label_text, font=FONT_ITEM_LABEL,
-                 text_color=COLOR_TEXT_PRIMARY, anchor="w").pack(fill="x", pady=(0, 4))
-    ctk.CTkLabel(lf, text=description, font=FONT_ITEM_DESCRIPTION,
-                 text_color=COLOR_TEXT_SECONDARY, anchor="w", wraplength=400).pack(fill="x")
-
-    wf = ctk.CTkFrame(content, fg_color="transparent")
-    wf.pack(side="right", padx=(30, 0))
-
+    wf = build_item_scaffold(parent, label_text, description, is_last)
     if widget_type == "checkbox":
         var = ctk.BooleanVar(value=main_window.triggerbot.config["General"].get(key, False))
         ctk.CTkCheckBox(wf, text="", variable=var,

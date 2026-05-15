@@ -3,11 +3,12 @@ import customtkinter as ctk
 from gui.icon_loader import icon_label
 from classes.config_manager import COLOR_CHOICES
 from classes.utility import Utility
-from gui.theme import (CHECKBOX_STYLE, COMBOBOX_STYLE, ENTRY_STYLE, SLIDER_STYLE,
-                        SECTION_STYLE, SETTING_ITEM_STYLE, FONT_TITLE, FONT_SUBTITLE,
-                        FONT_SECTION_TITLE, FONT_SECTION_DESCRIPTION, FONT_ITEM_LABEL,
-                        FONT_ITEM_DESCRIPTION, COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY,
-                        COLOR_BORDER, COLOR_WIDGET_BORDER)
+from gui.components import create_section_frame, create_section_header, build_item_scaffold
+from gui.theme import (
+    CHECKBOX_STYLE, COMBOBOX_STYLE, ENTRY_STYLE, SLIDER_STYLE,
+    FONT_TITLE, FONT_SUBTITLE, COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY,
+    COLOR_BORDER, COLOR_WIDGET_BORDER,
+)
 
 # Validates a complete #RRGGBB hex string.
 _HEX_RE = re.compile(r'^#[0-9A-Fa-f]{6}$')
@@ -88,43 +89,14 @@ def create_title_section(parent):
                  anchor="w").pack(side="left", padx=(20, 0), pady=(10, 0))
 
 def _create_section(main_window, parent, title, description, settings_list, icon_file=None):
-    section = ctk.CTkFrame(parent, **SECTION_STYLE)
-    section.pack(fill="x", pady=(0, 30))
-
-    header = ctk.CTkFrame(section, fg_color="transparent")
-    header.pack(fill="x", padx=40, pady=(40, 30))
-    icon_label(header, icon_file, size=(22, 22), padx=(0, 10))
-    ctk.CTkLabel(header, text=title, font=FONT_SECTION_TITLE,
-                 text_color=COLOR_TEXT_PRIMARY, anchor="w").pack(side="left")
-    ctk.CTkLabel(header, text=description, font=FONT_SECTION_DESCRIPTION,
-                 text_color=COLOR_TEXT_SECONDARY, anchor="e").pack(side="right")
-
+    section = create_section_frame(parent)
+    create_section_header(section, title, description, icon_file=icon_file)
     for i, (label, widget_type, key, desc) in enumerate(settings_list):
-        _create_setting_item(
-            section, label, desc, widget_type, key, main_window,
-            is_last=(i == len(settings_list) - 1),
-        )
+        _create_setting_item(section, label, desc, widget_type, key, main_window,
+                             is_last=(i == len(settings_list) - 1))
 
 def _create_setting_item(parent, label_text, description, widget_type, key, main_window, is_last=False):
-    item_frame = ctk.CTkFrame(parent, fg_color="transparent")
-    item_frame.pack(fill="x", padx=40, pady=(0, 30 if not is_last else 40))
-
-    container = ctk.CTkFrame(item_frame, **SETTING_ITEM_STYLE)
-    container.pack(fill="x")
-
-    content = ctk.CTkFrame(container, fg_color="transparent")
-    content.pack(fill="x", padx=25, pady=25)
-
-    lf = ctk.CTkFrame(content, fg_color="transparent")
-    lf.pack(side="left", fill="x", expand=True)
-    ctk.CTkLabel(lf, text=label_text, font=FONT_ITEM_LABEL,
-                 text_color=COLOR_TEXT_PRIMARY, anchor="w").pack(fill="x", pady=(0, 4))
-    ctk.CTkLabel(lf, text=description, font=FONT_ITEM_DESCRIPTION,
-                 text_color=COLOR_TEXT_SECONDARY, anchor="w", wraplength=400).pack(fill="x")
-
-    wf = ctk.CTkFrame(content, fg_color="transparent")
-    wf.pack(side="right", padx=(30, 0))
-
+    wf = build_item_scaffold(parent, label_text, description, is_last)
     creators = {
         "checkbox": _make_checkbox,
         "slider":   _make_slider,
