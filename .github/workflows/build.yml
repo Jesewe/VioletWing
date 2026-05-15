@@ -45,7 +45,7 @@ jobs:
           pyinstaller --noconfirm \
             --onefile \
             --windowed \
-            --icon "src/img/icon.ico" \
+            --icon "src/assets/icon.ico" \
             --name "VioletWing" \
             --version-file "version.txt" \
             --add-data "classes;classes/" \
