@@ -282,16 +282,17 @@ class MainWindow:
         sidebar.grid(row=0, column=0, sticky="nsew")
         sidebar.grid_propagate(False)
 
+        # section_label=None → no header for that group (Dashboard stands alone)
         nav_items = [
-            ("Dashboard",           "dashboard",           "charts_icon.png"),
-            ("General Settings",    "general_settings",    "gear_icon.png"),
-            ("Trigger Settings",    "trigger_settings",    "crosshairs_icon.png"),
-            ("Overlay Settings",    "overlay_settings",    "layer_group_icon.png"),
-            ("Additional Settings", "additional_settings", "bolt_icon.png"),
-            ("Logs",                "logs",                "clipboard_list_icon.png"),
-            ("FAQ",                 "faq",                 "circle_question_icon.png"),
-            ("Notifications",       "notifications",       "bell_icon.png"),
-            ("Supporters",          "supporters",          "handshake_icon.png"),
+            (None,       "Dashboard",           "dashboard",           "charts_icon.png"),
+            ("SETTINGS", "General Settings",    "general_settings",    "gear_icon.png"),
+            (None,       "Trigger Settings",    "trigger_settings",    "crosshairs_icon.png"),
+            (None,       "Overlay Settings",    "overlay_settings",    "layer_group_icon.png"),
+            (None,       "Additional Settings", "additional_settings", "bolt_icon.png"),
+            ("TOOLS",    "Logs",                "logs",                "clipboard_list_icon.png"),
+            ("INFO",     "FAQ",                 "faq",                 "circle_question_icon.png"),
+            (None,       "Notifications",       "notifications",       "bell_icon.png"),
+            (None,       "Supporters",          "supporters",          "handshake_icon.png"),
         ]
 
         ctk.CTkFrame(sidebar, height=1, fg_color=("#c4b5fd", "#2a1d4e")).pack(fill="x")
@@ -301,7 +302,18 @@ class MainWindow:
         self.nav_indicators: dict[str, ctk.CTkFrame] = {}
         self._nav_images: dict = {}
 
-        for name, key, icon_file in nav_items:
+        for section_label, name, key, icon_file in nav_items:
+            if section_label is not None:
+                ctk.CTkFrame(sidebar, height=1, fg_color=("#c4b5fd", "#2a1d4e")).pack(
+                    fill="x", padx=16, pady=(10, 0)
+                )
+                ctk.CTkLabel(
+                    sidebar,
+                    text=section_label,
+                    font=(FONT_FAMILY_BOLD[0], 10, "bold"),
+                    text_color=COLOR_TEXT_SECONDARY,
+                    anchor="w",
+                ).pack(fill="x", padx=24, pady=(6, 2))
             ci = load_icon(icon_file)
             self._nav_images[key] = ci
 
