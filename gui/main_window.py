@@ -24,6 +24,7 @@ from classes.client_manager import ClientManager
 from classes.offset_fetcher import fetch_offsets
 from classes import ghost_manager as _gm
 
+from gui.changelog_window import show_changelog_if_new
 from gui.icon_loader import load_icon, ASSETS_DIR
 from gui.ui_config_bridge import UIConfigBridge
 from gui.home_tab import populate_dashboard
@@ -47,7 +48,7 @@ logger = Logger.get_logger(__name__)
 
 class MainWindow:
     def __init__(self) -> None:
-        self.repo_url = "violetwing.vercel.app"
+        self.repo_url = "github.com/Jesewe/VioletWing"
 
         # Thread handles
         self.trigger_thread = None
@@ -130,6 +131,10 @@ class MainWindow:
 
         self.client_manager = ClientManager(self)
 
+        # Kick off GitHub release fetch after mainloop is running so the
+        # UI is fully visible before the modal changelog window appears.
+        self.root.after(0, self._start_release_fetch)
+
     def initialize_features(self) -> None:
         try:
             self.triggerbot = CS2TriggerBot(self.memory_manager)
@@ -181,7 +186,8 @@ class MainWindow:
         rf.grid(row=0, column=2, sticky="e", padx=30, pady=15)
         self.create_status_indicator(rf)
         sf = self.create_social_buttons(rf)
-        self.create_update_button(sf)
+        # Store so _on_release_fetched can attach the update button later.
+        self._header_buttons_frame = sf
 
     def create_status_indicator(self, parent) -> None:
         self.status_frame = ctk.CTkFrame(parent, fg_color="transparent")
@@ -199,6 +205,7 @@ class MainWindow:
         sf = ctk.CTkFrame(parent, fg_color="transparent")
         sf.pack(side="right")
         socials = [
+            ("GitHub",   "github_icon.png",    "https://github.com/Jesewe/VioletWing"),
             ("Discord",  "discord_icon.png",   "https://discord.gg/Avb3yUeW98"),
             ("Telegram", "telegram_icon.png",  "https://t.me/cs2_jesewe"),
             ("Website",  "book_open_icon.png", "https://violetwing.vercel.app/"),
@@ -216,21 +223,28 @@ class MainWindow:
             ).pack(side="left", padx=(0, 8) if i < len(socials) - 1 else (0, 0))
         return sf
 
-    def create_update_button(self, parent) -> None:
+    def create_update_button(self, parent, is_prerelease: bool) -> None:
+        """Attach the update button to parent. Called from _on_release_fetched on the UI thread."""
         ci = load_icon("update_icon.png")
-        if self.updater.check_for_updates():
-            is_pre = self.updater.is_prerelease
-            ctk.CTkButton(
-                parent,
-                text="Pre-release Available!" if is_pre else "Update Available!",
-                image=ci, compound="left",
-                command=self.updater.handle_update,
-                height=36, corner_radius=10,
-                fg_color="#f59e0b" if is_pre else "#ef4444",
-                hover_color="#d97706" if is_pre else "#dc2626",
-                border_width=0, text_color="#ffffff",
-                font=(FONT_FAMILY_BOLD[0], FONT_SIZE_P, "bold"),
-            ).pack(side="left", padx=(8, 0))
+        ctk.CTkButton(
+            parent,
+            text="Pre-release Available!" if is_prerelease else "Update Available!",
+            image=ci, compound="left",
+            command=self.updater.handle_update,
+            height=36, corner_radius=10,
+            fg_color="#f59e0b" if is_prerelease else "#ef4444",
+            hover_color="#d97706" if is_prerelease else "#dc2626",
+            border_width=0, text_color="#ffffff",
+            font=(FONT_FAMILY_BOLD[0], FONT_SIZE_P, "bold"),
+        ).pack(side="left", padx=(8, 0))
+
+    def _start_release_fetch(self) -> None:
+        self.updater.fetch_in_background(self._on_release_fetched)
+
+    def _on_release_fetched(self, has_update: bool, release: "dict | None") -> None:
+        if has_update:
+            self.create_update_button(self._header_buttons_frame, self.updater.is_prerelease)
+        show_changelog_if_new(self.root, self.updater)
 
     def create_main_content(self) -> None:
         mc = ctk.CTkFrame(self.root, fg_color="transparent")

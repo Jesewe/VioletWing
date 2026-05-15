@@ -4,45 +4,100 @@ import sys
 import threading
 
 import requests
+from packaging import version
 from tkinter import messagebox
 
 from classes.config_manager import ConfigManager
 from classes.logger import Logger
-from classes.offset_fetcher import check_for_updates
+from classes.offset_fetcher import fetch_latest_release
 
 logger = Logger.get_logger(__name__)
+
+_GITHUB_REPO = "Jesewe/VioletWing"
 
 class Updater:
     def __init__(self, main_window) -> None:
         self.main_window = main_window
         self.download_url: str | None = None
+        self.html_url: str | None = None
+        self.changelog: str | None = None
         self.is_prerelease: bool = False
+        self._latest_version: str | None = None
 
-    def check_for_updates(self) -> bool:
+    def fetch_in_background(self, on_complete: callable) -> None:
+        """Kick off a daemon thread that calls the GitHub API."""
+        threading.Thread(
+            target=self._fetch_worker,
+            args=(on_complete,),
+            daemon=True,
+        ).start()
+
+    def _fetch_worker(self, on_complete: callable) -> None:
         if not getattr(sys, "frozen", False):
-            logger.info("Running from source - auto-update disabled.")
-            return False
+            # Changelog display still works from source; update download skipped.
+            logger.info("Running from source - update download disabled; changelog check proceeds.")
 
-        logger.info("Running from executable - checking for updates…")
-        url, is_pre = check_for_updates(ConfigManager.VERSION)
-        if url:
-            self.download_url = url
-            self.is_prerelease = is_pre
+        logger.info("Fetching latest release from GitHub (%s)...", _GITHUB_REPO)
+        release = fetch_latest_release(_GITHUB_REPO)
+        has_update = False
+
+        if release:
+            self._latest_version = release["version"]
+            self.download_url    = release["download_url"]
+            self.html_url        = release["html_url"]
+            self.changelog       = release["changelog"]
+            self.is_prerelease   = release["is_prerelease"]
+
+            try:
+                has_update = (
+                    version.parse(release["version"]) > version.parse(ConfigManager.VERSION)
+                    and getattr(sys, "frozen", False)
+                )
+            except version.InvalidVersion:
+                logger.warning(
+                    "Version comparison failed: remote=%s local=%s",
+                    release["version"],
+                    ConfigManager.VERSION,
+                )
+        else:
+            logger.warning("Could not retrieve release info from GitHub.")
+
+        self.main_window.root.after(0, lambda: on_complete(has_update, release))
+
+    def changelog_already_seen(self) -> bool:
+        """True if the user has already dismissed the changelog for this version."""
+        if not self._latest_version:
             return True
-        return False
+        config = ConfigManager.load_config()
+        return config.get("seen_changelog_version") == self._latest_version
+
+    def mark_changelog_seen(self) -> None:
+        """Persist the current version tag so the changelog is not shown again."""
+        if not self._latest_version:
+            return
+        config = ConfigManager.load_config()
+        config["seen_changelog_version"] = self._latest_version
+        ConfigManager.save_config(config, log_info=False)
 
     def handle_update(self) -> None:
         if not self.download_url:
-            messagebox.showerror("Error", "No update available.")
+            messagebox.showerror("Error", "No download URL is available for this release.")
             return
         label = "pre-release" if self.is_prerelease else "stable release"
-        if messagebox.askyesno("Update Available",
-                               f"A new {label} is available. Ready to update?"):
-            messagebox.showinfo("Updating",
-                                "Downloading update in the background. "
-                                "You will be notified when complete.")
-            threading.Thread(target=self._download_and_apply,
-                             args=(self.download_url,), daemon=True).start()
+        if messagebox.askyesno(
+            "Update Available",
+            f"A new {label} is available. Ready to update?",
+        ):
+            messagebox.showinfo(
+                "Updating",
+                "Downloading update in the background. "
+                "You will be notified when complete.",
+            )
+            threading.Thread(
+                target=self._download_and_apply,
+                args=(self.download_url,),
+                daemon=True,
+            ).start()
 
     def _download_and_apply(self, url: str) -> None:
         try:
@@ -51,9 +106,9 @@ class Updater:
             resp.raise_for_status()
 
             current_exe = sys.executable
-            exe_name = os.path.basename(current_exe)
-            temp_exe = os.path.join(ConfigManager.UPDATE_DIRECTORY, "new_VioletWing.exe")
-            bat_file = os.path.join(ConfigManager.UPDATE_DIRECTORY, "update.bat")
+            exe_name    = os.path.basename(current_exe)
+            temp_exe    = os.path.join(ConfigManager.UPDATE_DIRECTORY, "new_VioletWing.exe")
+            bat_file    = os.path.join(ConfigManager.UPDATE_DIRECTORY, "update.bat")
 
             os.makedirs(ConfigManager.UPDATE_DIRECTORY, exist_ok=True)
             with open(temp_exe, "wb") as fh:

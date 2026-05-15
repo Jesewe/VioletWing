@@ -34,6 +34,7 @@ class ConfigManager:
     # Default configuration settings
     DEFAULT_CONFIG = {
         "user_id": None,
+        "seen_changelog_version": None,
         "General": {
             "Trigger": False,
             "Overlay": False,

@@ -14,6 +14,7 @@ logger = Logger.get_logger(__name__)
 
 _REMOTE_SOURCES_URL = "https://violetwing.vercel.app/data/offsets.json"
 _STATUS_URL = "https://violetwing.vercel.app/data/status.json"
+_GITHUB_RELEASES_URL = "https://api.github.com/repos/{repo}/releases/latest"
 _REQUIRED_SOURCE_KEYS = {"name", "author", "repository", "offsets_url", "client_dll_url", "buttons_url"}
 
 _DEFAULT_SOURCES: dict = {
@@ -185,7 +186,57 @@ def _validate(offsets: dict, client: dict, buttons: dict) -> bool:
     from classes.utility import Utility
     return Utility.extract_offsets(offsets, client, buttons) is not None
 
-def check_for_updates(current_version: str) -> tuple[str | None, bool]:
+def fetch_latest_release(repo: str) -> "dict | None":
+    """
+    Fetch the latest release metadata from the GitHub Releases API.
+
+    Returns a dict with version, download_url, html_url, changelog, is_prerelease,
+    or None on any network / parse failure.
+    """
+    url = _GITHUB_RELEASES_URL.format(repo=repo)
+    try:
+        resp = requests.get(
+            url,
+            timeout=10,
+            headers={"Accept": "application/vnd.github+json"},
+        )
+        resp.raise_for_status()
+        data: dict = orjson.loads(resp.content)
+
+        tag = data.get("tag_name")
+        if not tag:
+            logger.warning("GitHub releases response is missing 'tag_name'.")
+            return None
+
+        try:
+            version.parse(tag)
+        except version.InvalidVersion:
+            logger.warning("Unparseable version tag from GitHub: %s", tag)
+            return None
+
+        # Locate the first .exe asset (binary release artifact)
+        download_url: str | None = None
+        for asset in data.get("assets", []):
+            if asset.get("name", "").lower().endswith(".exe"):
+                download_url = asset.get("browser_download_url")
+                break
+
+        logger.debug("Latest GitHub release: %s (prerelease=%s)", tag, data.get("prerelease"))
+        return {
+            "version":      tag,
+            "download_url": download_url,
+            "html_url":     data.get("html_url", ""),
+            "changelog":    data.get("body", ""),
+            "is_prerelease": bool(data.get("prerelease", False)),
+        }
+
+    except requests.exceptions.RequestException as exc:
+        logger.warning("Network error fetching GitHub release: %s", exc)
+        return None
+    except Exception:
+        logger.exception("Unexpected error fetching GitHub release.")
+        return None
+
     """
     Check the Vercel status endpoint for a newer release.
 
