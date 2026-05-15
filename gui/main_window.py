@@ -18,6 +18,7 @@ from classes.esp import CS2Overlay
 from classes.bunnyhop import CS2Bunnyhop
 from classes.noflash import CS2NoFlash
 from classes.config_manager import ConfigManager
+import classes.profile_manager as ProfileManager
 from classes.file_watcher import ConfigFileChangeHandler
 from classes.logger import Logger
 from classes.memory_manager import MemoryManager
@@ -651,6 +652,47 @@ class MainWindow:
         except Exception:
             logger.exception("Failed to reset settings.")
             messagebox.showerror("Error", "Failed to reset settings. Check logs.")
+
+    def save_current_as_profile(self, name: str) -> bool:
+        """Flush current UI to disk, then snapshot it into a named profile."""
+        self.save_settings(show_message=False)
+        config = ConfigManager.load_config()
+        return ProfileManager.save_profile(name, config)
+
+    def load_profile(self, name: str) -> None:
+        """Apply a named profile: merge into live config, update UI, apply feature changes."""
+        merged = ProfileManager.load_profile(name)
+        if merged is None:
+            messagebox.showerror("Profile Error",
+                                 f"Could not load profile '{name}'. Check logs.")
+            return
+        try:
+            old_config = ConfigManager.load_config()
+            ConfigManager.save_config(merged, log_info=False)
+            for fd in self.features.values():
+                fd["instance"].update_config(merged)
+            self.update_ui_from_config()
+            self.client_manager.apply_feature_state_changes(old_config, merged)
+            self.client_manager.update_running_feature_configs(merged)
+            logger.info("Loaded profile '%s'.", name)
+        except Exception:
+            logger.exception("Failed to apply profile '%s'.", name)
+            messagebox.showerror("Profile Error",
+                                 f"Failed to apply profile '{name}'. Check logs.")
+
+    def delete_profile(self, name: str) -> bool:
+        """Delete a named profile file."""
+        return ProfileManager.delete_profile(name)
+
+    def refresh_profile_dropdown(self) -> None:
+        """Rebuild the profile OptionMenu values from disk. Called after save/delete."""
+        if not hasattr(self, "_profile_dropdown"):
+            return
+        profiles = ProfileManager.list_profiles()
+        display = profiles if profiles else ["No profiles"]
+        self._profile_dropdown.configure(values=display)
+        # Reset selection to the first entry so the widget always shows a valid state.
+        self._profile_var.set(display[0])
 
     def open_config_directory(self) -> None:
         if platform.system() == "Windows":
