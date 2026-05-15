@@ -110,4 +110,4 @@ Use the [Bug Report](https://github.com/Jesewe/VioletWing/issues/new?template=bu
 
 ## Questions
 
-Check the [in-app FAQ](https://violetwing.featurebase.app/en/help) or open a [Discussion](https://github.com/Jesewe/VioletWing/discussions). Don't open issues for general questions.
+Check the in-app FAQ or open a [Discussion](https://github.com/Jesewe/VioletWing/discussions). Don't open issues for general questions.
