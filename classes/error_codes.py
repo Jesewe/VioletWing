@@ -52,6 +52,18 @@ E1005 = _Entry(
     solution="ghosts.json must contain a JSON array (e.g. [{...}, {...}]). Check the file structure and restart VioletWing.",
 )
 
+E1006 = _Entry(
+    id="E1006",
+    label="Profile save failed",
+    solution="VioletWing could not write the profile file. Check that you have write permissions to the profiles directory inside the config folder.",
+)
+
+E1007 = _Entry(
+    id="E1007",
+    label="Profile load failed",
+    solution="The selected profile file could not be read or is malformed. Delete the profile and save it again, or check for JSON syntax errors in the profiles directory.",
+)
+
 # ---------------------------------------------------------------------------
 # E2xxx — Memory / Offsets
 # ---------------------------------------------------------------------------
