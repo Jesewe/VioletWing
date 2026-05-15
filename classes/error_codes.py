@@ -138,6 +138,18 @@ E3006 = _Entry(
     solution="An unhandled exception occurred in the ESP loop. Check the detailed log for the full traceback. If it happens repeatedly, report it via GitHub Issues.",
 )
 
+E3007 = _Entry(
+    id="E3007",
+    label="TriggerBot unexpected crash",
+    solution="An unhandled exception occurred in the TriggerBot loop. Check the detailed log for the full traceback. If it happens repeatedly, report it via GitHub Issues.",
+)
+
+E3008 = _Entry(
+    id="E3008",
+    label="TriggerBot mouse listener error",
+    solution="VioletWing could not stop the mouse listener cleanly. This is usually harmless. Restart VioletWing if mouse input behaves unexpectedly afterward.",
+)
+
 # ---------------------------------------------------------------------------
 # E4xxx — Network / Updates / Offsets fetch
 # ---------------------------------------------------------------------------
@@ -200,6 +212,12 @@ E4010 = _Entry(
     id="E4010",
     label="Update check failed",
     solution="VioletWing could not reach the update server. This is non-critical — all features still work. Check your internet connection if you want to verify your version.",
+)
+
+E4011 = _Entry(
+    id="E4011",
+    label="Update download failed",
+    solution="VioletWing downloaded an update but could not apply it. Check that the update directory is writable and that no antivirus is blocking the installer. You can update manually from the GitHub releases page.",
 )
 
 # ---------------------------------------------------------------------------

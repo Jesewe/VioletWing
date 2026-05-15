@@ -9,6 +9,7 @@ from tkinter import messagebox
 
 from classes.config_manager import ConfigManager
 from classes.logger import Logger
+import classes.error_codes as EC
 from classes.offset_fetcher import fetch_latest_release
 
 logger = Logger.get_logger(__name__)
@@ -154,5 +155,5 @@ del "%~f0" 2>nul
             self.main_window.root.quit()
 
         except Exception as exc:
-            logger.error("Update failed: %s", exc)
+            Logger.error_code(EC.E4011, "%s", exc)
             messagebox.showerror("Update Error", f"Failed to update: {exc}")

@@ -12,6 +12,7 @@ from classes.base_feature import BaseFeature
 from classes.config_manager import ConfigManager
 from classes.game_process import is_game_active
 from classes.logger import Logger
+import classes.error_codes as EC
 from classes.memory_manager import MemoryManager
 from constants.vk_codes import get_vk_code
 
@@ -132,7 +133,7 @@ class CS2TriggerBot(BaseFeature):
                     sleep(post_delay)
 
             except Exception:
-                logger.error("Unexpected error in TriggerBot loop.", exc_info=True)
+                Logger.error_code(EC.E3007, exc_info=True)
                 sleep(MAIN_LOOP_SLEEP)
 
     def stop(self) -> None:
@@ -145,7 +146,7 @@ class CS2TriggerBot(BaseFeature):
                 if self._mouse_listener.running:
                     self._mouse_listener.stop()
             except Exception as exc:
-                logger.error("Error stopping mouse listener: %s", exc)
+                Logger.error_code(EC.E3008, "%s", exc)
             finally:
                 self._mouse_listener = None
 
