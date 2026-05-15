@@ -23,7 +23,7 @@ class ConfigManager:
     """
     
     # Application version
-    VERSION = "v1.3.1"
+    VERSION = "v1.3.2"
     
     # Directory paths
     UPDATE_DIRECTORY = os.path.expanduser(r'~\AppData\Local\Requests\ItsJesewe\Update')
