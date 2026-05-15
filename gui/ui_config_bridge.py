@@ -14,6 +14,7 @@ class UIConfigBridge:
         var=None,
         value_label=None,
         fmt: Optional[str] = None,
+        refresh_cb=None,
     ) -> None:
         """Register a widget under a config key.
 
@@ -23,12 +24,16 @@ class UIConfigBridge:
             var:         A tkinter variable (BooleanVar, StringVar, etc.).
             value_label: An optional CTkLabel that mirrors the widget's numeric value.
             fmt:         Optional format string for value_label updates (e.g. ".1f").
+            refresh_cb:  Optional callable(value) invoked by set_value() after updating
+                         the var/widget, so composite widgets (e.g. color picker with
+                         swatch + entry + combo) can stay in sync.
         """
         self._registry[key] = {
             "widget": widget,
             "var": var,
             "value_label": value_label,
             "fmt": fmt,
+            "refresh_cb": refresh_cb,
         }
 
     def get_value(self, key: str) -> Any:
@@ -59,6 +64,7 @@ class UIConfigBridge:
         widget = entry["widget"]
         label = entry["value_label"]
         fmt = entry["fmt"]
+        refresh_cb = entry.get("refresh_cb")
 
         if var is not None:
             var.set(value)
@@ -73,6 +79,9 @@ class UIConfigBridge:
 
         if label is not None and fmt is not None:
             label.configure(text=f"{value:{fmt}}")
+
+        if refresh_cb is not None:
+            refresh_cb(value)
 
     def registered(self, key: str) -> bool:
         """Return True if a key has been registered."""

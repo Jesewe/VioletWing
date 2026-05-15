@@ -1,6 +1,7 @@
 import copy
 import os
 import platform
+import re
 import threading
 import time
 import webbrowser
@@ -16,7 +17,7 @@ from classes.trigger_bot import CS2TriggerBot
 from classes.esp import CS2Overlay
 from classes.bunnyhop import CS2Bunnyhop
 from classes.noflash import CS2NoFlash
-from classes.config_manager import ConfigManager, COLOR_CHOICES
+from classes.config_manager import ConfigManager
 from classes.file_watcher import ConfigFileChangeHandler
 from classes.logger import Logger
 from classes.memory_manager import MemoryManager
@@ -500,7 +501,7 @@ class MainWindow:
         for key, default in color_defaults.items():
             val = self.ui_bridge.get_value(key)
             if val is not None:
-                s[key] = COLOR_CHOICES.get(val, default)
+                s[key] = val.upper() if re.match(r'^#[0-9A-Fa-f]{6}$', val) else default
 
     def _save_additional(self, config: dict) -> None:
         bh = config.setdefault("Bunnyhop", {})
@@ -553,7 +554,7 @@ class MainWindow:
             self.ui_bridge.set_value(key, s.get(key, 0))
 
         for key in ("box_color_hex", "snaplines_color_hex", "text_color_hex", "teammate_color_hex"):
-            self.ui_bridge.set_value(key, Utility.get_color_name_from_hex(s.get(key, "#FFFFFF")))
+            self.ui_bridge.set_value(key, s.get(key, "#FFFFFF").upper())
 
     def _load_additional(self, config: dict) -> None:
         bh = config.get("Bunnyhop", {})
