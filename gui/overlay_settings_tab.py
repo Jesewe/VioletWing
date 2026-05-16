@@ -115,6 +115,10 @@ def _make_checkbox(parent, key, main_window):
     main_window.ui_bridge.register(key, var=var)
 
 def _make_slider(parent, key, main_window):
+    if key == "target_fps":
+        _make_fps_entry(parent, key, main_window)
+        return
+
     container = ctk.CTkFrame(parent, fg_color="transparent")
     container.pack()
 
@@ -123,27 +127,80 @@ def _make_slider(parent, key, main_window):
     value_frame.pack(side="right", padx=(15, 0))
     value_frame.pack_propagate(False)
 
-    initial = main_window.overlay.config["Overlay"].get(key, 60 if key == "target_fps" else 1.0)
-    fmt = ".0f" if key == "target_fps" else ".1f"
-    value_label = ctk.CTkLabel(value_frame, text=f"{initial:{fmt}}",
+    initial = main_window.overlay.config["Overlay"].get(key, 1.0)
+    value_label = ctk.CTkLabel(value_frame, text=f"{initial:.1f}",
                                 font=ENTRY_STYLE["font"], text_color=COLOR_TEXT_PRIMARY)
     value_label.pack(expand=True)
 
-    from_v = 60.0    if key == "target_fps" else 0.5
-    to_v   = 420.0   if key == "target_fps" else 5.0
-    steps  = 3       if key == "target_fps" else 9
-
     def _on_change(val):
-        value_label.configure(text=f"{val:{fmt}}")
+        value_label.configure(text=f"{val:.1f}")
         main_window.save_settings(show_message=False)
 
-    widget = ctk.CTkSlider(container, from_=from_v, to=to_v, number_of_steps=steps,
+    widget = ctk.CTkSlider(container, from_=0.5, to=5.0, number_of_steps=9,
                             command=_on_change, **SLIDER_STYLE)
     widget.set(initial)
     widget.pack(side="left")
 
-    # Register with UIConfigBridge so save_settings / update_ui_from_config work uniformly.
-    main_window.ui_bridge.register(key, widget=widget, value_label=value_label, fmt=fmt)
+    main_window.ui_bridge.register(key, widget=widget, value_label=value_label, fmt=".1f")
+
+def _make_fps_entry(parent, key, main_window):
+    """Entry-based FPS input. Accepts any integer in [60, 420] and saves on commit.
+
+    A slider is the wrong widget here: the value space is large, the meaningful
+    values are specific (144, 165, 240 ...), and users know the number they want.
+    """
+    _FPS_MIN = 60
+    _FPS_MAX = 420
+
+    initial = int(main_window.overlay.config["Overlay"].get(key, _FPS_MIN))
+
+    container = ctk.CTkFrame(parent, fg_color="transparent")
+    container.pack()
+
+    entry = ctk.CTkEntry(
+        container,
+        width=80, height=45, justify="center",
+        corner_radius=ENTRY_STYLE["corner_radius"],
+        border_width=ENTRY_STYLE["border_width"],
+        border_color=ENTRY_STYLE["border_color"],
+        fg_color=ENTRY_STYLE["fg_color"],
+        text_color=ENTRY_STYLE["text_color"],
+        font=ENTRY_STYLE["font"],
+        placeholder_text="144",
+    )
+    entry.insert(0, str(initial))
+    entry.pack(side="left")
+
+    ctk.CTkLabel(
+        container, text=f"fps  ({_FPS_MIN}–{_FPS_MAX})",
+        font=ENTRY_STYLE["font"], text_color=COLOR_TEXT_SECONDARY,
+    ).pack(side="left", padx=(8, 0))
+
+    def _commit(_event=None):
+        raw = entry.get().strip()
+        try:
+            val = int(float(raw))
+            if not (_FPS_MIN <= val <= _FPS_MAX):
+                raise ValueError
+        except (ValueError, TypeError):
+            # Revert to the last accepted value and flash the border.
+            entry.delete(0, "end")
+            entry.insert(0, str(int(float(main_window.ui_bridge.get_value(key) or initial))))
+            entry.configure(border_color="#ef4444")
+            parent.after(900, lambda: entry.configure(border_color=ENTRY_STYLE["border_color"]))
+            return
+        entry.delete(0, "end")
+        entry.insert(0, str(val))
+        main_window.save_settings(show_message=False)
+
+    entry.bind("<FocusOut>", _commit)
+    entry.bind("<Return>",   _commit)
+
+    # refresh_cb keeps the entry in sync when update_ui_from_config() pushes a new value.
+    main_window.ui_bridge.register(
+        key, widget=entry,
+        refresh_cb=lambda v: (entry.delete(0, "end"), entry.insert(0, str(int(float(v))))),
+    )
 
 def _hex_to_combo_name(hex_val: str) -> str:
     """Return the named preset label for a hex value, or 'Custom' if not in the list."""
