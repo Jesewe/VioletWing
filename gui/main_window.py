@@ -1,6 +1,7 @@
 import copy
 import os
 import platform
+import queue
 import re
 import threading
 import time
@@ -59,6 +60,7 @@ class MainWindow:
         self.noflash_thread = None
         self.observer = None
         self._suppress_watcher = False
+        self.ui_queue: queue.SimpleQueue = queue.SimpleQueue()
         self.log_timer = None
         self._log_file_pos = 0
         self._active_log_file: str = Logger.LOG_FILE()
@@ -250,7 +252,26 @@ class MainWindow:
         ).pack(side="left", padx=(8, 0))
 
     def _start_release_fetch(self) -> None:
+        self._start_ui_queue_drain()
         self.updater.fetch_in_background(self._on_release_fetched)
+
+    def _start_ui_queue_drain(self) -> None:
+        def _drain():
+            try:
+                while True:
+                    fn = self.ui_queue.get_nowait()
+                    try:
+                        fn()
+                    except Exception:
+                        logger.exception("ui_queue callback raised")
+            except queue.Empty:
+                pass
+            self.root.after(10, _drain)
+        self.root.after(10, _drain)
+
+    def ui_queue_put(self, fn) -> None:
+        """Submit a zero-argument callable to run on the main thread. Thread-safe."""
+        self.ui_queue.put(fn)
 
     def _on_release_fetched(self, has_update: bool, release: "dict | None") -> None:
         if has_update:
