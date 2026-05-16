@@ -1,4 +1,5 @@
 import os
+import platform
 import orjson
 import copy
 from pathlib import Path
@@ -26,10 +27,17 @@ class ConfigManager:
     VERSION = "v1.3.2"
     
     # Directory paths
-    UPDATE_DIRECTORY = os.path.expanduser(r'~\AppData\Local\Requests\ItsJesewe\Update')
-    OFFSETS_DIRECTORY = os.path.expanduser(r'~\AppData\Local\Requests\ItsJesewe\Offsets')
-    CONFIG_DIRECTORY = os.path.expanduser(r'~\AppData\Local\Requests\ItsJesewe')
-    CONFIG_FILE = Path(CONFIG_DIRECTORY) / 'config.json'
+    # Path.home() / "AppData" / ... keeps this importable on Linux/Mac during
+    # development. The app itself remains Windows-only (pyMeow / CS2 ESP).
+    _BASE = (
+        Path.home() / "AppData" / "Local" / "Requests" / "ItsJesewe"
+        if platform.system() == "Windows"
+        else Path.home() / ".local" / "share" / "ItsJesewe"
+    )
+    CONFIG_DIRECTORY  = str(_BASE)
+    UPDATE_DIRECTORY  = str(_BASE / "Update")
+    OFFSETS_DIRECTORY = str(_BASE / "Offsets")
+    CONFIG_FILE       = _BASE / "config.json"
     
     # Default configuration settings
     DEFAULT_CONFIG = {
