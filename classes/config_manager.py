@@ -24,7 +24,7 @@ class ConfigManager:
     """
     
     # Application version
-    VERSION = "v1.3.2"
+    VERSION = "v1.3.2.1"
     
     # Directory paths
     # Path.home() / "AppData" / ... keeps this importable on Linux/Mac during
