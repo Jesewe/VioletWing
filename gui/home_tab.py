@@ -193,7 +193,7 @@ def _check_offsets_staleness(main_window):
         except Exception:
             pass
 
-    main_window.root.after(0, _apply)
+    main_window.ui_queue_put(_apply)
 
 
 def fetch_last_update(main_window):
@@ -207,13 +207,13 @@ def fetch_last_update(main_window):
         cache_file = Path(ConfigManager.CONFIG_DIRECTORY) / "last_update_cache.txt"
 
         def _update_ui(text, color):
-            try:
-                if main_window.root.winfo_exists() and hasattr(main_window, "update_value_label"):
-                    main_window.root.after(
-                        0, lambda: main_window.update_value_label.configure(
-                            text=text, text_color=color))
-            except Exception:
-                pass
+            def _apply():
+                try:
+                    if main_window.root.winfo_exists() and hasattr(main_window, "update_value_label"):
+                        main_window.update_value_label.configure(text=text, text_color=color)
+                except Exception:
+                    logger.exception("update_value_label update failed")
+            main_window.ui_queue_put(_apply)
 
         def _load_cache():
             try:
@@ -313,13 +313,13 @@ def fetch_cs2_latest_patch(main_window):
         cache_file = Path(ConfigManager.CONFIG_DIRECTORY) / "cs2_patch_cache.txt"
 
         def _update_ui(text, color):
-            try:
-                if main_window.root.winfo_exists() and hasattr(main_window, "cs2_patch_label"):
-                    main_window.root.after(
-                        0, lambda: main_window.cs2_patch_label.configure(
-                            text=text, text_color=color))
-            except Exception:
-                pass
+            def _apply():
+                try:
+                    if main_window.root.winfo_exists() and hasattr(main_window, "cs2_patch_label"):
+                        main_window.cs2_patch_label.configure(text=text, text_color=color)
+                except Exception:
+                    logger.exception("cs2_patch_label update failed")
+            main_window.ui_queue_put(_apply)
 
         cached = cache_file.read_text().strip() if cache_file.exists() else None
         if cached:
