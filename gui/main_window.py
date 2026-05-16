@@ -58,6 +58,7 @@ class MainWindow:
         self.bunnyhop_thread = None
         self.noflash_thread = None
         self.observer = None
+        self._suppress_watcher = False
         self.log_timer = None
         self._log_file_pos = 0
         self._active_log_file: str = Logger.LOG_FILE()
@@ -439,7 +440,11 @@ class MainWindow:
             config = ConfigManager.load_config()
             old_config = copy.deepcopy(config)
             self._update_config_from_ui(config)
-            ConfigManager.save_config(config, log_info=False)
+            self._suppress_watcher = True
+            try:
+                ConfigManager.save_config(config, log_info=False)
+            finally:
+                self._suppress_watcher = False
             self.client_manager.apply_feature_state_changes(old_config, config)
             self.client_manager.update_running_feature_configs(config)
             if show_message:
@@ -674,7 +679,11 @@ class MainWindow:
             return
         try:
             old_config = ConfigManager.load_config()
-            ConfigManager.save_config(merged, log_info=False)
+            self._suppress_watcher = True
+            try:
+                ConfigManager.save_config(merged, log_info=False)
+            finally:
+                self._suppress_watcher = False
             for fd in self.features.values():
                 fd["instance"].update_config(merged)
             self.update_ui_from_config()

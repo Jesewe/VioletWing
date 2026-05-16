@@ -29,6 +29,8 @@ class ConfigFileChangeHandler(FileSystemEventHandler):
 
     def on_modified(self, event):
         """Called when a file or directory is modified."""
+        if getattr(self.main_window, "_suppress_watcher", False):
+            return
         if event.src_path and os.path.exists(self.config_path) and os.path.samefile(event.src_path, self.config_path):
             if self.debounce_timer is not None:
                 self.debounce_timer.cancel()
