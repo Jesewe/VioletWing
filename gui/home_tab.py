@@ -18,6 +18,17 @@ from gui.theme import (
     SECTION_STYLE, BUTTON_STYLE_PRIMARY, BUTTON_STYLE_DANGER,
 )
 
+# Days-stale thresholds for the Offsets card warning colours.
+_STALENESS_AMBER_DAYS = 1
+_STALENESS_RED_DAYS   = 3
+
+_COLOR_STALE_AMBER = "#f59e0b"
+_COLOR_STALE_RED   = "#ef4444"
+_COLOR_FRESH       = "#22c55e"
+
+# Guards concurrent writes to main_window._cs2_patch_dt / ._offsets_dt.
+_staleness_lock = threading.Lock()
+
 logger = Logger.get_logger(__name__)
 
 def populate_dashboard(main_window, frame):
@@ -49,6 +60,13 @@ def populate_dashboard(main_window, frame):
         main_window, stats_frame, "Offsets Update", "Checking...", "#6b7280",
         "Last offsets synchronisation", "rotate_icon.png")
     upd_card.grid(row=0, column=1, sticky="ew", padx=(10, 10))
+
+    # Warning label hidden until staleness is detected; _check_offsets_staleness
+    # will pack() or pack_forget() it based on the comparison result.
+    _content = upd_card.winfo_children()[0]
+    main_window._offsets_warning_label = ctk.CTkLabel(
+        _content, text="", font=FONT_ITEM_DESCRIPTION,
+        text_color=_COLOR_STALE_AMBER, anchor="w")
 
     ver_card, _ = _stat_card(
         main_window, stats_frame, "Version", ConfigManager.VERSION, "#8e44ad",
@@ -132,6 +150,52 @@ def _stat_card(main_window, parent, title, value, color, subtitle, icon_file=Non
                  text_color=COLOR_TEXT_SECONDARY, anchor="w").pack(fill="x")
     return card, val_label
 
+def _check_offsets_staleness(main_window):
+    """
+    Called (under _staleness_lock) after either date thread resolves its value.
+    Does nothing until both datetimes are available.
+    Recolours the Offsets card and appends a warning label when the patch date
+    is strictly newer than the offsets commit date.
+    """
+    cs2_dt     = getattr(main_window, "_cs2_patch_dt", None)
+    offsets_dt = getattr(main_window, "_offsets_dt", None)
+    if cs2_dt is None or offsets_dt is None:
+        return
+
+    delta_days = (cs2_dt.date() - offsets_dt.date()).days
+
+    if delta_days <= 0:
+        color   = _COLOR_FRESH
+        warning = None
+    elif delta_days <= _STALENESS_AMBER_DAYS:
+        color   = _COLOR_STALE_AMBER
+        warning = f"\u26a0 May be outdated ({delta_days}d behind patch)"
+    elif delta_days <= _STALENESS_RED_DAYS:
+        color   = _COLOR_STALE_AMBER
+        warning = f"\u26a0 Likely outdated ({delta_days}d behind patch)"
+    else:
+        color   = _COLOR_STALE_RED
+        warning = f"\u2715 Stale \u2014 {delta_days}d behind last CS2 patch"
+
+    def _apply():
+        try:
+            if not main_window.root.winfo_exists():
+                return
+            if hasattr(main_window, "update_value_label"):
+                main_window.update_value_label.configure(text_color=color)
+            if hasattr(main_window, "_offsets_warning_label"):
+                if warning:
+                    main_window._offsets_warning_label.configure(
+                        text=warning, text_color=color)
+                    main_window._offsets_warning_label.pack(fill="x")
+                else:
+                    main_window._offsets_warning_label.pack_forget()
+        except Exception:
+            pass
+
+    main_window.root.after(0, _apply)
+
+
 def fetch_last_update(main_window):
     """Fetch last offset commit date in a background thread."""
     stop_event = threading.Event()
@@ -176,7 +240,10 @@ def fetch_last_update(main_window):
                 mtime = datetime.fromtimestamp(offsets_file.stat().st_mtime)
                 ts = mtime.strftime("%m/%d/%Y %H:%M")
                 _save_cache(ts)
-                _update_ui(ts, "#22c55e")
+                _update_ui(ts, _COLOR_FRESH)
+                with _staleness_lock:
+                    main_window._offsets_dt = mtime
+                    _check_offsets_staleness(main_window)
             else:
                 _update_ui("No Local File", "#ef4444")
             return
@@ -205,9 +272,13 @@ def fetch_last_update(main_window):
                     headers=headers, timeout=10)
                 resp.raise_for_status()
                 data = orjson.loads(resp.content)
-                ts = parse_date(data["commit"]["committer"]["date"]).strftime("%m/%d/%Y %H:%M")
+                commit_dt = parse_date(data["commit"]["committer"]["date"])
+                ts = commit_dt.strftime("%m/%d/%Y %H:%M")
                 _save_cache(ts)
-                _update_ui(ts, "#22c55e")
+                _update_ui(ts, _COLOR_FRESH)
+                with _staleness_lock:
+                    main_window._offsets_dt = commit_dt
+                    _check_offsets_staleness(main_window)
                 return
             except requests.exceptions.HTTPError as exc:
                 if exc.response.status_code == 403 and attempt < max_retries - 1:
@@ -267,9 +338,13 @@ def fetch_cs2_latest_patch(main_window):
                 items = data.get("appnews", {}).get("newsitems", [])
                 if not items:
                     raise ValueError("No news items in Steam API response")
-                date_str = datetime.fromtimestamp(items[0]["date"]).strftime("%m/%d/%Y")
+                patch_dt = datetime.fromtimestamp(items[0]["date"])
+                date_str = patch_dt.strftime("%m/%d/%Y")
                 cache_file.write_text(date_str)
-                _update_ui(date_str, "#22c55e")
+                _update_ui(date_str, _COLOR_FRESH)
+                with _staleness_lock:
+                    main_window._cs2_patch_dt = patch_dt
+                    _check_offsets_staleness(main_window)
                 return
             except Exception as exc:
                 logger.error("Failed to fetch CS2 patch date: %s", exc)
