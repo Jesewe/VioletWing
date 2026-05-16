@@ -8,7 +8,7 @@ from gui.theme import (FONT_TITLE, FONT_SUBTITLE, FONT_WIDGET, FONT_LOG,
 
 # Detects the start of a level-tagged log line, e.g. [INFO] or [ERROR].
 # Used to group multi-line entries (tracebacks) with their parent line.
-_LEVEL_LINE_RE = re.compile(r'^\[(INFO|WARNING|ERROR|DEBUG|CRITICAL)\]')
+_LEVEL_LINE_RE = re.compile(r'\[(INFO|WARNING|ERROR|DEBUG|CRITICAL)\]')
 
 # Per-level chip colors: (active_fg, active_hover)
 _CHIP_COLORS = {
@@ -157,6 +157,17 @@ def _create_log_body(main_window, parent):
     main_window.log_text._textbox.tag_config(
         "search_hl", background="#f59e0b", foreground="#000000",
     )
+
+    # Per-level foreground tags — applied to the [LEVEL] token only
+    tb = main_window.log_text._textbox
+    tb.tag_config("log_debug",    foreground="#6b7280")
+    tb.tag_config("log_info",     foreground="#10b981")
+    tb.tag_config("log_warning",  foreground="#f59e0b")
+    tb.tag_config("log_error",    foreground="#ef4444")
+    tb.tag_config("log_critical", foreground="#ef4444")
+
+    # search_hl must paint over level tags, so raise it above them
+    tb.tag_raise("search_hl")
 
 def _initial_load(main_window) -> None:
     """Read the entire log file into the buffer, then render."""
