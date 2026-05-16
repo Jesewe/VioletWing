@@ -496,10 +496,16 @@ class MainWindow:
             if val is not None:
                 s[key] = val
 
-        for key in ("box_line_thickness", "target_fps"):
-            val = self.ui_bridge.get_value(key)
-            if val is not None:
-                s[key] = val
+        val = self.ui_bridge.get_value("box_line_thickness")
+        if val is not None:
+            s["box_line_thickness"] = val
+
+        val = self.ui_bridge.get_value("target_fps")
+        if val is not None:
+            try:
+                s["target_fps"] = int(float(val))
+            except (ValueError, TypeError):
+                pass
 
         color_defaults = {
             "box_color_hex":       "#FFA500",
