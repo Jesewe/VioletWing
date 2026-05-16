@@ -34,7 +34,7 @@ from gui.general_settings_tab import populate_general_settings
 from gui.trigger_settings_tab import populate_trigger_settings
 from gui.overlay_settings_tab import populate_overlay_settings
 from gui.additional_settings_tab import populate_additional_settings
-from gui.logs_tab import populate_logs
+from gui.logs_tab import populate_logs, _LEVEL_LINE_RE
 from gui.faq_tab import populate_faq
 from gui.notifications_tab import populate_notifications
 from gui.supporters_tab import populate_supporters
@@ -751,7 +751,6 @@ class MainWindow:
         Continuation lines (tracebacks, etc.) that don't start with a level
         tag are attached to their parent entry so filtering keeps them together.
         """
-        from gui.logs_tab import _LEVEL_LINE_RE
         entries: list[str] = []
         current: list[str] = []
         for line in text.splitlines(keepends=True):
@@ -781,6 +780,15 @@ class MainWindow:
             self._log_lines = self._log_lines[-10_000:]
         self._apply_log_filter()
 
+    # Maps [LEVEL] token -> tag name registered in _create_log_body
+    _LEVEL_TAG: dict[str, str] = {
+        "DEBUG":    "log_debug",
+        "INFO":     "log_info",
+        "WARNING":  "log_warning",
+        "ERROR":    "log_error",
+        "CRITICAL": "log_critical",
+    }
+
     def _apply_log_filter(self) -> None:
         """Render the log widget from the buffer with active level and search filters."""
         if not hasattr(self, "log_text") or not self.log_text.winfo_exists():
@@ -800,12 +808,40 @@ class MainWindow:
             self.log_text.delete("1.0", "end")
             if content:
                 self.log_text.insert("1.0", content)
+                self._apply_level_tags(visible)
             if term:
                 self._apply_search_tags(term)
             self.log_text.see("end")
             self.log_text.configure(state="disabled")
         except Exception:
             logger.exception("Failed to render log view.")
+
+    def _apply_level_tags(self, entries: list[str]) -> None:
+        """Color the [LEVEL] token in each entry after a bulk insert.
+
+        Walks the entry list tracking the running character offset so we can
+        derive exact tk.Text line/column positions without a second file scan.
+        Each entry may span multiple lines (e.g. tracebacks); only the first
+        line carries the level tag.
+        """
+        widget = self.log_text._textbox
+        # Remove stale level tags from the previous render in one pass each
+        for tag in self._LEVEL_TAG.values():
+            widget.tag_remove(tag, "1.0", "end")
+
+        line_num = 1
+        for entry in entries:
+            # Only the opening line of each entry has a [LEVEL] token
+            first_line = entry.split("\n", 1)[0]
+            m = _LEVEL_LINE_RE.search(first_line)
+            if m:
+                tag = self._LEVEL_TAG.get(m.group(1))
+                if tag:
+                    # m.start()/end() are byte offsets into first_line — use as col indices
+                    start = f"{line_num}.{m.start()}"
+                    end   = f"{line_num}.{m.end()}"
+                    widget.tag_add(tag, start, end)
+            line_num += entry.count("\n")
 
     def _apply_search_tags(self, term: str) -> None:
         """Highlight all occurrences of term with amber background in the widget."""
