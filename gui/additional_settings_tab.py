@@ -1,6 +1,7 @@
 import customtkinter as ctk
 from gui.icon_loader import icon_label
 from gui.components import create_section_frame, create_section_header, build_item_scaffold
+from gui.keybind_recorder import KeybindRecorder
 from gui.theme import (
     FONT_TITLE, FONT_SUBTITLE,
     COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY,
@@ -52,8 +53,8 @@ def create_bunnyhop_config_section(main_window, parent):
     create_section_header(section, "Bunnyhop Configuration", "Control Bunnyhop behavior",
                           icon_file="paw_icon.png")
     settings_list = [
-        ("Jump Key",   "entry", "JumpKey",   "Key to activate Bunnyhop (e.g., 'space' or 'mouse4')"),
-        ("Jump Delay", "entry", "JumpDelay", "Delay between jumps in seconds (0.01-0.5)"),
+        ("Jump Key",   "keybind", "JumpKey",   "Click and press any key or mouse button"),
+        ("Jump Delay", "entry",   "JumpDelay", "Delay between jumps in seconds (0.01-0.5)"),
     ]
     for i, (label_text, widget_type, key, description) in enumerate(settings_list):
         create_setting_item(section, label_text, description, widget_type, key, main_window,
@@ -74,11 +75,16 @@ def create_noflash_config_section(main_window, parent):
 def create_setting_item(parent, label_text, description, widget_type, key, main_window, is_last=False):
     wf = build_item_scaffold(parent, label_text, description, is_last)
 
-    if widget_type == "entry":
+    if widget_type == "keybind":
+        initial = main_window.bunnyhop.config.get("Bunnyhop", {}).get(key, "space")
+        var = ctk.StringVar(value=initial)
+        recorder = KeybindRecorder(wf, var=var, on_capture=main_window.save_settings)
+        recorder.pack()
+        main_window.ui_bridge.register(key, var=var)
+
+    elif widget_type == "entry":
         widget = ctk.CTkEntry(wf, justify="center", **ENTRY_STYLE)
-        if key == "JumpKey":
-            widget.insert(0, main_window.bunnyhop.config.get("Bunnyhop", {}).get("JumpKey", "space"))
-        elif key == "JumpDelay":
+        if key == "JumpDelay":
             widget.insert(0, str(main_window.bunnyhop.config.get("Bunnyhop", {}).get("JumpDelay", 0.01)))
         widget.bind("<FocusOut>", lambda e: main_window.save_settings())
         widget.bind("<Return>",   lambda e: main_window.save_settings())

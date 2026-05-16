@@ -1,6 +1,7 @@
 import customtkinter as ctk
 from gui.icon_loader import icon_label
 from gui.components import create_section_frame, create_section_header, build_item_scaffold
+from gui.keybind_recorder import KeybindRecorder
 from gui.theme import (
     FONT_TITLE, FONT_SUBTITLE, COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY,
     CHECKBOX_STYLE, ENTRY_STYLE, COMBOBOX_STYLE,
@@ -50,7 +51,7 @@ def create_trigger_config_section(main_window, parent):
                           icon_file="bullseye_icon.png")
 
     settings_list = [
-        ("Trigger Key",       "entry",    "TriggerKey",        "Key to activate trigger (e.g., 'x', 'mouse4')"),
+        ("Trigger Key",       "keybind",  "TriggerKey",        "Click and press any key or mouse button"),
         ("Toggle Mode",       "checkbox", "ToggleMode",        "Enable toggle mode instead of hold mode"),
         ("Attack Teammates",  "checkbox", "AttackOnTeammates", "Allow triggering on teammates"),
     ]
@@ -91,18 +92,21 @@ def create_setting_item(parent, main_window, label_text, description, widget_typ
     wf = build_item_scaffold(parent, label_text, description, is_last)
     _populate_widget(wf, main_window, widget_type, key, is_weapon_specific)
 
-
 def _populate_widget(wf, main_window, widget_type, key, is_weapon_specific):
     """Create the input widget directly inside the pre-built widget frame."""
-    if widget_type == "entry":
+    if widget_type == "keybind":
+        initial = main_window.triggerbot.config["Trigger"].get(key, "")
+        var = ctk.StringVar(value=initial)
+        recorder = KeybindRecorder(wf, var=var, on_capture=main_window.save_settings)
+        recorder.pack()
+        main_window.ui_bridge.register(key, var=var)
+    elif widget_type == "entry":
         widget = ctk.CTkEntry(wf, justify="center", **ENTRY_STYLE)
         widget.bind("<FocusOut>", lambda e: main_window.save_settings())
         widget.bind("<Return>",   lambda e: main_window.save_settings())
         if is_weapon_specific:
             defaults = {"ShotDelayMin": 0.01, "ShotDelayMax": 0.03, "PostShotDelay": 0.1}
             widget.insert(0, str(defaults.get(key, "")))
-        elif key == "TriggerKey":
-            widget.insert(0, main_window.triggerbot.config["Trigger"].get("TriggerKey", ""))
         main_window.ui_bridge.register(key, widget=widget)
         widget.pack()
     elif widget_type == "checkbox":
