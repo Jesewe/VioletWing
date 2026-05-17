@@ -109,6 +109,14 @@ def create_offsets_section(main_window, parent):
     ).pack(side="right", padx=(0, 10))
     main_window.ui_bridge.register("OffsetSource", var=offset_source_var)
 
+    main_window.offset_source_notice = ctk.CTkLabel(
+        section,
+        text="",
+        font=FONT_ITEM_DESCRIPTION,
+        text_color="#f59e0b",
+        anchor="w",
+    )
+
     main_window.local_files_frame = ctk.CTkFrame(section, fg_color="transparent")
     if current_src == "local":
         main_window.local_files_frame.pack(fill="x", padx=40, pady=(0, 40))
@@ -254,6 +262,20 @@ def _create_profile_row(main_window, section):
     main_window._profile_var = profile_var
     main_window._profile_dropdown = dropdown
 
+    # Active profile indicator — updated by main_window.update_active_profile_label()
+    active_label = ctk.CTkLabel(
+        profile_frame,
+        text="",
+        font=FONT_ITEM_DESCRIPTION,
+        text_color=COLOR_TEXT_SECONDARY,
+        fg_color="transparent",
+        anchor="w",
+    )
+    active_label.pack(side="left", padx=(0, 12))
+    main_window._active_profile_label = active_label
+    # Reflect any profile that was loaded before this tab was built
+    main_window.update_active_profile_label()
+
     # Load Profile
     _load_icon = load_icon("rotate_icon.png", size=(16, 16))
     ctk.CTkButton(
@@ -347,6 +369,7 @@ def _create_file_selector(main_window, parent, label_text, filename, description
             btn.configure(text=f"Selected: {os.path.basename(path)}")
             main_window.triggerbot.config["General"][config_key] = path
             main_window.save_settings(show_message=False)
+            _update_offset_source(main_window, "local")
 
     current = main_window.triggerbot.config["General"].get(config_key, "")
     btn_text = (
@@ -362,11 +385,41 @@ def _create_file_selector(main_window, parent, label_text, filename, description
 def _update_offset_source(main_window, selected_id: str) -> None:
     main_window.triggerbot.config["General"]["OffsetSource"] = selected_id
     ConfigManager.save_config(main_window.triggerbot.config, log_info=False)
-    messagebox.showwarning(
-        "Restart Required",
-        "Offset source changed. Please restart the application for this to take effect.",
-    )
+
     if selected_id == "local":
         main_window.local_files_frame.pack(fill="x", padx=40, pady=(0, 40))
     else:
         main_window.local_files_frame.pack_forget()
+
+    client_running = any(
+        getattr(fd["instance"], "is_running", False)
+        for fd in main_window.features.values()
+    )
+    notice = getattr(main_window, "offset_source_notice", None)
+
+    if client_running:
+        if notice is not None:
+            notice.configure(text="Offset source will apply after stopping the client.")
+            notice.pack(anchor="w", padx=40, pady=(0, 16))
+        return
+
+    if selected_id == "local":
+        cfg = main_window.triggerbot.config.get("General", {})
+        config_dir = Path(ConfigManager.CONFIG_DIRECTORY)
+        local_paths = [
+            Path(cfg.get("OffsetsFile",   config_dir / "offsets.json")),
+            Path(cfg.get("ClientDLLFile", config_dir / "client_dll.json")),
+            Path(cfg.get("ButtonsFile",   config_dir / "buttons.json")),
+        ]
+        missing = [p.name for p in local_paths if not p.exists()]
+        if missing and notice is not None:
+            notice.configure(
+                text=f"Missing: {', '.join(missing)} — select the files below before reloading."
+            )
+            notice.pack(anchor="w", padx=40, pady=(0, 16))
+            return
+
+    if notice is not None:
+        notice.pack_forget()
+        notice.configure(text="")
+    main_window.fetch_offsets_async()
