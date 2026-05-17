@@ -655,6 +655,20 @@ class MainWindow:
         if jk is not None and not jk.strip():
             raise ValueError("Jump key cannot be empty.")
 
+        trigger_enabled = self.ui_bridge.get_value("Trigger")
+        bunnyhop_enabled = self.ui_bridge.get_value("Bunnyhop")
+        if (
+            trigger_enabled
+            and bunnyhop_enabled
+            and tk is not None
+            and jk is not None
+            and tk.strip().lower() == jk.strip().lower()
+        ):
+            raise ValueError(
+                f"TriggerKey and JumpKey cannot both be '{tk.strip()}' "
+                "while Trigger and Bunnyhop are both enabled."
+            )
+
         raw_jd = self.ui_bridge.get_value("JumpDelay")
         if raw_jd is not None:
             try:
