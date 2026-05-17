@@ -5,7 +5,7 @@ setlocal enabledelayedexpansion
 set "PROJECT_NAME=VioletWing"
 set "MAIN_FILE=main.py"
 set "OUTPUT_DIR=output"
-set "ICON_FILE=src\img\icon.ico"
+set "ICON_FILE=src\assets\icon.ico"
 set "VERSION_FILE=version.txt"
 
 :: Display header
@@ -58,6 +58,7 @@ if not exist "%VERSION_FILE%" (
 echo Cleaning up cache directories...
 if exist "classes\__pycache__" rmdir /s /q "classes\__pycache__" 2>nul
 if exist "gui\__pycache__" rmdir /s /q "gui\__pycache__" 2>nul
+if exist "constants\__pycache__" rmdir /s /q "constants\__pycache__" 2>nul
 if exist "__pycache__" rmdir /s /q "__pycache__" 2>nul
 
 :: Find and remove all __pycache__ directories
