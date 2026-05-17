@@ -9,7 +9,7 @@ import webbrowser
 
 import customtkinter as ctk
 from PIL import Image
-from tkinter import messagebox
+from tkinter import messagebox, TclError
 from watchdog.observers import Observer
 
 from classes.updater import Updater
@@ -76,6 +76,9 @@ class MainWindow:
         # Stop events for dashboard network threads - set in cleanup()
         self._fetch_update_stop: threading.Event | None = None
         self._fetch_patch_stop: threading.Event | None = None
+
+        # Tracks the last successfully loaded profile name; cleared on manual save.
+        self.active_profile_name: str | None = None
 
         ctk.set_appearance_mode("dark")
         ctk.set_default_color_theme("blue")
@@ -443,7 +446,16 @@ class MainWindow:
             self.bot_status_label.configure(text=status, text_color=color)
 
     def start_client(self):  self.client_manager.start_client()
-    def stop_client(self):   self.client_manager.stop_client()
+
+    def stop_client(self) -> None:
+        self.client_manager.stop_client()
+        notice = getattr(self, "offset_source_notice", None)
+        if notice is not None:
+            try:
+                notice.pack_forget()
+                notice.configure(text="")
+            except TclError:
+                pass
 
     def update_weapon_settings_display(self) -> None:
         weapon_type = self.ui_bridge.get_value("active_weapon_type")
@@ -468,6 +480,8 @@ class MainWindow:
                 self._suppress_watcher = False
             self.client_manager.apply_feature_state_changes(old_config, config)
             self.client_manager.update_running_feature_configs(config)
+            self.active_profile_name = None
+            self.update_active_profile_label()
             if show_message:
                 messagebox.showinfo("Settings Saved", "Configuration saved successfully.")
         except ValueError as exc:
@@ -724,6 +738,8 @@ class MainWindow:
             self.update_ui_from_config()
             self.client_manager.apply_feature_state_changes(old_config, merged)
             self.client_manager.update_running_feature_configs(merged)
+            self.active_profile_name = name
+            self.update_active_profile_label()
             logger.info("Loaded profile '%s'.", name)
         except Exception:
             logger.exception("Failed to apply profile '%s'.", name)
@@ -743,6 +759,15 @@ class MainWindow:
         self._profile_dropdown.configure(values=display)
         # Reset selection to the first entry so the widget always shows a valid state.
         self._profile_var.set(display[0])
+
+    def update_active_profile_label(self) -> None:
+        """Sync the active-profile label in the General tab with current state."""
+        if not hasattr(self, "_active_profile_label"):
+            return
+        if self.active_profile_name:
+            self._active_profile_label.configure(text=f"Active: {self.active_profile_name}")
+        else:
+            self._active_profile_label.configure(text="")
 
     def open_config_directory(self) -> None:
         if platform.system() == "Windows":
