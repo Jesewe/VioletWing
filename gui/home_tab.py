@@ -10,11 +10,13 @@ from gui.icon_loader import icon_label, load_icon
 from classes.logger import Logger
 from classes.utility import Utility
 from classes.config_manager import ConfigManager
+from classes.process_monitor import ProcessMonitor
 from dateutil.parser import parse as parse_date
 from gui.theme import (
     FONT_TITLE, FONT_SUBTITLE, FONT_SECTION_TITLE, FONT_SECTION_DESCRIPTION,
     FONT_ITEM_LABEL, FONT_ITEM_DESCRIPTION, FONT_WIDGET,
     COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY, COLOR_ACCENT_FG,
+    COLOR_BUTTON_DANGER_FG,
     SECTION_STYLE, BUTTON_STYLE_PRIMARY, BUTTON_STYLE_DANGER,
 )
 
@@ -91,6 +93,32 @@ def populate_dashboard(main_window, frame):
                   compound="left", command=main_window.stop_client,
                   width=180, **BUTTON_STYLE_DANGER).pack(side="left")
 
+    # System monitor card
+    monitor = ctk.CTkFrame(dashboard, **SECTION_STYLE)
+    monitor.pack(fill="x", pady=(0, 40))
+    mh = ctk.CTkFrame(monitor, fg_color="transparent")
+    mh.pack(fill="x", padx=40, pady=(40, 30))
+    icon_label(mh, "charts_icon.png", size=(22, 22), padx=(0, 10))
+    ctk.CTkLabel(mh, text="System Monitor", font=FONT_SECTION_TITLE,
+                 text_color=COLOR_TEXT_PRIMARY).pack(side="left")
+    ctk.CTkLabel(mh, text="Refreshes every 5 seconds",
+                 font=FONT_SECTION_DESCRIPTION, text_color=COLOR_TEXT_SECONDARY).pack(side="right")
+
+    def _sysmon_row(parent, icon_file, label_text, is_last=False):
+        row = ctk.CTkFrame(parent, fg_color="transparent")
+        row.pack(fill="x", padx=40, pady=(0, 25 if not is_last else 40))
+        icon_label(row, icon_file, size=(18, 18), padx=(0, 12))
+        ctk.CTkLabel(row, text=label_text, font=FONT_ITEM_LABEL,
+                     text_color=COLOR_TEXT_SECONDARY, anchor="w", width=140).pack(side="left")
+        # Value frame: populated by _poll with inline chip labels
+        val_frame = ctk.CTkFrame(row, fg_color="transparent")
+        val_frame.pack(side="left")
+        return val_frame
+
+    main_window._sysmon_cs2_frame  = _sysmon_row(monitor, "crosshairs_icon.png", "CS2")
+    main_window._sysmon_self_frame = _sysmon_row(monitor, "bolt_icon.png",        "VioletWing")
+    main_window._sysmon_ram_frame  = _sysmon_row(monitor, "gear_icon.png",        "System RAM", is_last=True)
+
     # Quick-start guide
     guide = ctk.CTkFrame(dashboard, **SECTION_STYLE)
     guide.pack(fill="x")
@@ -129,6 +157,100 @@ def populate_dashboard(main_window, frame):
 
     fetch_last_update(main_window)
     fetch_cs2_latest_patch(main_window)
+    start_process_monitor_poll(main_window)
+
+def start_process_monitor_poll(main_window) -> None:
+    """Schedule a recurring 5-second poll that updates the System Monitor card.
+
+    Runs on the main thread via root.after — psutil calls for 2-3 processes
+    are sub-millisecond, so no background thread is needed. The after handle
+    is stored on main_window so cleanup() can cancel it on exit.
+    """
+    _DOT = "·"
+    _RAM_COLOR_OK    = "#22c55e"
+    _RAM_COLOR_AMBER = "#f59e0b"
+    _RAM_COLOR_RED   = COLOR_BUTTON_DANGER_FG[1]  # dark-mode danger red
+
+    def _set_chips(frame_attr: str, chips: list[tuple[str, str]]) -> None:
+        """Replace the children of a value frame with inline chip labels.
+
+        chips: list of (text, color) pairs rendered left-to-right with no gap.
+        Existing children are destroyed on each call — frames hold only a
+        handful of labels so the churn is negligible.
+        """
+        def _apply():
+            try:
+                frame = getattr(main_window, frame_attr, None)
+                if not frame or not frame.winfo_exists():
+                    return
+                for child in frame.winfo_children():
+                    child.destroy()
+                for text, color in chips:
+                    ctk.CTkLabel(
+                        frame, text=text,
+                        font=FONT_ITEM_DESCRIPTION,
+                        text_color=color, anchor="w",
+                    ).pack(side="left")
+            except Exception:
+                pass
+        main_window.ui_queue_put(_apply)
+
+    def _dot():
+        return (f"  {_DOT}  ", COLOR_TEXT_SECONDARY)
+
+    def _poll() -> None:
+        if getattr(main_window, "current_view", None) == "dashboard":
+            cs2 = ProcessMonitor.get_cs2_stats()
+            if cs2:
+                _set_chips("_sysmon_cs2_frame", [
+                    (f"PID {cs2['pid']}",            COLOR_TEXT_SECONDARY),
+                    _dot(),
+                    (f"{cs2['mem_mb']:.0f}",          COLOR_TEXT_PRIMARY),
+                    (" MB",                            COLOR_TEXT_SECONDARY),
+                    _dot(),
+                    (f"{cs2['cpu_percent']:.1f}%",    COLOR_TEXT_PRIMARY),
+                    (" CPU",                           COLOR_TEXT_SECONDARY),
+                ])
+            else:
+                _set_chips("_sysmon_cs2_frame", [
+                    ("Not running", _RAM_COLOR_RED),
+                ])
+
+            slf = ProcessMonitor.get_self_stats()
+            if slf:
+                _set_chips("_sysmon_self_frame", [
+                    (f"{slf['mem_mb']:.0f}",          COLOR_TEXT_PRIMARY),
+                    (" MB",                            COLOR_TEXT_SECONDARY),
+                    _dot(),
+                    (f"{slf['cpu_percent']:.1f}%",    COLOR_TEXT_PRIMARY),
+                    (" CPU",                           COLOR_TEXT_SECONDARY),
+                ])
+            else:
+                _set_chips("_sysmon_self_frame", [("—", COLOR_TEXT_SECONDARY)])
+
+            ram = ProcessMonitor.get_system_ram()
+            if ram:
+                pct = ram["percent"]
+                pct_color = (
+                    _RAM_COLOR_RED   if pct >= 85 else
+                    _RAM_COLOR_AMBER if pct >= 70 else
+                    _RAM_COLOR_OK
+                )
+                _set_chips("_sysmon_ram_frame", [
+                    (f"{ram['used_gb']:.1f}",          COLOR_TEXT_PRIMARY),
+                    (f" / {ram['total_gb']:.1f} GB",   COLOR_TEXT_SECONDARY),
+                    _dot(),
+                    (f"{pct:.0f}%",                    pct_color),
+                ])
+            else:
+                _set_chips("_sysmon_ram_frame", [("—", COLOR_TEXT_SECONDARY)])
+
+        if main_window.root.winfo_exists():
+            main_window._process_monitor_timer = main_window.root.after(5000, _poll)
+
+    # Deferred so the first poll runs after __init__ sets current_view.
+    main_window._process_monitor_timer = main_window.root.after(5000, _poll)
+
 
 def _stat_card(main_window, parent, title, value, color, subtitle, icon_file=None):
     card = ctk.CTkFrame(parent, corner_radius=20, fg_color=("#f5f3ff", "#0d0a1a"),

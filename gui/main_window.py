@@ -76,6 +76,7 @@ class MainWindow:
         # Stop events for dashboard network threads - set in cleanup()
         self._fetch_update_stop: threading.Event | None = None
         self._fetch_patch_stop: threading.Event | None = None
+        self._process_monitor_timer: str | None = None
 
         # Tracks the last successfully loaded profile name; cleared on manual save.
         self.active_profile_name: str | None = None
@@ -217,7 +218,7 @@ class MainWindow:
             text_color=BUTTON_STYLE_DANGER["fg_color"][0])
         self.status_label.pack(side="left", padx=(8, 0))
         # Toast label: hidden at startup, shown briefly after a silent save.
-        # Text is cleared by show_saved_toast() via root.after - no widget churn.
+        # Text is cleared by show_saved_toast() via root.after — no widget churn.
         self._saved_toast_timer = None
         self._saved_label = ctk.CTkLabel(
             self.status_frame, text="",
@@ -1033,5 +1034,7 @@ class MainWindow:
 
             if self.log_timer:
                 self.root.after_cancel(self.log_timer)
+            if self._process_monitor_timer:
+                self.root.after_cancel(self._process_monitor_timer)
         except Exception:
             logger.exception("Error during application cleanup.")
