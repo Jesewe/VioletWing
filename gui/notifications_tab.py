@@ -7,7 +7,8 @@ import webbrowser
 from classes.logger import Logger
 from gui.theme import (FONT_TITLE, FONT_SUBTITLE, FONT_SECTION_TITLE, FONT_ITEM_LABEL, FONT_ITEM_DESCRIPTION,
                          COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY, COLOR_BACKGROUND, COLOR_BORDER,
-                         COLOR_WIDGET_BACKGROUND, COLOR_ACCENT_FG, SECTION_STYLE)
+                         COLOR_WIDGET_BACKGROUND, COLOR_ACCENT_FG, COLOR_BUTTON_DANGER_FG, COLOR_BUTTON_DANGER_BORDER,
+                         SECTION_STYLE, SECTION_STYLE_DANGER)
 
 # Cache the logger instance
 logger = Logger.get_logger(__name__)
@@ -79,7 +80,7 @@ def populate_notifications(main_window, frame):
         width=60,
         height=60,
         corner_radius=30,
-        fg_color=("#3B82F6", "#60A5FA")
+        fg_color=COLOR_ACCENT_FG
     )
     loading_indicator.pack()
 
@@ -89,7 +90,6 @@ def populate_notifications(main_window, frame):
         loading_indicator,
         text="" if _spin_icon else "...",
         image=_spin_icon,
-        font=("Chivo", 28, "bold"),
         text_color="#ffffff"
     ).place(relx=0.5, rely=0.5, anchor="center")
 
@@ -227,13 +227,13 @@ def populate_notifications(main_window, frame):
         """Display an error message if data fetch fails."""
         loading_card.destroy()
 
+        if not notifications_container.winfo_exists():
+            return
+
         # Error card
         error_card = ctk.CTkFrame(
             notifications_container,
-            corner_radius=25,
-            fg_color=("#FEF2F2", "#1F1715"),
-            border_width=3,
-            border_color=("#FCA5A5", "#7F1D1D")
+            **SECTION_STYLE_DANGER
         )
         error_card.pack(fill="x", pady=(0, 40))
 
@@ -242,36 +242,36 @@ def populate_notifications(main_window, frame):
         content.pack(padx=50, pady=40)
 
         # Error icon
+        _xmark_icon = load_icon("circle_xmark_icon.png", size=(28, 28))
         icon = ctk.CTkFrame(
             content,
             width=70,
             height=70,
             corner_radius=35,
-            fg_color=("#DC2626", "#7F1D1D")
+            fg_color=COLOR_BUTTON_DANGER_FG
         )
         icon.pack()
         ctk.CTkLabel(
             icon,
-            text="" if load_icon("circle_xmark_icon.png", size=(28,28)) else "x",
-            image=load_icon("circle_xmark_icon.png", size=(28,28)),
-            font=("Chivo", 30, "bold"),
-            text_color="#FFFFFF"
+            text="" if _xmark_icon else "x",
+            image=_xmark_icon,
+            text_color="#ffffff"
         ).place(relx=0.5, rely=0.5, anchor="center")
 
         # Error title
         ctk.CTkLabel(
             content,
             text="Failed to Load Notifications",
-            font=("Chivo", 26, "bold"),
-            text_color=("#DC2626", "#F87171")
+            font=FONT_SECTION_TITLE,
+            text_color=COLOR_BUTTON_DANGER_FG
         ).pack(pady=(24, 10))
 
         # Error message
         ctk.CTkLabel(
             content,
             text=error_msg,
-            font=("Gambetta", 17),
-            text_color=("#991B1B", "#EF4444"),
+            font=FONT_ITEM_DESCRIPTION,
+            text_color=COLOR_BUTTON_DANGER_FG,
             wraplength=700
         ).pack()
 
@@ -279,8 +279,8 @@ def populate_notifications(main_window, frame):
         ctk.CTkLabel(
             content,
             text="Please check your internet connection or verify the notifications data.",
-            font=("Gambetta", 15),
-            text_color=("#B91C1C", "#FCA5A5")
+            font=FONT_ITEM_DESCRIPTION,
+            text_color=COLOR_BUTTON_DANGER_BORDER
         ).pack(pady=(16, 0))
 
     # Start fetching notifications data

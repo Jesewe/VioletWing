@@ -76,6 +76,13 @@ SECTION_STYLE = {
     "border_color": COLOR_BORDER
 }
 
+SECTION_STYLE_DANGER = {
+    "corner_radius": 16,
+    "fg_color": COLOR_BACKGROUND,
+    "border_width": 2,
+    "border_color": COLOR_BUTTON_DANGER_BORDER
+}
+
 SETTING_ITEM_STYLE = {
     "corner_radius": 10,
     "fg_color": COLOR_WIDGET_BACKGROUND,
