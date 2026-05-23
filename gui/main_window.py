@@ -231,7 +231,6 @@ class MainWindow:
         sf.pack(side="right")
         socials = [
             ("GitHub",   "github_icon.png",    "https://github.com/Jesewe/VioletWing"),
-            ("Discord",  "discord_icon.png",   "https://discord.gg/Avb3yUeW98"),
             ("Telegram", "telegram_icon.png",  "https://t.me/cs2_jesewe"),
             ("Website",  "book_open_icon.png", "https://violetwing.vercel.app/"),
         ]

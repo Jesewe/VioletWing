@@ -277,7 +277,7 @@ def populate_faq(main_window, frame):
     # Issues link
     def open_github_issues():
         import webbrowser
-        webbrowser.open("https://discord.gg/G4t9u489WW")
+        webbrowser.open("https://github.com/Jesewe/VioletWing/issues")
     
     _bug_icon = load_icon("bug_icon.png", size=(16, 16))
     github_issues_btn = ctk.CTkButton(
@@ -293,7 +293,7 @@ def populate_faq(main_window, frame):
     # Releases link
     def open_github_releases():
         import webbrowser
-        webbrowser.open("https://violetwing.vercel.app")
+        webbrowser.open("https://github.com/Jesewe/VioletWing/releases/latest/")
     
     _archive_icon = load_icon("box_archive_icon.png", size=(16, 16))
     github_releases_btn = ctk.CTkButton(
