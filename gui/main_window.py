@@ -173,6 +173,7 @@ class MainWindow:
     def setup_ui(self) -> None:
         self.create_modern_header()
         self.create_main_content()
+        self.create_toast_notification()
 
     def create_modern_header(self) -> None:
         hc = ctk.CTkFrame(self.root, height=80, corner_radius=0, fg_color=COLOR_HEADER_BG)
@@ -217,14 +218,8 @@ class MainWindow:
             font=(FONT_FAMILY_BOLD[0], FONT_SIZE_H4, "bold"),
             text_color=BUTTON_STYLE_DANGER["fg_color"][0])
         self.status_label.pack(side="left", padx=(8, 0))
-        # Toast label: hidden at startup, shown briefly after a silent save.
-        # Text is cleared by show_saved_toast() via root.after — no widget churn.
+        # The toast notification has been moved to a floating frame via create_toast_notification()
         self._saved_toast_timer = None
-        self._saved_label = ctk.CTkLabel(
-            self.status_frame, text="",
-            font=(FONT_FAMILY_BOLD[0], FONT_SIZE_H4, "bold"),
-            text_color=COLOR_ACCENT_FG)
-        self._saved_label.pack(side="left", padx=(20, 0))
 
     def create_social_buttons(self, parent) -> ctk.CTkFrame:
         sf = ctk.CTkFrame(parent, fg_color="transparent")
@@ -247,14 +242,45 @@ class MainWindow:
             ).pack(side="left", padx=(0, 8) if i < len(socials) - 1 else (0, 0))
         return sf
 
+    def create_toast_notification(self) -> None:
+        """Create the floating bottom-right toast notification frame."""
+        self._toast_frame = ctk.CTkFrame(
+            self.root,
+            corner_radius=12,
+            bg_color=COLOR_BACKGROUND,
+            fg_color=("#f5f3ff", "#1c1433"),
+            border_width=1,
+            border_color=("#c4b5fd", "#3d2a6e")
+        )
+        # Content container
+        content = ctk.CTkFrame(self._toast_frame, fg_color="transparent")
+        content.pack(fill="both", expand=True, padx=20, pady=15)
+        
+        icon = load_icon("check_icon.png", size=(18, 18))
+        if icon:
+            lbl_icon = ctk.CTkLabel(content, text="", image=icon, width=18)
+            lbl_icon.image = icon
+            lbl_icon.pack(side="left", padx=(0, 10))
+            
+        ctk.CTkLabel(
+            content,
+            text="Settings Saved",
+            font=(FONT_FAMILY_BOLD[0], FONT_SIZE_P, "bold"),
+            text_color=COLOR_TEXT_PRIMARY
+        ).pack(side="left")
+
     def show_saved_toast(self) -> None:
-        """Flash 'Saved ✓' in the header for 2 seconds after a silent auto-save."""
+        """Slide the floating toast into view for 2.5 seconds."""
         if self._saved_toast_timer is not None:
             self.root.after_cancel(self._saved_toast_timer)
-        self._saved_label.configure(text="Saved ✓")
-        self._saved_toast_timer = self.root.after(
-            2000, lambda: self._saved_label.configure(text="")
-        )
+            
+        # Place it at the bottom-right corner over everything
+        self._toast_frame.place(relx=1.0, rely=1.0, anchor="se", x=-40, y=-40)
+        
+        def _hide():
+            self._toast_frame.place_forget()
+            
+        self._saved_toast_timer = self.root.after(2500, _hide)
 
     def create_update_button(self, parent, is_prerelease: bool) -> None:
         """Attach the update button to parent. Called from _on_release_fetched on the UI thread."""
