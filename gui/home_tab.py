@@ -48,32 +48,27 @@ def populate_dashboard(main_window, frame):
                  font=FONT_SUBTITLE, text_color=COLOR_TEXT_SECONDARY).pack(
         side="left", padx=(20, 0), pady=(10, 0))
 
-    stats_frame = ctk.CTkFrame(dashboard, fg_color="transparent")
-    stats_frame.pack(fill="x", pady=(0, 40))
-    for col in range(3):
-        stats_frame.grid_columnconfigure(col, weight=1)
+    stats_banner = ctk.CTkFrame(dashboard, **SECTION_STYLE)
+    stats_banner.pack(fill="x", pady=(0, 30))
+    sb_content = ctk.CTkFrame(stats_banner, fg_color="transparent")
+    sb_content.pack(fill="x", padx=30, pady=15)
 
-    cs2_card, main_window.cs2_patch_label = _stat_card(
-        main_window, stats_frame, "CS2 Update", "Checking...", "#6b7280",
-        "Latest Counter-Strike 2 patch", "crosshairs_icon.png")
-    cs2_card.grid(row=0, column=0, sticky="ew", padx=(0, 10))
+    cs2_item, main_window.cs2_patch_label = _stat_banner_item(
+        sb_content, "CS2 Update", "Checking...", "#6b7280", "crosshairs_icon.png")
+    cs2_item.pack(side="left", expand=True)
 
-    upd_card, main_window.update_value_label = _stat_card(
-        main_window, stats_frame, "Offsets Update", "Checking...", "#6b7280",
-        "Last offsets synchronisation", "rotate_icon.png")
-    upd_card.grid(row=0, column=1, sticky="ew", padx=(10, 10))
+    upd_item, main_window.update_value_label = _stat_banner_item(
+        sb_content, "Offsets Update", "Checking...", "#6b7280", "rotate_icon.png")
+    upd_item.pack(side="left", expand=True)
 
-    # Warning label hidden until staleness is detected; _check_offsets_staleness
-    # will pack() or pack_forget() it based on the comparison result.
-    _content = upd_card.winfo_children()[0]
+    # Warning label hidden until staleness is detected
     main_window._offsets_warning_label = ctk.CTkLabel(
-        _content, text="", font=FONT_ITEM_DESCRIPTION,
+        upd_item, text="", font=FONT_ITEM_DESCRIPTION,
         text_color=_COLOR_STALE_AMBER, anchor="w")
 
-    ver_card, _ = _stat_card(
-        main_window, stats_frame, "Version", ConfigManager.VERSION, "#8e44ad",
-        "Current application version", "box_archive_icon.png")
-    ver_card.grid(row=0, column=2, sticky="ew", padx=(10, 0))
+    ver_item, _ = _stat_banner_item(
+        sb_content, "Version", ConfigManager.VERSION, "#8e44ad", "box_archive_icon.png")
+    ver_item.pack(side="left", expand=True)
 
     # Control panel
     ctrl = ctk.CTkFrame(dashboard, **SECTION_STYLE)
@@ -113,47 +108,17 @@ def populate_dashboard(main_window, frame):
         # Value frame: populated by _poll with inline chip labels
         val_frame = ctk.CTkFrame(row, fg_color="transparent")
         val_frame.pack(side="left")
+        
+        # Add a placeholder so it doesn't stretch to 200x200 before the first poll
+        ctk.CTkLabel(val_frame, text="Loading...", font=FONT_ITEM_DESCRIPTION, text_color=COLOR_TEXT_SECONDARY).pack(side="left")
+        
         return val_frame
 
     main_window._sysmon_cs2_frame  = _sysmon_row(monitor, "crosshairs_icon.png", "CS2")
     main_window._sysmon_self_frame = _sysmon_row(monitor, "bolt_icon.png",        "VioletWing")
     main_window._sysmon_ram_frame  = _sysmon_row(monitor, "gear_icon.png",        "System RAM", is_last=True)
 
-    # Quick-start guide
-    guide = ctk.CTkFrame(dashboard, **SECTION_STYLE)
-    guide.pack(fill="x")
-    gh = ctk.CTkFrame(guide, fg_color="transparent")
-    gh.pack(fill="x", padx=40, pady=(40, 30))
-    icon_label(gh, "rocket_icon.png", size=(22, 22), padx=(0, 10))
-    ctk.CTkLabel(gh, text="Quick Start Guide", font=FONT_SECTION_TITLE,
-                 text_color=COLOR_TEXT_PRIMARY).pack(side="left")
-    ctk.CTkLabel(gh, text="Follow these steps to get started",
-                 font=FONT_SECTION_DESCRIPTION, text_color=COLOR_TEXT_SECONDARY).pack(side="right")
 
-    steps = [
-        ("1", "Launch CS2",          "Open Counter-Strike 2 and ensure it's running"),
-        ("2", "Configure Features",  "Enable TriggerBot, Overlay (ESP), Bunnyhop, or NoFlash"),
-        ("3", "Adjust Settings",     "Customise trigger keys, delays, colours, and preferences"),
-        ("4", "Start VioletWing",    "Click the Start Client button to activate your assistant"),
-        ("5", "Monitor Status",      "Check Dashboard status and Logs tab for real-time updates"),
-    ]
-    for i, (num, title, desc) in enumerate(steps):
-        sf = ctk.CTkFrame(guide, fg_color="transparent")
-        sf.pack(fill="x", padx=40, pady=(0, 25 if i < len(steps) - 1 else 40))
-        badge = ctk.CTkFrame(sf, width=50, height=50, corner_radius=25, fg_color=COLOR_ACCENT_FG)
-        badge.pack(side="left", padx=(0, 25))
-        badge.pack_propagate(False)
-        ctk.CTkLabel(badge, text=num, font=FONT_WIDGET, text_color="#ffffff").place(
-            relx=0.5, rely=0.5, anchor="center")
-        sc = ctk.CTkFrame(sf, fg_color="transparent")
-        sc.pack(side="left", fill="x", expand=True)
-        ctk.CTkLabel(sc, text=title, font=FONT_ITEM_LABEL,
-                     text_color=COLOR_TEXT_PRIMARY, anchor="w").pack(fill="x")
-        ctk.CTkLabel(sc, text=desc, font=FONT_ITEM_DESCRIPTION,
-                     text_color=COLOR_TEXT_SECONDARY, anchor="w").pack(fill="x", pady=(4, 0))
-        if i < len(steps) - 1:
-            ctk.CTkFrame(guide, width=2, height=20,
-                         fg_color=("#c4b5fd", "#2a1d4e")).pack(padx=(65, 0), anchor="w")
 
     fetch_last_update(main_window)
     fetch_cs2_latest_patch(main_window)
@@ -252,25 +217,19 @@ def start_process_monitor_poll(main_window) -> None:
     main_window._process_monitor_timer = main_window.root.after(5000, _poll)
 
 
-def _stat_card(main_window, parent, title, value, color, subtitle, icon_file=None):
-    card = ctk.CTkFrame(parent, corner_radius=20, fg_color=("#f5f3ff", "#0d0a1a"),
-                        border_width=1, border_color=("#c4b5fd", "#2a1d4e"))
-    content = ctk.CTkFrame(card, fg_color="transparent")
-    content.pack(fill="both", expand=True, padx=30, pady=30)
-
-    hr = ctk.CTkFrame(content, fg_color="transparent")
-    hr.pack(fill="x", pady=(0, 15))
+def _stat_banner_item(parent, title, value, color, icon_file=None):
+    item = ctk.CTkFrame(parent, fg_color="transparent")
+    
     if icon_file:
-        icon_label(hr, icon_file, size=(18, 18), padx=(0, 8))
-    ctk.CTkLabel(hr, text=title, font=FONT_ITEM_LABEL,
-                 text_color=COLOR_TEXT_SECONDARY, anchor="w").pack(side="left", fill="x", expand=True)
-
-    val_label = ctk.CTkLabel(content, text=value, font=FONT_SECTION_TITLE,
-                             text_color=color, anchor="w")
-    val_label.pack(fill="x", pady=(0, 10))
-    ctk.CTkLabel(content, text=subtitle, font=FONT_ITEM_DESCRIPTION,
-                 text_color=COLOR_TEXT_SECONDARY, anchor="w").pack(fill="x")
-    return card, val_label
+        icon_label(item, icon_file, size=(18, 18), padx=(0, 8))
+        
+    ctk.CTkLabel(item, text=f"{title}:", font=FONT_ITEM_LABEL,
+                 text_color=COLOR_TEXT_SECONDARY).pack(side="left", padx=(0, 6))
+                 
+    val_label = ctk.CTkLabel(item, text=value, font=FONT_WIDGET, text_color=color)
+    val_label.pack(side="left")
+    
+    return item, val_label
 
 def _check_offsets_staleness(main_window):
     """
@@ -309,7 +268,7 @@ def _check_offsets_staleness(main_window):
                 if warning:
                     main_window._offsets_warning_label.configure(
                         text=warning, text_color=color)
-                    main_window._offsets_warning_label.pack(fill="x")
+                    main_window._offsets_warning_label.pack(side="left", padx=(8, 0))
                 else:
                     main_window._offsets_warning_label.pack_forget()
         except Exception:
