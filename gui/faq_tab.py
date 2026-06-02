@@ -1,7 +1,7 @@
 import customtkinter as ctk
 from gui.icon_loader import icon_label, load_icon
 from gui.theme import (
-    FONT_TITLE, FONT_SUBTITLE, FONT_SECTION_TITLE, FONT_ITEM_LABEL,
+    FONT_TITLE, FONT_SUBTITLE, FONT_SECTION_TITLE, FONT_SECTION_DESCRIPTION, FONT_ITEM_LABEL,
     FONT_ITEM_DESCRIPTION, FONT_WIDGET,
     COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY, COLOR_ACCENT_FG,
     SECTION_STYLE, BUTTON_STYLE_PRIMARY, BUTTON_STYLE_DANGER
@@ -154,6 +154,42 @@ def populate_faq(main_window, frame):
         text_color=COLOR_TEXT_SECONDARY
     )
     subtitle_label.pack(anchor="w", pady=(8, 0))
+    
+    # Quick-start guide
+    guide = ctk.CTkFrame(faq_container, **SECTION_STYLE)
+    guide.pack(fill="x", pady=(0, 40))
+    gh = ctk.CTkFrame(guide, fg_color="transparent")
+    gh.pack(fill="x", padx=40, pady=(40, 30))
+    icon_label(gh, "rocket_icon.png", size=(22, 22), padx=(0, 10))
+    ctk.CTkLabel(gh, text="Quick Start Guide", font=FONT_SECTION_TITLE,
+                 text_color=COLOR_TEXT_PRIMARY).pack(side="left")
+    ctk.CTkLabel(gh, text="Follow these steps to get started",
+                 font=FONT_SECTION_DESCRIPTION, text_color=COLOR_TEXT_SECONDARY).pack(side="right")
+
+    steps = [
+        ("1", "Launch CS2",          "Open Counter-Strike 2 and ensure it's running"),
+        ("2", "Configure Features",  "Enable TriggerBot, Overlay (ESP), Bunnyhop, or NoFlash"),
+        ("3", "Adjust Settings",     "Customise trigger keys, delays, colours, and preferences"),
+        ("4", "Start VioletWing",    "Click the Start Client button to activate your assistant"),
+        ("5", "Monitor Status",      "Check Dashboard status and Logs tab for real-time updates"),
+    ]
+    for i, (num, title, desc) in enumerate(steps):
+        sf = ctk.CTkFrame(guide, fg_color="transparent")
+        sf.pack(fill="x", padx=40, pady=(0, 25 if i < len(steps) - 1 else 40))
+        badge = ctk.CTkFrame(sf, width=50, height=50, corner_radius=25, fg_color=COLOR_ACCENT_FG)
+        badge.pack(side="left", padx=(0, 25))
+        badge.pack_propagate(False)
+        ctk.CTkLabel(badge, text=num, font=FONT_WIDGET, text_color="#ffffff").place(
+            relx=0.5, rely=0.5, anchor="center")
+        sc = ctk.CTkFrame(sf, fg_color="transparent")
+        sc.pack(side="left", fill="x", expand=True)
+        ctk.CTkLabel(sc, text=title, font=FONT_ITEM_LABEL,
+                     text_color=COLOR_TEXT_PRIMARY, anchor="w").pack(fill="x")
+        ctk.CTkLabel(sc, text=desc, font=FONT_ITEM_DESCRIPTION,
+                     text_color=COLOR_TEXT_SECONDARY, anchor="w").pack(fill="x", pady=(4, 0))
+        if i < len(steps) - 1:
+            ctk.CTkFrame(guide, width=2, height=20,
+                         fg_color=("#c4b5fd", "#2a1d4e")).pack(padx=(65, 0), anchor="w")
     
     # List of FAQ items
     faqs = [
