@@ -2,11 +2,12 @@ import customtkinter as ctk
 from gui.icon_loader import icon_label, load_icon
 import os
 from pathlib import Path
-from tkinter import filedialog, messagebox
+from tkinter import filedialog
 from classes.config_manager import ConfigManager
 from classes.utility import Utility
 import classes.profile_manager as ProfileManager
 from gui.components import create_section_frame, create_section_header, build_item_scaffold
+from gui.modal import AppModal
 from gui.theme import (
     FONT_TITLE, FONT_SUBTITLE, FONT_ITEM_LABEL, FONT_ITEM_DESCRIPTION, FONT_WIDGET,
     COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY, COLOR_ACCENT_FG, COLOR_ACCENT_HOVER,
@@ -189,14 +190,14 @@ def _create_profile_row(main_window, section):
         name = name_entry.get()
         err = ProfileManager.validate_name(name)
         if err:
-            messagebox.showerror("Invalid Name", err, parent=main_window.root)
+            AppModal.error(main_window.root, "Invalid Name", err)
             return
         name = name.strip()
         if name in ProfileManager.list_profiles():
-            if not messagebox.askyesno(
+            if not AppModal.confirm(
+                main_window.root,
                 "Overwrite Profile",
                 f"A profile named '{name}' already exists. Overwrite it?",
-                parent=main_window.root,
             ):
                 return
         ok = main_window.save_current_as_profile(name)
@@ -204,9 +205,11 @@ def _create_profile_row(main_window, section):
             input_frame.pack_forget()
             main_window.refresh_profile_dropdown()
         else:
-            messagebox.showerror("Save Failed",
-                                 f"Could not save profile '{name}'. Check logs.",
-                                 parent=main_window.root)
+            AppModal.error(
+                main_window.root,
+                "Save Failed",
+                f"Could not save profile '{name}'. Check logs."
+            )
 
     name_entry.bind("<Return>", _confirm_save)
     name_entry.bind("<Escape>", lambda e: input_frame.pack_forget())
@@ -303,8 +306,7 @@ def _create_profile_row(main_window, section):
 def _load_selected_profile(main_window) -> None:
     name = main_window._profile_var.get()
     if not name or name == "No profiles":
-        messagebox.showwarning("No Profile", "No profile selected.",
-                               parent=main_window.root)
+        AppModal.warning(main_window.root, "No Profile", "No profile selected.")
         return
     main_window.load_profile(name)
 
@@ -312,22 +314,23 @@ def _load_selected_profile(main_window) -> None:
 def _delete_selected_profile(main_window) -> None:
     name = main_window._profile_var.get()
     if not name or name == "No profiles":
-        messagebox.showwarning("No Profile", "No profile selected.",
-                               parent=main_window.root)
+        AppModal.warning(main_window.root, "No Profile", "No profile selected.")
         return
-    if not messagebox.askyesno(
+    if not AppModal.confirm(
+        main_window.root,
         "Delete Profile",
         f"Delete profile '{name}'? This cannot be undone.",
-        parent=main_window.root,
     ):
         return
     ok = main_window.delete_profile(name)
     if ok:
         main_window.refresh_profile_dropdown()
     else:
-        messagebox.showerror("Delete Failed",
-                             f"Could not delete profile '{name}'. Check logs.",
-                             parent=main_window.root)
+        AppModal.error(
+            main_window.root,
+            "Delete Failed",
+            f"Could not delete profile '{name}'. Check logs."
+        )
 
 def _create_setting_item(parent, label_text, description, widget_type, key,
                          main_window, is_last=False):

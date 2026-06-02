@@ -86,3 +86,44 @@ class UIConfigBridge:
     def registered(self, key: str) -> bool:
         """Return True if a key has been registered."""
         return key in self._registry
+
+    def set_error(self, key: str, error_message: str) -> None:
+        """Set an inline validation error on a widget."""
+        entry = self._registry.get(key)
+        if entry is None:
+            return
+        widget = entry.get("widget")
+        if widget is not None and hasattr(widget, "configure"):
+            try:
+                # Save original border color if not already saved
+                if not hasattr(widget, "_orig_border_color"):
+                    widget._orig_border_color = widget.cget("border_color")
+                
+                from gui.theme import COLOR_WIDGET_ERROR_BORDER, COLOR_TEXT_ERROR, FONT_ITEM_DESCRIPTION
+                import customtkinter as ctk
+                
+                widget.configure(border_color=COLOR_WIDGET_ERROR_BORDER)
+                
+                # Display error label below the widget
+                if not hasattr(widget, "_error_label"):
+                    lbl = ctk.CTkLabel(widget.master, text=error_message, text_color=COLOR_TEXT_ERROR, font=FONT_ITEM_DESCRIPTION)
+                    lbl.pack(pady=(5, 0))
+                    widget._error_label = lbl
+                else:
+                    widget._error_label.configure(text=error_message)
+                    widget._error_label.pack(pady=(5, 0))
+            except Exception:
+                pass
+
+    def clear_errors(self) -> None:
+        """Clear all validation errors from the UI."""
+        for entry in self._registry.values():
+            widget = entry.get("widget")
+            if widget is not None:
+                try:
+                    if hasattr(widget, "_orig_border_color"):
+                        widget.configure(border_color=widget._orig_border_color)
+                    if hasattr(widget, "_error_label"):
+                        widget._error_label.pack_forget()
+                except Exception:
+                    pass

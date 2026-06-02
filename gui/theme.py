@@ -22,8 +22,10 @@ COLOR_VIOLET_SUBTLE = ("#ede9fe", "#1e0f4a")  # badge / tinted bg
 # Colors (Light Mode, Dark Mode)
 COLOR_TEXT_PRIMARY =      ("#1f2937", "#f0ebff")
 COLOR_TEXT_SECONDARY =    ("#64748b", "#7c6fa0")
+COLOR_TEXT_ERROR =        ("#dc2626", "#ef4444")
 COLOR_BACKGROUND =        ("#f5f3ff", "#0d0a1a")
 COLOR_BORDER =            ("#d8b4fe", "#2a1d4e")
+COLOR_WIDGET_ERROR_BORDER = ("#fecaca", "#ef4444")
 COLOR_WIDGET_BACKGROUND = ("#ede9fe", "#150f2a")
 COLOR_HEADER_BG =         ("#1a0b3b", "#08051a")
 

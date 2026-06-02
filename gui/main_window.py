@@ -28,6 +28,7 @@ from classes.offset_fetcher import fetch_offsets
 from classes import ghost_manager as _gm
 
 from gui.changelog_window import show_changelog_if_new
+from gui.modal import AppModal
 from gui.icon_loader import load_icon, ASSETS_DIR
 from gui.ui_config_bridge import UIConfigBridge
 from gui.home_tab import populate_dashboard
@@ -167,8 +168,8 @@ class MainWindow:
             logger.info("All features initialised.")
         except Exception:
             logger.exception("Failed to initialise features.")
-            messagebox.showerror("Initialisation Error",
-                                 "Failed to initialise features. Check logs.")
+            AppModal.error(self.root, "Initialisation Error",
+                           "Failed to initialise features. Check logs.")
 
     def setup_ui(self) -> None:
         self.create_modern_header()
@@ -256,31 +257,67 @@ class MainWindow:
         content = ctk.CTkFrame(self._toast_frame, fg_color="transparent")
         content.pack(fill="both", expand=True, padx=20, pady=15)
         
-        icon = load_icon("check_icon.png", size=(18, 18))
-        if icon:
-            lbl_icon = ctk.CTkLabel(content, text="", image=icon, width=18)
-            lbl_icon.image = icon
-            lbl_icon.pack(side="left", padx=(0, 10))
+        self._toast_icon_label = ctk.CTkLabel(content, text="", width=18)
+        self._toast_icon_label.pack(side="left", padx=(0, 10))
             
-        ctk.CTkLabel(
+        self._toast_text_label = ctk.CTkLabel(
             content,
             text="Settings Saved",
             font=(FONT_FAMILY_BOLD[0], FONT_SIZE_P, "bold"),
             text_color=COLOR_TEXT_PRIMARY
-        ).pack(side="left")
+        )
+        self._toast_text_label.pack(side="left")
+        self._toast_animation_timer = None
 
-    def show_saved_toast(self) -> None:
-        """Slide the floating toast into view for 2.5 seconds."""
+    def show_saved_toast(self, message: str = "Settings Saved", is_error: bool = False) -> None:
+        """Slide the floating toast into view."""
         if self._saved_toast_timer is not None:
             self.root.after_cancel(self._saved_toast_timer)
+        if hasattr(self, "_toast_animation_timer") and self._toast_animation_timer is not None:
+            self.root.after_cancel(self._toast_animation_timer)
             
-        # Place it at the bottom-right corner over everything
-        self._toast_frame.place(relx=1.0, rely=1.0, anchor="se", x=-40, y=-40)
+        # Update styling based on state
+        from gui.theme import COLOR_WIDGET_ERROR_BORDER, COLOR_TEXT_ERROR
+        icon_file = "xmark_icon.png" if is_error else "check_icon.png"
+        icon = load_icon(icon_file, size=(18, 18))
+        if icon:
+            self._toast_icon_label.configure(image=icon)
+            self._toast_icon_label.image = icon
+            
+        self._toast_text_label.configure(
+            text=message, 
+            text_color=COLOR_TEXT_ERROR if is_error else COLOR_TEXT_PRIMARY
+        )
         
-        def _hide():
-            self._toast_frame.place_forget()
-            
-        self._saved_toast_timer = self.root.after(2500, _hide)
+        self._toast_frame.configure(
+            border_color=COLOR_WIDGET_ERROR_BORDER if is_error else ("#c4b5fd", "#3d2a6e")
+        )
+        
+        # Start animation from right side (off-screen)
+        start_x = 400
+        end_x = -40
+        self._toast_frame.place(relx=1.0, rely=1.0, anchor="se", x=start_x, y=-40)
+        
+        def animate_in(current_x):
+            if current_x > end_x:
+                new_x = max(end_x, current_x - max(1, int((current_x - end_x) * 0.2)))
+                self._toast_frame.place(relx=1.0, rely=1.0, anchor="se", x=new_x, y=-40)
+                self._toast_animation_timer = self.root.after(16, animate_in, new_x)
+            else:
+                self._saved_toast_timer = self.root.after(3500 if is_error else 2500, animate_out_start)
+
+        def animate_out_start():
+            animate_out(end_x)
+
+        def animate_out(current_x):
+            if current_x < start_x:
+                new_x = current_x + max(1, int((start_x - current_x) * 0.2))
+                self._toast_frame.place(relx=1.0, rely=1.0, anchor="se", x=new_x, y=-40)
+                self._toast_animation_timer = self.root.after(16, animate_out, new_x)
+            else:
+                self._toast_frame.place_forget()
+                
+        animate_in(start_x)
 
     def create_update_button(self, parent, is_prerelease: bool) -> None:
         """Attach the update button to parent. Called from _on_release_fetched on the UI thread."""
@@ -478,7 +515,7 @@ class MainWindow:
             on_success()
 
     def _on_offsets_failed(self) -> None:
-        messagebox.showerror("Offset Error", "Failed to fetch offsets. Check logs.")
+        AppModal.error(self.root, "Offset Error", "Failed to fetch offsets. Check logs.")
         if hasattr(self, "loading_label"):
             self.loading_label.configure(text="Failed to load offsets.", text_color="#ef4444")
 
@@ -535,7 +572,14 @@ class MainWindow:
 
     def save_settings(self, show_message: bool = False) -> None:
         try:
-            self._validate_inputs()
+            self.ui_bridge.clear_errors()
+            errors = self._validate_inputs()
+            if errors:
+                for key, msg in errors.items():
+                    self.ui_bridge.set_error(key, msg)
+                self.show_saved_toast("Error saving settings", is_error=True)
+                return
+
             config = ConfigManager.load_config()
             old_config = copy.deepcopy(config)
             self._update_config_from_ui(config)
@@ -548,16 +592,14 @@ class MainWindow:
             self.client_manager.update_running_feature_configs(config)
             self.active_profile_name = None
             self.update_active_profile_label()
+            
             if show_message:
-                messagebox.showinfo("Settings Saved", "Configuration saved successfully.")
+                self.show_saved_toast("Configuration saved successfully.")
             else:
-                self.show_saved_toast()
-        except ValueError as exc:
-            logger.warning("Invalid input during settings save: %s", exc)
-            messagebox.showerror("Invalid Input", str(exc))
+                self.show_saved_toast("Settings Saved")
         except Exception:
             logger.exception("Unexpected error while saving settings.")
-            messagebox.showerror("Error", "An unexpected error occurred. Check logs.")
+            self.show_saved_toast("An unexpected error occurred.", is_error=True)
 
     def _update_config_from_ui(self, config: dict) -> None:
         self._save_general(config)
@@ -687,55 +729,54 @@ class MainWindow:
         self.ui_bridge.set_value("FlashSuppressionStrength",
                                  nf.get("FlashSuppressionStrength", 0.0))
 
-    def _validate_inputs(self) -> None:
+    def _validate_inputs(self) -> dict[str, str]:
+        errors = {}
         tk = self.ui_bridge.get_value("TriggerKey")
         if tk is not None and not tk.strip():
-            raise ValueError("Trigger key cannot be empty.")
+            errors["TriggerKey"] = "Trigger key cannot be empty."
 
         min_delay = None
         raw_min = self.ui_bridge.get_value("ShotDelayMin")
         if raw_min is not None:
             try:
                 min_delay = float(raw_min)
+                if min_delay < 0:
+                    errors["ShotDelayMin"] = "Must be non-negative."
             except ValueError:
-                raise ValueError("Minimum shot delay must be a valid number.")
-            if min_delay < 0:
-                raise ValueError("Minimum shot delay must be non-negative.")
+                errors["ShotDelayMin"] = "Must be a valid number."
 
         raw_max = self.ui_bridge.get_value("ShotDelayMax")
         if raw_max is not None:
             try:
                 max_delay = float(raw_max)
+                if max_delay < 0:
+                    errors["ShotDelayMax"] = "Must be non-negative."
+                elif min_delay is not None and min_delay > max_delay:
+                    errors["ShotDelayMax"] = "Cannot be less than minimum delay."
             except ValueError:
-                raise ValueError("Maximum shot delay must be a valid number.")
-            if max_delay < 0:
-                raise ValueError("Maximum shot delay must be non-negative.")
-            if min_delay is not None and min_delay > max_delay:
-                raise ValueError("Minimum delay cannot exceed maximum delay.")
+                errors["ShotDelayMax"] = "Must be a valid number."
 
         raw_post = self.ui_bridge.get_value("PostShotDelay")
         if raw_post is not None:
             try:
                 post = float(raw_post)
+                if post < 0:
+                    errors["PostShotDelay"] = "Must be non-negative."
             except ValueError:
-                raise ValueError("Post-shot delay must be a valid number.")
-            if post < 0:
-                raise ValueError("Post-shot delay must be non-negative.")
+                errors["PostShotDelay"] = "Must be a valid number."
 
         fps_val = self.ui_bridge.get_value("target_fps")
         if fps_val is not None:
             try:
                 fps = float(fps_val)
                 if not (60 <= fps <= 420):
-                    raise ValueError("Target FPS must be between 60 and 420.")
-            except (ValueError, TypeError) as exc:
-                if "Target FPS" in str(exc):
-                    raise
-                raise ValueError("Target FPS must be a valid number.")
+                    errors["target_fps"] = "Must be between 60 and 420."
+            except (ValueError, TypeError):
+                errors["target_fps"] = "Must be a valid number."
 
         jk = self.ui_bridge.get_value("JumpKey")
         if jk is not None and not jk.strip():
-            raise ValueError("Jump key cannot be empty.")
+            errors["JumpKey"] = "Jump key cannot be empty."
 
         trigger_enabled = self.ui_bridge.get_value("Trigger")
         bunnyhop_enabled = self.ui_bridge.get_value("Bunnyhop")
@@ -746,26 +787,26 @@ class MainWindow:
             and jk is not None
             and tk.strip().lower() == jk.strip().lower()
         ):
-            raise ValueError(
-                f"TriggerKey and JumpKey cannot both be '{tk.strip()}' "
-                "while Trigger and Bunnyhop are both enabled."
-            )
+            errors["JumpKey"] = "Cannot match Trigger Key."
+            errors["TriggerKey"] = "Cannot match Jump Key."
 
         raw_jd = self.ui_bridge.get_value("JumpDelay")
         if raw_jd is not None:
             try:
                 jd = float(raw_jd)
+                if not (0.01 <= jd <= 0.5):
+                    errors["JumpDelay"] = "Must be between 0.01 and 0.5."
             except ValueError:
-                raise ValueError("Jump delay must be a valid number.")
-            if not (0.01 <= jd <= 0.5):
-                raise ValueError("Jump delay must be between 0.01 and 0.5 seconds.")
+                errors["JumpDelay"] = "Must be a valid number."
 
         strength = self.ui_bridge.get_value("FlashSuppressionStrength")
         if strength is not None and not (0.0 <= strength <= 100.0):
-            raise ValueError("Flash suppression strength must be between 0.0 and 100.0.")
+            errors["FlashSuppressionStrength"] = "Must be between 0.0 and 100.0."
+
+        return errors
 
     def reset_to_default_settings(self) -> None:
-        if not messagebox.askyesno(
+        if not AppModal.confirm(self.root,
             "Reset Settings",
             "Reset all settings to defaults? This will stop all active features.",
         ):
@@ -776,10 +817,10 @@ class MainWindow:
             for fd in self.features.values():
                 fd["instance"].update_config(new_config)
             self.update_ui_from_config()
-            messagebox.showinfo("Settings Reset", "All settings reset to defaults.")
+            AppModal.info(self.root, "Settings Reset", "All settings reset to defaults.")
         except Exception:
             logger.exception("Failed to reset settings.")
-            messagebox.showerror("Error", "Failed to reset settings. Check logs.")
+            AppModal.error(self.root, "Error", "Failed to reset settings. Check logs.")
 
     def save_current_as_profile(self, name: str) -> bool:
         """Flush current UI to disk, then snapshot it into a named profile."""
@@ -791,8 +832,8 @@ class MainWindow:
         """Apply a named profile: merge into live config, update UI, apply feature changes."""
         merged = ProfileManager.load_profile(name)
         if merged is None:
-            messagebox.showerror("Profile Error",
-                                 f"Could not load profile '{name}'. Check logs.")
+            AppModal.error(self.root, "Profile Error",
+                           f"Could not load profile '{name}'. Check logs.")
             return
         try:
             old_config = ConfigManager.load_config()
@@ -811,8 +852,8 @@ class MainWindow:
             logger.info("Loaded profile '%s'.", name)
         except Exception:
             logger.exception("Failed to apply profile '%s'.", name)
-            messagebox.showerror("Profile Error",
-                                 f"Failed to apply profile '{name}'. Check logs.")
+            AppModal.error(self.root, "Profile Error",
+                           f"Failed to apply profile '{name}'. Check logs.")
 
     def delete_profile(self, name: str) -> bool:
         """Delete a named profile file."""
