@@ -480,9 +480,32 @@ class MainWindow:
             return
         config = ConfigManager.load_config()
         ws = config["Trigger"]["WeaponSettings"].get(weapon_type, {})
-        self.ui_bridge.set_value("ShotDelayMin",  str(ws.get("ShotDelayMin",  0.01)))
-        self.ui_bridge.set_value("ShotDelayMax",  str(ws.get("ShotDelayMax",  0.03)))
-        self.ui_bridge.set_value("PostShotDelay", str(ws.get("PostShotDelay", 0.1)))
+        
+        for key, default in [("ShotDelayMin", 0.01), ("ShotDelayMax", 0.03), ("PostShotDelay", 0.1)]:
+            self.ui_bridge.set_value(key, str(ws.get(key, default)))
+            self._flash_widget(key)
+
+    def _flash_widget(self, key: str) -> None:
+        if not self.ui_bridge.registered(key):
+            return
+        entry = self.ui_bridge._registry.get(key)
+        if entry is None:
+            return
+        widget = entry.get("widget")
+        if not widget or not hasattr(widget, "configure"):
+            return
+            
+        if not hasattr(widget, "_orig_fg_color"):
+            widget._orig_fg_color = widget.cget("fg_color")
+            
+        widget.configure(fg_color=COLOR_VIOLET_SUBTLE)
+        
+        if hasattr(widget, "_flash_timer") and widget._flash_timer:
+            self.root.after_cancel(widget._flash_timer)
+            
+        widget._flash_timer = self.root.after(
+            400, lambda: widget.configure(fg_color=widget._orig_fg_color)
+        )
 
     def save_settings(self, show_message: bool = False) -> None:
         try:
