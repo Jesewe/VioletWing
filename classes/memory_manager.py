@@ -41,6 +41,9 @@ class MemoryManager:
         self.m_pWeaponServices = None
         self.m_hActiveWeapon = None
 
+        self._cached_weapon_handle: int = 0
+        self._cached_weapon_type: str = "Rifles"
+
     @property
     def is_initialized(self) -> bool:
         return self._initialized
@@ -179,6 +182,9 @@ class MemoryManager:
             if not weapon_handle:
                 return "Rifles"
 
+            if weapon_handle == self._cached_weapon_handle:
+                return self._cached_weapon_type
+
             weapon_index = weapon_handle & 0x7FFF
             ent_list = self.read_longlong(self.client_base + self.dwEntityList)
             list_entry = self.read_longlong(ent_list + 8 * (weapon_index >> 9) + 16)
@@ -208,6 +214,10 @@ class MemoryManager:
             }
             category = weapon_map.get(item_id, "Rifles")
             logger.debug(f"ItemDefinitionIndex={item_id} → {category}")
+
+            self._cached_weapon_handle = weapon_handle
+            self._cached_weapon_type = category
+
             return category
 
         except Exception as e:
