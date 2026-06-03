@@ -135,6 +135,7 @@ class CS2Overlay(BaseFeature):
         self.draw_teammates = s["draw_teammates"]
         self.teammate_color_hex = s["teammate_color_hex"]
         self.target_fps = int(s["target_fps"])
+        self._frame_time = 1.0 / max(self.target_fps, 1)
         self._resolve_colors()
 
     def update_config(self, config: dict) -> None:
@@ -157,7 +158,6 @@ class CS2Overlay(BaseFeature):
         sleep = time.sleep
 
         while not self.stop_event.is_set():
-            frame_time = 1.0 / max(self.target_fps, 1)
             start = time.time()
             try:
                 if not is_game_active():
@@ -194,7 +194,7 @@ class CS2Overlay(BaseFeature):
                     overlay.end_drawing()
 
                 elapsed = time.time() - start
-                slack = frame_time - elapsed
+                slack = self._frame_time - elapsed
                 if slack > 0:
                     sleep(slack)
 
