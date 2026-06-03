@@ -82,20 +82,28 @@ def populate_supporters(main_window, frame):
     
     # Fetch supporter data in a background thread
     def fetch_supporters():
+        def safe_after(func):
+            try:
+                if main_window.root.winfo_exists():
+                    main_window.root.after(0, func)
+            except Exception:
+                pass
+
         try:
-            # Fetch JSON data from GitHub with a timeout
-            response = requests.get('https://violetwing.vercel.app/data/supporters.json', timeout=10)
+            # Fetch JSON data from GitHub with a timeout using the shared session pool
+            session = Utility.get_http_session()
+            response = session.get('https://violetwing.vercel.app/data/supporters.json', timeout=10)
             response.raise_for_status()
             data = orjson.loads(response.content)
-            main_window.root.after(0, lambda: update_supporters_ui(data, loading_container, stats_frame))
+            safe_after(lambda: update_supporters_ui(data, loading_container, stats_frame))
         except requests.exceptions.RequestException as e:
-            main_window.root.after(0, lambda: show_error(loading_container, f"Failed to fetch supporters data: {e}"))
+            safe_after(lambda: show_error(loading_container, f"Failed to fetch supporters data: {e}"))
             logger.error(f"Failed to fetch supporters data: {e}")
         except orjson.JSONDecodeError as e:
-            main_window.root.after(0, lambda: show_error(loading_container, "Invalid JSON data received"))
+            safe_after(lambda: show_error(loading_container, "Invalid JSON data received"))
             logger.error(f"Invalid JSON data: {e}")
         except Exception as e:
-            main_window.root.after(0, lambda: show_error(loading_container, str(e)))
+            safe_after(lambda: show_error(loading_container, str(e)))
             logger.error(f"Unexpected error: {e}")
     
     def update_supporters_ui(data, loading_container, stats_frame):

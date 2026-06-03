@@ -1,5 +1,6 @@
 import os
 import sys
+import requests
 
 from classes.config_manager import ConfigManager, COLOR_CHOICES
 from classes.logger import Logger
@@ -12,6 +13,13 @@ from constants.vk_codes import get_vk_code as _get_vk_code
 logger = Logger.get_logger(__name__)
 
 class Utility:
+    _http_session: requests.Session | None = None
+
+    @classmethod
+    def get_http_session(cls) -> requests.Session:
+        if cls._http_session is None:
+            cls._http_session = requests.Session()
+        return cls._http_session
     @staticmethod
     def is_game_active() -> bool:
         return _gp.is_game_active()
