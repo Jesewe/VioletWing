@@ -25,6 +25,7 @@ class CS2Bunnyhop(BaseFeature):
     def load_configuration(self) -> None:
         self.jump_key = self.config.get("Bunnyhop", {}).get("JumpKey", "space").lower()
         self.jump_delay = self.config.get("Bunnyhop", {}).get("JumpDelay", 0.01)
+        self.jump_vk = get_vk_code(self.jump_key)
 
     def update_config(self, config: dict) -> None:
         self.config = config
@@ -52,12 +53,10 @@ class CS2Bunnyhop(BaseFeature):
                     continue
 
                 now = time.time()
-                jump_delay = ConfigManager.get_value("Bunnyhop", "JumpDelay", default=0.01)
-                vk = get_vk_code(ConfigManager.get_value("Bunnyhop", "JumpKey", default="space"))
-                key_down = bool(ctypes.windll.user32.GetAsyncKeyState(vk) & 0x8000)
+                key_down = bool(ctypes.windll.user32.GetAsyncKeyState(self.jump_vk) & 0x8000)
 
                 if key_down:
-                    if now - last_action >= jump_delay:
+                    if now - last_action >= self.jump_delay:
                         if not jump_active:
                             self._write_jump(FORCE_JUMP_ACTIVE)
                             jump_active = True
