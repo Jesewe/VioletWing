@@ -687,10 +687,11 @@ class MainWindow:
 
     def update_ui_from_config(self) -> None:
         config = ConfigManager.load_config()
-        self._load_general(config)
-        self._load_trigger(config)
-        self._load_overlay(config)
-        self._load_additional(config)
+        with self.ui_bridge.batch_updates(self.root):
+            self._load_general(config)
+            self._load_trigger(config)
+            self._load_overlay(config)
+            self._load_additional(config)
 
     def _load_general(self, config: dict) -> None:
         s = config["General"]
