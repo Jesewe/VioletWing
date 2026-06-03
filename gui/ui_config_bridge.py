@@ -1,10 +1,13 @@
 from __future__ import annotations
 from typing import Any, Optional
+from contextlib import contextmanager
 
 class UIConfigBridge:
     def __init__(self) -> None:
         # key → {"widget": w, "var": v, "value_label": lbl, "fmt": fmt_str}
         self._registry: dict[str, dict] = {}
+        self._batching: bool = False
+        self._batch_queue: dict[str, tuple] = {}
 
     def register(
         self,
@@ -81,7 +84,39 @@ class UIConfigBridge:
             label.configure(text=f"{value:{fmt}}")
 
         if refresh_cb is not None:
-            refresh_cb(value)
+            if self._batching:
+                self._batch_queue[key] = (refresh_cb, value)
+            else:
+                refresh_cb(value)
+
+    def _flush_batch(self) -> None:
+        """Execute all queued callbacks from a batch operation."""
+        # Make a copy of values in case callbacks modify the queue
+        callbacks = list(self._batch_queue.values())
+        self._batch_queue.clear()
+        for cb, val in callbacks:
+            try:
+                cb(val)
+            except Exception:
+                # Catch exceptions so one bad callback doesn't break others in the idle queue
+                import logging
+                logging.getLogger(__name__).exception("Error in deferred UIConfigBridge callback")
+
+    @contextmanager
+    def batch_updates(self, widget):
+        """Context manager to defer refresh_cb calls until after the block completes.
+        
+        Callbacks are deduped by key and scheduled via widget.after_idle() so they 
+        run when Tkinter has finished processing the current event queue, preventing
+        UI stutters during bulk loads.
+        """
+        self._batching = True
+        try:
+            yield
+        finally:
+            self._batching = False
+            if self._batch_queue:
+                widget.after_idle(self._flush_batch)
 
     def registered(self, key: str) -> bool:
         """Return True if a key has been registered."""
