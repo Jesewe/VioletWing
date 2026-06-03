@@ -230,8 +230,8 @@ class CS2Overlay(BaseFeature):
             self._color_panel_bg = self._color_panel_border = None
 
     def _world_to_screen(self, vm: list, pos: dict) -> dict | None:
-        sx = overlay.get_screen_width() / 2
-        sy = overlay.get_screen_height() / 2
+        sx = self.screen_width / 2
+        sy = self.screen_height / 2
         w = vm[12]*pos["x"] + vm[13]*pos["y"] + vm[14]*pos["z"] + vm[15]
         if w <= 0.01:
             return None
@@ -282,7 +282,7 @@ class CS2Overlay(BaseFeature):
         size = 14
         pad_x, pad_y = 8, 5
         w = overlay.measure_text(text, size)
-        sw = overlay.get_screen_width()
+        sw = self.screen_width
         fw = w + pad_x * 2
         fh = size + pad_y * 2
         fx = sw - fw - 10
