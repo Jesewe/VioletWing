@@ -21,8 +21,7 @@ class CS2NoFlash(BaseFeature):
         self.load_configuration()
 
     def load_configuration(self) -> None:
-        # No mutable state to reset here beyond what _init_player sets at start().
-        pass
+        self.suppression = self.config.get("NoFlash", {}).get("FlashSuppressionStrength", 0.0)
 
     def update_config(self, config: dict) -> None:
         self.config = config
@@ -58,9 +57,7 @@ class CS2NoFlash(BaseFeature):
                     logged_waiting = False
                     continue
 
-                suppression = ConfigManager.get_value(
-                    "NoFlash", "FlashSuppressionStrength", default=0.0
-                )
+                suppression = self.suppression
 
                 player_position = read_longlong(local_player_addr)
 
