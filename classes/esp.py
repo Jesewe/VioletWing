@@ -41,10 +41,10 @@ MAX_BONE_ID = max(ALL_BONE_IDS) if ALL_BONE_IDS else 0
 
 class Entity:
     """Game entity with cached per-frame data."""
-    def __init__(self, controller_ptr: int, pawn_ptr: int, mm: MemoryManager) -> None:
-        self.controller_ptr = controller_ptr
-        self.pawn_ptr = pawn_ptr
+    def __init__(self, mm: MemoryManager) -> None:
         self.memory_manager = mm
+        self.controller_ptr: int = 0
+        self.pawn_ptr: int = 0
         self.pos2d: Optional[Dict[str, float]] = None
         self.head_pos2d: Optional[Dict[str, float]] = None
         self.name: str = ""
@@ -54,7 +54,9 @@ class Entity:
         self.dormant: bool = True
         self.all_bones_pos_3d: Optional[Dict[int, Dict[str, float]]] = None
 
-    def update(self, use_transliteration: bool, skeleton_enabled: bool) -> bool:
+    def update(self, controller_ptr: int, pawn_ptr: int, use_transliteration: bool, skeleton_enabled: bool) -> bool:
+        self.controller_ptr = controller_ptr
+        self.pawn_ptr = pawn_ptr
         try:
             self.health = self.memory_manager.read_int(self.pawn_ptr + self.memory_manager.m_iHealth)
             if self.health <= 0:
@@ -118,6 +120,7 @@ class CS2Overlay(BaseFeature):
         self.local_team: Optional[int] = None
         self.screen_width = overlay.get_screen_width()
         self.screen_height = overlay.get_screen_height()
+        self._entity_pool = [Entity(self.memory_manager) for _ in range(ENTITY_COUNT)]
         self.load_configuration()
 
     def load_configuration(self) -> None:
@@ -248,6 +251,7 @@ class CS2Overlay(BaseFeature):
             logger.debug("Error reading entity list: %s", exc)
             return
 
+        pool_idx = 0
         for i in range(1, ENTITY_COUNT + 1):
             try:
                 list_idx = (i & 0x7FFF) >> 9
@@ -271,9 +275,14 @@ class CS2Overlay(BaseFeature):
                 )
                 if not pawn:
                     continue
-                ent = Entity(ctrl, pawn, self.memory_manager)
-                if ent.update(self.use_transliteration, self.enable_skeleton):
+
+                if pool_idx >= len(self._entity_pool):
+                    break
+
+                ent = self._entity_pool[pool_idx]
+                if ent.update(ctrl, pawn, self.use_transliteration, self.enable_skeleton):
                     yield ent
+                    pool_idx += 1
             except Exception as exc:
                 logger.debug("Failed to read entity %d: %s", i, exc)
 
