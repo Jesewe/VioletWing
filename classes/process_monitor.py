@@ -1,4 +1,7 @@
+import locale
 import os
+import platform
+import sys
 
 import psutil
 
@@ -64,3 +67,19 @@ class ProcessMonitor:
             }
         except Exception:
             return None
+
+    @staticmethod
+    def log_system_info(logger) -> None:
+        """Log OS, Python, RAM, and Locale information."""
+        win_ver = platform.version()
+        _, _, win32_build, _ = platform.win32_ver()
+        logger.debug("Windows version: %s (build %s)", win_ver, win32_build)
+
+        if not getattr(sys, "frozen", False):
+            logger.debug("Python version: %s", sys.version)
+
+        ram_gb = psutil.virtual_memory().total / (1024 ** 3)
+        logger.debug("Total RAM: %.1f GB", ram_gb)
+
+        lang, encoding = locale.getlocale()
+        logger.debug("Locale: %s / %s", lang, encoding)
