@@ -1,8 +1,10 @@
 import sys
 import signal
+import argparse
+import logging
 from pathlib import Path
 
-from classes.logger import Logger
+from classes.logger import Logger, LoggerConfig
 from classes.config_manager import ConfigManager
 from classes.process_monitor import ProcessMonitor
 
@@ -17,29 +19,55 @@ def setup_signal_handlers(logger):
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
 
-def main():
-    """Main application entry point."""    
-    # Set up logging for the application.
+def parse_args():
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(description="VioletWing")
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Enable debug logging to the console"
+    )
+    parser.add_argument(
+        "--version",
+        action="store_true",
+        help="Print version information and exit"
+    )
+    return parser.parse_args()
+
+def initialize_app(args):
+    """Initialize application components like logging."""
+    if args.version:
+        print(f"VioletWing {ConfigManager.VERSION}")
+        sys.exit(0)
+
     try:
-        Logger.setup_logging()
+        if args.debug:
+            config = LoggerConfig(console_level=logging.DEBUG)
+            Logger.setup_logging(config)
+        else:
+            Logger.setup_logging()
         logger = Logger.get_logger(__name__)
     except Exception as e:
         print(f"Failed to setup logging: {e}", file=sys.stderr)
         sys.exit(1)
 
-    # Set up signal handlers for graceful shutdown
-    setup_signal_handlers(logger)
-
-    # Log the loaded version.
     try:
-        version = ConfigManager.VERSION
-        logger.info("Loaded version: %s", version)
+        logger.info("Loaded version: %s", ConfigManager.VERSION)
     except Exception as e:
         logger.warning("Could not load version information: %s", e)
 
-    # Log application startup
     logger.info("Starting application...")
     ProcessMonitor.log_system_info(logger)
+    
+    return logger
+
+def main():
+    """Main application entry point."""
+    args = parse_args()
+    logger = initialize_app(args)
+
+    # Set up signal handlers for graceful shutdown
+    setup_signal_handlers(logger)
 
     exit_code = 0
     window = None
