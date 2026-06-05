@@ -247,11 +247,9 @@ class MemoryManager:
         Reads a 3D vector (three floats) from memory at the specified address.
         """
         try:
-            return {
-                "x": self.pm.read_float(address),
-                "y": self.pm.read_float(address + 4),
-                "z": self.pm.read_float(address + 8)
-            }
+            data = self.pm.read_bytes(address, 12)
+            x, y, z = struct.unpack('3f', data)
+            return {"x": x, "y": y, "z": z}
         except Exception as e:
             logger.debug(f"Failed to read vec3 at address {hex(address)}: {e}")
             return {"x": 0.0, "y": 0.0, "z": 0.0}

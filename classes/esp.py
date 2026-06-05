@@ -106,13 +106,6 @@ class Entity:
             logger.debug("Failed to get all bone positions: %s", exc)
             return None
 
-    @staticmethod
-    def validate_screen_position(pos: Dict[str, float]) -> bool:
-        return (
-            0 <= pos["x"] <= overlay.get_screen_width()
-            and 0 <= pos["y"] <= overlay.get_screen_height()
-        )
-
 class CS2Overlay(BaseFeature):
     def __init__(self, memory_manager: MemoryManager) -> None:
         super().__init__(memory_manager)
@@ -242,6 +235,12 @@ class CS2Overlay(BaseFeature):
         y = sy - (vm[4]*pos["x"] + vm[5]*pos["y"] + vm[6]*pos["z"] + vm[7]) / w * sy
         return {"x": x, "y": y}
 
+    def _is_on_screen(self, pos: dict) -> bool:
+        return (
+            0 <= pos["x"] <= self.screen_width
+            and 0 <= pos["y"] <= self.screen_height
+        )
+
     def _iterate_entities(self, local_ctrl: int) -> Iterator[Entity]:
         try:
             ent_list = self.memory_manager.read_longlong(
@@ -308,7 +307,7 @@ class CS2Overlay(BaseFeature):
             for bid in ALL_BONE_IDS:
                 if bid in ent.all_bones_pos_3d:
                     p2 = self._world_to_screen(vm, ent.all_bones_pos_3d[bid])
-                    if p2 and ent.validate_screen_position(p2):
+                    if p2 and self._is_on_screen(p2):
                         pts[bid] = p2
             for start, ends in SKELETON_BONES.items():
                 if start in pts:
@@ -326,7 +325,7 @@ class CS2Overlay(BaseFeature):
             head2d = self._world_to_screen(vm, head3d)
             if pos2d is None or head2d is None:
                 return
-            if not ent.validate_screen_position(pos2d) or not ent.validate_screen_position(head2d):
+            if not self._is_on_screen(pos2d) or not self._is_on_screen(head2d):
                 return
 
             ent.pos2d = pos2d
