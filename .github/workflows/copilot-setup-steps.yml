@@ -1,0 +1,43 @@
+name: "Copilot Setup Steps"
+
+# Run automatically when this file changes (validates the setup works),
+# and allow manual runs from the Actions tab.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+  pull_request:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+
+jobs:
+  # This name is required — Copilot will not pick up the job under any other name.
+  copilot-setup-steps:
+    # NOTE: VioletWing depends on pywin32 and pyMeow, which are Windows-only at runtime.
+    # Ubuntu is used here so Copilot gets a fast, standard environment for code analysis
+    # and editing. If you need Copilot to actually execute the app or run pywin32-dependent
+    # code paths, switch this to `windows-latest` (requires a larger runner or self-hosted).
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        # pyMeow is fetched from a GitHub release URL declared in requirements.txt.
+        # pip handles it natively — no special flags needed.
+        # pywin32 will install its pure metadata on Linux (no-op for runtime use),
+        # giving Copilot a complete import graph for static analysis.
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
