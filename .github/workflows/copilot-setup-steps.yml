@@ -34,10 +34,9 @@ jobs:
           cache: "pip"
 
       - name: Install dependencies
-        # pyMeow is fetched from a GitHub release URL declared in requirements.txt.
-        # pip handles it natively — no special flags needed.
-        # pywin32 will install its pure metadata on Linux (no-op for runtime use),
-        # giving Copilot a complete import graph for static analysis.
+        # pywin32 and pyMeow are Windows-only and will fail on Linux.
+        # We install everything else from requirements.txt, then let Copilot
+        # have a complete cross-platform package graph for analysis.
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          grep -v -i "pywin32\|pyMeow" requirements.txt | pip install -r /dev/stdin
