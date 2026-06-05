@@ -4,7 +4,7 @@ psutil==7.2.2
 pymem==1.14.0
 pynput==1.8.1
 python_dateutil==2.9.0.post0
-pywin32==312
+pywin32
 requests==2.33.1
 watchdog==6.0.0
 PyGetWindow==0.0.9
