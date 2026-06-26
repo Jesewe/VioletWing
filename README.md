@@ -11,7 +11,7 @@
 
 ---
 
-External assistance tool for CS2. Reads game memory, draws an overlay, fires on your behalf - configurable per weapon, per key, per taste. Offsets update on startup so you stay functional after patches without touching a config file.
+External tool for CS2. Reads game memory, draws an overlay, fires on your behalf - configurable per weapon, per key, per taste. On startup it runs [cs2-dumper](https://github.com/a2x/cs2-dumper) directly against the live CS2 process to generate fresh offsets, so you stay functional after patches without touching a config file.
 
 > [!WARNING]
 > Using this in online matchmaking violates CS2's Terms of Service and will get your account VAC banned. Run it offline or in private servers - that's on you.
@@ -21,22 +21,23 @@ External assistance tool for CS2. Reads game memory, draws an overlay, fires on 
 
 ---
 
-## 🌳 Quick Start
+## Quick Start
 
-1. Download `VioletWing.exe` from the [**Releases**](https://github.com/Jesewe/VioletWing/releases) page.
-2. Launch CS2 first, then run VioletWing **as Administrator**.
-3. Configure everything through the GUI - no manual config editing needed.
+1. Download `VioletWing.exe` from the [**Releases**](https://github.com/Jesewe/VioletWing/releases) page
+2. Launch CS2, then run VioletWing **as Administrator**
+3. VioletWing downloads `cs2-dumper.exe` on first launch and generates offsets automatically
+4. Enable features from the GUI
 
 > [!NOTE]
-> Run CS2 in **windowed** or **borderless windowed** mode. Fullscreen exclusive breaks the overlay.
+> Run CS2 in **windowed** or **borderless windowed** mode. Exclusive fullscreen breaks the overlay.
 
 ---
 
-## 🔫 Features
+## Features
 
 ### TriggerBot
 
-Fires when your crosshair lands on an enemy. Weapon-specific delays keep it looking human - Snipers wait longer than Pistols.
+Fires when your crosshair lands on an enemy. Weapon-specific delays keep the timing pattern from looking mechanical - Snipers wait longer than Pistols.
 
 - Keys: `x`, `c`, `mouse4`, `mouse5` (or toggle mode)
 - Per-class delays: Pistols, Rifles, Snipers, SMGs, Heavy
@@ -52,14 +53,14 @@ Draws over the game window. Enemies show boxes, skeletons, snaplines, health bar
 
 ### Bunnyhop
 
-Auto-jumps at the right tick so you stop fighting the scroll wheel.
+Writes jump inputs to memory at a configurable interval so you stop fighting the scroll wheel.
 
 - Custom jump key binding
 - Adjustable jump delay
 
 ### NoFlash
 
-Caps flash opacity. Flashbangs still go off - you just stop going blind.
+Clamps flash duration. Flashbangs still go off - you just stop going blind.
 
 - Adjustable suppression strength (0–100%)
 
@@ -67,14 +68,14 @@ Caps flash opacity. Flashbangs still go off - you just stop going blind.
 
 Full desktop interface. No command line required.
 
-- Dashboard: live status, offset version, app version
+- Dashboard: live status, cs2-dumper version, app version
 - Tabs for General, Trigger, Overlay, and Additional settings
 - Integrated log viewer and FAQ
 - Auto-update checking with stable/pre-release toggle
 
 ---
 
-## 🛠️ Build from Source
+## Build from Source
 
 ```bash
 git clone https://github.com/Jesewe/VioletWing.git
@@ -98,53 +99,40 @@ compile.bat
 
 ---
 
-## ⚙️ Configuration
+## Configuration
 
 All settings save to `config.json`. The GUI writes it for you, but you can edit it by hand - VioletWing picks up changes live without a restart.
 
-Log files go to `%LOCALAPPDATA%\VioletWing\logs\`.
+Log files: `%LOCALAPPDATA%\VioletWing\logs\`
+
+Full config reference in the [wiki](https://github.com/Jesewe/VioletWing/wiki/Settings).
 
 ---
 
-## 🔧 Troubleshooting
+## Troubleshooting
 
-| Issue                             | Fix                                                                                                                                                                                                                    |
-| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Failed to fetch offsets           | Check your internet connection and firewall                                                                                                                                                                            |
-| Offset errors after a game update | Wait for [cs2-dumper](https://github.com/a2x/cs2-dumper) to publish new offsets                                                                                                                                        |
-| Can't open `cs2.exe`              | Run VioletWing as Administrator                                                                                                                                                                                        |
-| Overlay not visible               | Switch CS2 to windowed or borderless mode                                                                                                                                                                              |
-| ESP overlay is a black rectangle  | NVIDIA driver bug with transparent windows - open NVIDIA Control Panel → Manage 3D Settings → set **OpenGL GDI compatibility** to **Prefer compatible** ([raylib#2932](https://github.com/raysan5/raylib/issues/2932)) |
-| Bunnyhop feels inconsistent       | CS2 window must have focus; verify your jump key binding                                                                                                                                                               |
-| NoFlash does nothing              | Confirm offsets loaded correctly and the feature is enabled in General settings                                                                                                                                        |
+| Issue                              | Fix                                                                                                                                                                                 |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| cs2-dumper download fails          | Check internet connection; allow HTTPS to `github.com`                                                                                                                              |
+| "CS2 is not running" on startup    | Launch CS2 before starting VioletWing                                                                                                                                               |
+| Features break after a game update | Restart VioletWing - it reruns cs2-dumper automatically. If cs2-dumper hasn't updated yet, [wait for a new release](https://github.com/a2x/cs2-dumper/releases)                     |
+| Can't open `cs2.exe`               | Run VioletWing as Administrator                                                                                                                                                     |
+| Overlay not visible                | Switch CS2 to windowed or borderless mode                                                                                                                                           |
+| ESP overlay is a black rectangle   | NVIDIA driver bug - NVIDIA Control Panel → Manage 3D Settings → **OpenGL GDI compatibility** → **Prefer compatible** ([raylib#2932](https://github.com/raysan5/raylib/issues/2932)) |
+| Bunnyhop feels inconsistent        | CS2 window must have focus; verify your jump key binding                                                                                                                            |
+| NoFlash does nothing               | Confirm offsets loaded and the feature is enabled in General settings                                                                                                               |
 
-More help in the FAQ tab inside the app.
+More detail in the [wiki](https://github.com/Jesewe/VioletWing/wiki/Troubleshooting).
 
 ---
 
-## 💫 Credits
+## Credits
 
-- [**a2x**](https://github.com/a2x) for [cs2-dumper](https://github.com/a2x/cs2-dumper) and keeping offsets current
+- [**a2x**](https://github.com/a2x) for [cs2-dumper](https://github.com/a2x/cs2-dumper)
 - All [contributors](https://github.com/Jesewe/VioletWing/graphs/contributors) who filed issues, submitted PRs, and tested builds
 
 ---
 
-## 🔖 License
+## License
 
-VioletWing is licensed under the **GNU General Public License v3.0**.
-
-```diff
-+ You are free to:
-• Use, study, and modify the source code.
-• Distribute copies and modified versions.
-
-+ Under the following terms:
-• Keep the same GPLv3 license on any derivative work.
-• Make source code available when you distribute binaries.
-
-- You are not allowed to:
-• Relicense under a proprietary license.
-• Distribute without source or a written offer to provide it.
-```
-
-See [LICENSE](LICENSE) for the full text.
+VioletWing is licensed under the **GNU General Public License v3.0**. See [LICENSE](LICENSE) for the full text.
