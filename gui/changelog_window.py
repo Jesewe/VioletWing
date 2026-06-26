@@ -32,9 +32,9 @@ logger = Logger.get_logger(__name__)
 _BADGE_LINE_RE = re.compile(
     r"^\s*"
     r"("
-    r"(\[!\[.*?\]\(.*?\)\]\(.*?\))"   # [![alt](img)](link)  — linked badge
-    r"|(\[!\[.*?\]\(.*?\)\])"         # [![alt](img)]        — unlinked badge
-    r"|(!\\[.*?\\]\\(.*?\\))"         # ![alt](url)          — bare image/badge
+    r"(\[!\[.*?\]\(.*?\)\]\(.*?\))"   # [![alt](img)](link)  - linked badge
+    r"|(\[!\[.*?\]\(.*?\)\])"         # [![alt](img)]        - unlinked badge
+    r"|(!\\[.*?\\]\\(.*?\\))"         # ![alt](url)          - bare image/badge
     r"|(https?://\\S+)"               # bare URL
     r")"
     r"\s*$"
@@ -237,7 +237,7 @@ class ChangelogWindow(ctk.CTkToplevel):
 
         mono = "JetBrainsMono" if "JetBrainsMono" in tkfont.families() else "Courier"
         ui   = FONT_FAMILY_BOLD[0]
-        # Outfit is a proportional sans-serif — much more readable for prose than JetBrainsMono
+        # Outfit is a proportional sans-serif - much more readable for prose than JetBrainsMono
         body = FONT_FAMILY_BOLD[0]
 
         self._text.configure(bg=bg, fg=fg, insertbackground=fg, font=(body, 14))
@@ -252,7 +252,7 @@ class ChangelogWindow(ctk.CTkToplevel):
         self._text.tag_configure("bold", font=(ui, 14, "bold"))
         self._text.tag_configure("code", font=(mono, 13), background=subtle, foreground=fg)
 
-        # Inline PR/issue number — muted violet, no underline
+        # Inline PR/issue number - muted violet, no underline
         self._text.tag_configure("pr_num", font=(ui, 14, "bold"), foreground="#7c6fa0")
 
         # Divider
@@ -383,7 +383,7 @@ class ChangelogWindow(ctk.CTkToplevel):
                 # PR/issue short form produced by _strip_inline_noise
                 self._text.insert("end", raw, ("pr_num",))
             else:
-                # Markdown link — render display text only, URL discarded
+                # Markdown link - render display text only, URL discarded
                 self._text.insert("end", m.group(4), base)
             cursor = m.end()
         if cursor < len(text):

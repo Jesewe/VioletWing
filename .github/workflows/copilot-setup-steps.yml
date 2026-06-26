@@ -12,7 +12,7 @@ on:
       - .github/workflows/copilot-setup-steps.yml
 
 jobs:
-  # This name is required — Copilot will not pick up the job under any other name.
+  # This name is required - Copilot will not pick up the job under any other name.
   copilot-setup-steps:
     # NOTE: VioletWing depends on pywin32 and pyMeow, which are Windows-only at runtime.
     # Ubuntu is used here so Copilot gets a fast, standard environment for code analysis

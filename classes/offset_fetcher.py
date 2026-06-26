@@ -1,5 +1,7 @@
 import os
-from concurrent.futures import ThreadPoolExecutor
+import subprocess
+import sys
+import tempfile
 from pathlib import Path
 
 import orjson
@@ -12,187 +14,43 @@ import classes.error_codes as EC
 
 logger = Logger.get_logger(__name__)
 
-_REMOTE_SOURCES_URL = "https://violetwing.vercel.app/data/offsets.json"
-_STATUS_URL = "https://violetwing.vercel.app/data/status.json"
 _GITHUB_RELEASES_URL = "https://api.github.com/repos/{repo}/releases/latest"
-_REQUIRED_SOURCE_KEYS = {"name", "author", "repository", "offsets_url", "client_dll_url", "buttons_url"}
 
-_DEFAULT_SOURCES: dict = {
-    "a2x": {
-        "name": "A2X Source",
-        "author": "a2x",
-        "repository": "a2x/cs2-dumper",
-        "offsets_url": "https://raw.githubusercontent.com/a2x/cs2-dumper/main/output/offsets.json",
-        "client_dll_url": "https://raw.githubusercontent.com/a2x/cs2-dumper/main/output/client_dll.json",
-        "buttons_url": "https://raw.githubusercontent.com/a2x/cs2-dumper/main/output/buttons.json",
-    }
-}
+# cs2-dumper is the sole offset source.
+_CS2_DUMPER_REPO = "a2x/cs2-dumper"
+_CS2_DUMPER_EXE_NAME = "cs2-dumper.exe"
 
-_sources_cache: dict | None = None
+# Binary is cached in the config directory so it persists across runs and
+# can be refreshed independently of VioletWing releases.
+_CS2_DUMPER_EXE_PATH = Path(ConfigManager.CONFIG_DIRECTORY) / _CS2_DUMPER_EXE_NAME
 
-def load_offset_sources() -> dict:
-    """
-    Load available offset sources from the remote catalogue.
+# Subprocess timeout in seconds -- cs2-dumper typically finishes in <10s.
+_SUBPROCESS_TIMEOUT = 120
 
-    Result is cached for the lifetime of the process. Falls back to
-    _DEFAULT_SOURCES on any network or parse failure.
-    """
-    global _sources_cache
-    if _sources_cache is not None:
-        return _sources_cache
-
-    try:
-        resp = requests.get(_REMOTE_SOURCES_URL, timeout=10)
-        resp.raise_for_status()
-        raw: dict = orjson.loads(resp.content)
-
-        valid = {sid: cfg for sid, cfg in raw.items() if _REQUIRED_SOURCE_KEYS.issubset(cfg)}
-        for sid in raw:
-            if sid not in valid:
-                logger.error("Source '%s' missing required keys - skipped.", sid)
-
-        logger.debug("Loaded %d offset sources from remote.", len(valid))
-        _sources_cache = valid
-        return valid
-
-    except Exception as exc:
-        logger.warning("Could not load remote offset sources (%s) - using defaults.", exc)
-        _sources_cache = _DEFAULT_SOURCES
-        return _DEFAULT_SOURCES
-
-def get_available_offset_sources() -> list[dict]:
-    """Return a UI-friendly list of available sources including the local-files option."""
-    sources = load_offset_sources()
-    result = [
-        {
-            "id": sid,
-            "name": cfg["name"],
-            "author": cfg["author"],
-            "display": f"{cfg['name']} ({cfg['author']})",
-        }
-        for sid, cfg in sources.items()
-    ]
-    result.append({"id": "local", "name": "Local Files", "author": "User", "display": "Local Files"})
-    return result
-
+# Public API
 def fetch_offsets() -> tuple[dict | None, dict | None, dict | None]:
+    """Run cs2-dumper against the live CS2 process and return parsed offsets.
+
+    Returns (offsets, client_data, buttons_data) on success, (None, None, None)
+    on any failure. Failures are logged with structured error codes.
     """
-    Fetch and validate the three offset JSON files.
+    from classes.game_process import is_game_running
 
-    Reads the configured source from ConfigManager. Falls back from
-    local → a2x on any failure. Returns (None, None, None) if all
-    sources are exhausted.
-    """
-    config = ConfigManager.load_config()
-    source = config["General"].get("OffsetSource", "a2x")
-    tried: set[str] = set()
-
-    while source not in tried:
-        tried.add(source)
-
-        if source == "local":
-            result = _fetch_local(config)
-            if result is not None:
-                return result
-            Logger.error_code(EC.E4009)
-            source = "a2x"
-            config["General"]["OffsetSource"] = source
-            ConfigManager.save_config(config)
-            continue
-
-        result = _fetch_remote(source)
-        if result is not None:
-            return result
+    if not is_game_running():
+        Logger.error_code(EC.E4012)
         return None, None, None
 
-    Logger.error_code(EC.E4001)
-    return None, None, None
+    if not _ensure_binary():
+        return None, None, None
 
-def _fetch_local(config: dict) -> tuple | None:
-    config_dir = Path(ConfigManager.CONFIG_DIRECTORY)
-    offsets_path = Path(config.get("General", {}).get("OffsetsFile", config_dir / "offsets.json"))
-    client_path = Path(config.get("General", {}).get("ClientDLLFile", config_dir / "client_dll.json"))
-    buttons_path = Path(config.get("General", {}).get("ButtonsFile", config_dir / "buttons.json"))
+    with tempfile.TemporaryDirectory(prefix="violetwing_dump_") as tmp:
+        if not _run_cs2_dumper(tmp):
+            return None, None, None
 
-    try:
-        missing = [f.name for f in [offsets_path, client_path, buttons_path] if not f.exists()]
-        if missing:
-            Logger.error_code(EC.E4002, "Missing: %s", ", ".join(missing))
-            return None
-
-        offsets = orjson.loads(offsets_path.read_bytes())
-        client = orjson.loads(client_path.read_bytes())
-        buttons = orjson.loads(buttons_path.read_bytes())
-
-        if not _validate(offsets, client, buttons):
-            Logger.error_code(EC.E4003)
-            return None
-
-        logger.info("Loaded and validated local offsets.")
-        return offsets, client, buttons
-
-    except (orjson.JSONDecodeError, IOError) as exc:
-        Logger.error_code(EC.E4004, "%s", exc)
-        return None
-    except Exception:
-        logger.exception("Unexpected error loading local offsets.")
-        return None
-
-def _fetch_remote(source: str) -> tuple | None:
-    available = load_offset_sources()
-    if source not in available:
-        Logger.error_code(EC.E4005, "Source id: '%s'", source)
-        return None
-
-    cfg = available[source]
-    urls = {
-        "offsets":    os.getenv("OFFSETS_URL", cfg["offsets_url"]),
-        "client_dll": os.getenv("CLIENT_DLL_URL", cfg["client_dll_url"]),
-        "buttons":    os.getenv("BUTTONS_URL", cfg["buttons_url"]),
-    }
-
-    try:
-        logger.debug("Fetching offsets from %s (%s)…", cfg["name"], cfg["author"])
-        with ThreadPoolExecutor(max_workers=3) as ex:
-            futures = {k: ex.submit(requests.get, url) for k, url in urls.items()}
-            responses = {k: f.result() for k, f in futures.items()}
-
-        for label, resp in responses.items():
-            if resp.status_code != 200:
-                Logger.error_code(EC.E4006, "HTTP %d fetching %s from %s", resp.status_code, label, cfg["name"])
-                return None
-
-        offsets = orjson.loads(responses["offsets"].content)
-        client = orjson.loads(responses["client_dll"].content)
-        buttons = orjson.loads(responses["buttons"].content)
-
-        if not _validate(offsets, client, buttons):
-            Logger.error_code(EC.E4007, "Source: %s", cfg["name"])
-            return None
-
-        logger.info("Successfully loaded offsets from %s.", cfg["name"])
-        return offsets, client, buttons
-
-    except (orjson.JSONDecodeError, requests.exceptions.RequestException) as exc:
-        Logger.error_code(EC.E4008, "Source: %s — %s", cfg["name"], exc)
-        return None
-    except Exception:
-        logger.exception("Unexpected error fetching from %s.", cfg["name"])
-        return None
-
-def _validate(offsets: dict, client: dict, buttons: dict) -> bool:
-    """Return True if extract_offsets succeeds on the given data."""
-    # Import here to avoid circular dependency at module load time.
-    from classes.utility import Utility
-    return Utility.extract_offsets(offsets, client, buttons) is not None
+        return _load_output(tmp)
 
 def fetch_latest_release(repo: str) -> "dict | None":
-    """
-    Fetch the latest release metadata from the GitHub Releases API.
-
-    Returns a dict with version, download_url, html_url, changelog, is_prerelease,
-    or None on any network / parse failure.
-    """
+    """Fetch the latest VioletWing release metadata from the GitHub Releases API."""
     url = _GITHUB_RELEASES_URL.format(repo=repo)
     try:
         resp = requests.get(
@@ -223,10 +81,10 @@ def fetch_latest_release(repo: str) -> "dict | None":
 
         logger.debug("Latest GitHub release: %s (prerelease=%s)", tag, data.get("prerelease"))
         return {
-            "version":      tag,
-            "download_url": download_url,
-            "html_url":     data.get("html_url", ""),
-            "changelog":    data.get("body", ""),
+            "version":       tag,
+            "download_url":  download_url,
+            "html_url":      data.get("html_url", ""),
+            "changelog":     data.get("body", ""),
             "is_prerelease": bool(data.get("prerelease", False)),
         }
 
@@ -237,39 +95,169 @@ def fetch_latest_release(repo: str) -> "dict | None":
         logger.exception("Unexpected error fetching GitHub release.")
         return None
 
-    """
-    Check the Vercel status endpoint for a newer release.
+# Binary management
+def _ensure_binary() -> bool:
+    """Return True if the cs2-dumper binary is ready to use.
 
-    Returns (download_url, is_prerelease) or (None, False).
+    Downloads from GitHub Releases if not already cached.
     """
+    if _CS2_DUMPER_EXE_PATH.exists():
+        return True
+    return _download_cs2_dumper()
+
+def _download_cs2_dumper() -> bool:
+    """Download the latest cs2-dumper.exe from GitHub Releases.
+
+    Caches it at _CS2_DUMPER_EXE_PATH. Returns True on success.
+    """
+    api_url = _GITHUB_RELEASES_URL.format(repo=_CS2_DUMPER_REPO)
     try:
-        resp = requests.get(_STATUS_URL, timeout=10)
+        logger.info("Fetching cs2-dumper release info from %s", api_url)
+        resp = requests.get(
+            api_url,
+            timeout=15,
+            headers={"Accept": "application/vnd.github+json"},
+        )
         resp.raise_for_status()
-        data: dict = orjson.loads(resp.content)
+        data = orjson.loads(resp.content)
 
-        remote_str = data.get("version")
-        download_url = data.get("download_url") or None
+        download_url: str | None = None
+        for asset in data.get("assets", []):
+            if asset.get("name", "").lower() == _CS2_DUMPER_EXE_NAME.lower():
+                download_url = asset["browser_download_url"]
+                break
 
-        if not remote_str:
-            logger.warning("status.json is missing 'version' field.")
-            return None, False
+        if not download_url:
+            logger.error(
+                "cs2-dumper release '%s' has no asset named '%s'. Available: %s",
+                data.get("tag_name"),
+                _CS2_DUMPER_EXE_NAME,
+                [a["name"] for a in data.get("assets", [])],
+            )
+            Logger.error_code(EC.E4014)
+            return False
 
-        try:
-            remote = version.parse(remote_str)
-        except version.InvalidVersion:
-            logger.warning("Invalid remote version format: %s", remote_str)
-            return None, False
+        logger.info("Downloading cs2-dumper %s from %s", data.get("tag_name"), download_url)
+        binary_resp = requests.get(download_url, timeout=60)
+        binary_resp.raise_for_status()
 
-        if remote > version.parse(current_version):
-            logger.info("New version available: %s", remote_str)
-            return download_url, False
-
-        logger.info("No new updates available.")
-        return None, False
+        _CS2_DUMPER_EXE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        _CS2_DUMPER_EXE_PATH.write_bytes(binary_resp.content)
+        logger.info(
+            "cs2-dumper saved to %s (%d bytes).",
+            _CS2_DUMPER_EXE_PATH,
+            len(binary_resp.content),
+        )
+        return True
 
     except requests.exceptions.RequestException as exc:
-        Logger.error_code(EC.E4010, "%s", exc)
-        return None, False
+        logger.error("Network error downloading cs2-dumper: %s", exc)
+        Logger.error_code(EC.E4014)
+        return False
     except Exception:
-        logger.exception("Unexpected error during update check.")
-        return None, False
+        logger.exception("Unexpected error downloading cs2-dumper.")
+        Logger.error_code(EC.E4014)
+        return False
+
+# Subprocess
+def _run_cs2_dumper(output_dir: str) -> bool:
+    """Spawn cs2-dumper and wait for it to finish.
+
+    Passes -f json so only JSON files are generated -- skipping cs/hpp/rs/zig
+    cuts runtime noticeably. Returns True on clean exit (returncode 0).
+    """
+    cmd = [str(_CS2_DUMPER_EXE_PATH), "-o", output_dir, "-f", "json"]
+    logger.debug("Running cs2-dumper: %s", " ".join(cmd))
+
+    startupinfo = None
+    creationflags = 0
+    if sys.platform == "win32":
+        startupinfo = subprocess.STARTUPINFO()
+        startupinfo.dwFlags |= getattr(subprocess, "STARTF_USESHOWWINDOW", 0)
+        startupinfo.wShowWindow = getattr(subprocess, "SW_HIDE", 0)
+        creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+
+    proc = None
+    stdout = ""
+    stderr = ""
+
+    try:
+        proc = subprocess.Popen(
+            cmd,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            startupinfo=startupinfo,
+            creationflags=creationflags,
+        )
+        stdout, stderr = proc.communicate(timeout=_SUBPROCESS_TIMEOUT)
+    except subprocess.TimeoutExpired:
+        if proc is not None and proc.poll() is None:
+            proc.kill()
+            stdout, stderr = proc.communicate()
+        Logger.error_code(EC.E4013, "cs2-dumper timed out after %ds", _SUBPROCESS_TIMEOUT)
+        return False
+    except FileNotFoundError:
+        Logger.error_code(EC.E4014, "Could not execute: %s", _CS2_DUMPER_EXE_PATH)
+        return False
+    except Exception as exc:
+        Logger.error_code(EC.E4013, "%s", exc)
+        return False
+
+    if stdout:
+        for line in stdout.splitlines():
+            logger.debug("[cs2-dumper] %s", line)
+
+    if proc.returncode != 0:
+        if stderr:
+            for line in stderr.splitlines():
+                logger.error("[cs2-dumper stderr] %s", line)
+        Logger.error_code(EC.E4013, "exit code %d", proc.returncode)
+        return False
+
+    return True
+
+# Output parsing
+def _load_output(output_dir: str) -> tuple[dict, dict, dict] | tuple[None, None, None]:
+    """Read and validate the three JSON files cs2-dumper writes.
+
+    cs2-dumper writes:
+      offsets.json      -- {module: {offset_name: int}}
+      buttons.json      -- {button_name: int}   (flat, no module namespace)
+      client_dll.json   -- {client.dll: {classes: {...}}}  (slugified from client.dll)
+
+    buttons.json is flat; extract_offsets() expects {"client.dll": {...}}.
+    We wrap it here at the load boundary so the rest of the codebase is unaffected.
+    """
+    tmp = Path(output_dir)
+    offsets_file = tmp / "offsets.json"
+    client_file  = tmp / "client_dll.json"
+    buttons_file = tmp / "buttons.json"
+
+    missing = [f.name for f in [offsets_file, client_file, buttons_file] if not f.exists()]
+    if missing:
+        Logger.error_code(EC.E4015, "Missing output files: %s", ", ".join(missing))
+        return None, None, None
+
+    try:
+        offsets     = orjson.loads(offsets_file.read_bytes())
+        client      = orjson.loads(client_file.read_bytes())
+        buttons_raw = orjson.loads(buttons_file.read_bytes())
+    except (orjson.JSONDecodeError, IOError) as exc:
+        Logger.error_code(EC.E4015, "JSON read error: %s", exc)
+        return None, None, None
+
+    # cs2-dumper buttons are flat {name: int}; wrap to match extract_offsets() contract.
+    buttons = buttons_raw
+
+    if not _validate(offsets, client, buttons):
+        Logger.error_code(EC.E4015, "Validation failed")
+        return None, None, None
+
+    logger.info("cs2-dumper: offsets loaded and validated successfully.")
+    return offsets, client, buttons
+
+def _validate(offsets: dict, client: dict, buttons: dict) -> bool:
+    from classes.utility import Utility
+    return Utility.extract_offsets(offsets, client, buttons) is not None
