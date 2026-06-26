@@ -54,7 +54,7 @@ def _render_error_reference(container) -> None:
         cat_row.pack(fill="x", padx=30, pady=(10, 4))
         ctk.CTkLabel(
             cat_row,
-            text=f"— {cat_label}",
+            text=f"- {cat_label}",
             font=FONT_WIDGET,
             text_color=COLOR_ACCENT_FG,
             anchor="w",
@@ -272,7 +272,7 @@ def populate_faq(main_window, frame):
         is_last = (i == len(faqs) - 1)
         create_faq_card(faq_container, i + 1, question, answer, is_last)
 
-    # Error Reference section — rendered from the live catalog so it
+    # Error Reference section - rendered from the live catalog so it
     # stays in sync with the code automatically.
     _render_error_reference(faq_container)
 

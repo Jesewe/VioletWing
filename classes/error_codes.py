@@ -8,20 +8,14 @@ class _Entry:
     solution: str
 
 
-# ---------------------------------------------------------------------------
-# E0xxx — Startup / Init
-# ---------------------------------------------------------------------------
-
+# E0xxx - Startup / Init
 E0001 = _Entry(
     id="E0001",
     label="Resource path resolution failed",
     solution="A bundled asset could not be located. Reinstall VioletWing or run from the correct working directory.",
 )
 
-# ---------------------------------------------------------------------------
-# E1xxx — Config / File I/O
-# ---------------------------------------------------------------------------
-
+# E1xxx - Config / File I/O
 E1001 = _Entry(
     id="E1001",
     label="Config directory creation failed",
@@ -64,10 +58,7 @@ E1007 = _Entry(
     solution="The selected profile file could not be read or is malformed. Delete the profile and save it again, or check for JSON syntax errors in the profiles directory.",
 )
 
-# ---------------------------------------------------------------------------
-# E2xxx — Memory / Offsets
-# ---------------------------------------------------------------------------
-
+# E2xxx - Memory / Offsets
 E2001 = _Entry(
     id="E2001",
     label="CS2 process not found",
@@ -100,24 +91,21 @@ E2005 = _Entry(
 
 E2006 = _Entry(
     id="E2006",
-    label="Stale offsets — game updated",
+    label="Stale offsets - game updated",
     solution="CS2 was updated and the current offsets are no longer valid. Wait for cs2-dumper to publish new offsets (usually within a few hours), then restart VioletWing.",
 )
 
 E2007 = _Entry(
     id="E2007",
-    label="Offset init error — missing keys",
-    solution="The offset data is incomplete. Restart VioletWing to re-fetch offsets. If the error persists, CS2 may have just updated — wait and try again.",
+    label="Offset init error - missing keys",
+    solution="The offset data is incomplete. Restart VioletWing to re-fetch offsets. If the error persists, CS2 may have just updated - wait and try again.",
 )
 
-# ---------------------------------------------------------------------------
-# E3xxx — Features (Bunnyhop, ESP, TriggerBot, NoFlash)
-# ---------------------------------------------------------------------------
-
+# E3xxx - Features (Bunnyhop, ESP, TriggerBot, NoFlash)
 E3001 = _Entry(
     id="E3001",
     label="Bunnyhop address init failed",
-    solution="The dwForceJump offset is not available. Ensure offsets loaded successfully (check for E2xxx errors above). Bunnyhop is disabled until resolved.",
+    solution="The jump offset is not available. Ensure offsets loaded successfully (check for E2xxx errors above). Bunnyhop is disabled until resolved.",
 )
 
 E3002 = _Entry(
@@ -162,68 +150,11 @@ E3008 = _Entry(
     solution="VioletWing could not stop the mouse listener cleanly. This is usually harmless. Restart VioletWing if mouse input behaves unexpectedly afterward.",
 )
 
-# ---------------------------------------------------------------------------
-# E4xxx — Network / Updates / Offsets fetch
-# ---------------------------------------------------------------------------
-
-E4001 = _Entry(
-    id="E4001",
-    label="All offset sources exhausted",
-    solution="VioletWing tried every configured offset source and all failed. Check your internet connection and firewall. If the problem persists, use the Local Files option and supply offset JSONs manually.",
-)
-
-E4002 = _Entry(
-    id="E4002",
-    label="Local offset files missing",
-    solution="One or more of offsets.json, client_dll.json, or buttons.json could not be found. Place the files in the VioletWing config directory or switch to an online offset source in Settings.",
-)
-
-E4003 = _Entry(
-    id="E4003",
-    label="Local offset files invalid",
-    solution="The local offset files are present but missing required fields. Re-download them from a cs2-dumper release or switch to an online source in Settings.",
-)
-
-E4004 = _Entry(
-    id="E4004",
-    label="Local offset files read error",
-    solution="VioletWing could not read the local offset files. Ensure the files are valid JSON and that you have read access to the config directory.",
-)
-
-E4005 = _Entry(
-    id="E4005",
-    label="Unknown offset source",
-    solution="The offset source configured in Settings does not exist. Open Settings → General and select a valid source from the dropdown.",
-)
-
-E4006 = _Entry(
-    id="E4006",
-    label="Remote offset fetch HTTP error",
-    solution="The offset server returned an error. This is usually temporary — wait a few minutes and restart VioletWing. If the error persists, try switching to a different offset source in Settings.",
-)
-
-E4007 = _Entry(
-    id="E4007",
-    label="Remote offset files invalid",
-    solution="Offsets were downloaded but are missing required fields. CS2 may have just updated. Wait for the offset source to publish updated files, then restart VioletWing.",
-)
-
-E4008 = _Entry(
-    id="E4008",
-    label="Remote offset fetch failed",
-    solution="VioletWing could not reach the offset server. Check your internet connection and firewall rules. You can also switch to Local Files in Settings and supply offsets manually.",
-)
-
-E4009 = _Entry(
-    id="E4009",
-    label="Local offsets failed — fallback triggered",
-    solution="Local offset files could not be loaded. VioletWing is falling back to the a2x online source. Check E4002–E4004 for the specific cause.",
-)
-
+# E4xxx - Network / Updates / Offsets fetch
 E4010 = _Entry(
     id="E4010",
     label="Update check failed",
-    solution="VioletWing could not reach the update server. This is non-critical — all features still work. Check your internet connection if you want to verify your version.",
+    solution="VioletWing could not reach the update server. This is non-critical - all features still work. Check your internet connection if you want to verify your version.",
 )
 
 E4011 = _Entry(
@@ -232,10 +163,31 @@ E4011 = _Entry(
     solution="VioletWing downloaded an update but could not apply it. Check that the update directory is writable and that no antivirus is blocking the installer. You can update manually from the GitHub releases page.",
 )
 
-# ---------------------------------------------------------------------------
-# Lookup helpers
-# ---------------------------------------------------------------------------
+E4012 = _Entry(
+    id="E4012",
+    label="cs2-dumper cannot run - CS2 is not running",
+    solution="Launch CS2 and wait for it to reach the main menu before starting VioletWing. cs2-dumper reads live process memory and requires an active CS2 process.",
+)
+ 
+E4013 = _Entry(
+    id="E4013",
+    label="cs2-dumper subprocess failed",
+    solution="cs2-dumper exited with an error. Run VioletWing as Administrator and ensure CS2 is fully loaded into the main menu. Check the detailed log for cs2-dumper's stderr output. If cs2-dumper is outdated after a CS2 update, it will be re-downloaded automatically on the next attempt.",
+)
+ 
+E4014 = _Entry(
+    id="E4014",
+    label="cs2-dumper binary missing or could not be downloaded",
+    solution="VioletWing failed to download cs2-dumper.exe from GitHub Releases. Check your internet connection and firewall. If the problem persists, manually place cs2-dumper.exe in the VioletWing config directory.",
+)
+ 
+E4015 = _Entry(
+    id="E4015",
+    label="cs2-dumper output files missing or invalid",
+    solution="cs2-dumper ran but did not produce valid output. Ensure CS2 is fully loaded into the main menu (not mid-loading) before retrying. Check the detailed log for cs2-dumper's own error output.",
+)
 
+# Lookup helpers
 CATALOG: dict[str, _Entry] = {
     v.id: v
     for k, v in globals().items()

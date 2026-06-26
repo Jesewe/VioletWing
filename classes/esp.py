@@ -41,10 +41,10 @@ MAX_BONE_ID = max(ALL_BONE_IDS) if ALL_BONE_IDS else 0
 
 class Entity:
     """Game entity with cached per-frame data."""
-    def __init__(self, mm: MemoryManager) -> None:
+    def __init__(self, controller_ptr: int, pawn_ptr: int, mm: MemoryManager) -> None:
+        self.controller_ptr = controller_ptr
+        self.pawn_ptr = pawn_ptr
         self.memory_manager = mm
-        self.controller_ptr: int = 0
-        self.pawn_ptr: int = 0
         self.pos2d: Optional[Dict[str, float]] = None
         self.head_pos2d: Optional[Dict[str, float]] = None
         self.name: str = ""
@@ -54,9 +54,7 @@ class Entity:
         self.dormant: bool = True
         self.all_bones_pos_3d: Optional[Dict[int, Dict[str, float]]] = None
 
-    def update(self, controller_ptr: int, pawn_ptr: int, use_transliteration: bool, skeleton_enabled: bool) -> bool:
-        self.controller_ptr = controller_ptr
-        self.pawn_ptr = pawn_ptr
+    def update(self, use_transliteration: bool, skeleton_enabled: bool) -> bool:
         try:
             self.health = self.memory_manager.read_int(self.pawn_ptr + self.memory_manager.m_iHealth)
             if self.health <= 0:
@@ -106,6 +104,13 @@ class Entity:
             logger.debug("Failed to get all bone positions: %s", exc)
             return None
 
+    @staticmethod
+    def validate_screen_position(pos: Dict[str, float]) -> bool:
+        return (
+            0 <= pos["x"] <= overlay.get_screen_width()
+            and 0 <= pos["y"] <= overlay.get_screen_height()
+        )
+
 class CS2Overlay(BaseFeature):
     def __init__(self, memory_manager: MemoryManager) -> None:
         super().__init__(memory_manager)
@@ -113,7 +118,6 @@ class CS2Overlay(BaseFeature):
         self.local_team: Optional[int] = None
         self.screen_width = overlay.get_screen_width()
         self.screen_height = overlay.get_screen_height()
-        self._entity_pool = [Entity(self.memory_manager) for _ in range(ENTITY_COUNT)]
         self.load_configuration()
 
     def load_configuration(self) -> None:
@@ -131,7 +135,6 @@ class CS2Overlay(BaseFeature):
         self.draw_teammates = s["draw_teammates"]
         self.teammate_color_hex = s["teammate_color_hex"]
         self.target_fps = int(s["target_fps"])
-        self._frame_time = 1.0 / max(self.target_fps, 1)
         self._resolve_colors()
 
     def update_config(self, config: dict) -> None:
@@ -154,6 +157,7 @@ class CS2Overlay(BaseFeature):
         sleep = time.sleep
 
         while not self.stop_event.is_set():
+            frame_time = 1.0 / max(self.target_fps, 1)
             start = time.time()
             try:
                 if not is_game_active():
@@ -190,7 +194,7 @@ class CS2Overlay(BaseFeature):
                     overlay.end_drawing()
 
                 elapsed = time.time() - start
-                slack = self._frame_time - elapsed
+                slack = frame_time - elapsed
                 if slack > 0:
                     sleep(slack)
 
@@ -226,20 +230,14 @@ class CS2Overlay(BaseFeature):
             self._color_panel_bg = self._color_panel_border = None
 
     def _world_to_screen(self, vm: list, pos: dict) -> dict | None:
-        sx = self.screen_width / 2
-        sy = self.screen_height / 2
+        sx = overlay.get_screen_width() / 2
+        sy = overlay.get_screen_height() / 2
         w = vm[12]*pos["x"] + vm[13]*pos["y"] + vm[14]*pos["z"] + vm[15]
         if w <= 0.01:
             return None
         x = sx + (vm[0]*pos["x"] + vm[1]*pos["y"] + vm[2]*pos["z"] + vm[3]) / w * sx
         y = sy - (vm[4]*pos["x"] + vm[5]*pos["y"] + vm[6]*pos["z"] + vm[7]) / w * sy
         return {"x": x, "y": y}
-
-    def _is_on_screen(self, pos: dict) -> bool:
-        return (
-            0 <= pos["x"] <= self.screen_width
-            and 0 <= pos["y"] <= self.screen_height
-        )
 
     def _iterate_entities(self, local_ctrl: int) -> Iterator[Entity]:
         try:
@@ -250,7 +248,6 @@ class CS2Overlay(BaseFeature):
             logger.debug("Error reading entity list: %s", exc)
             return
 
-        pool_idx = 0
         for i in range(1, ENTITY_COUNT + 1):
             try:
                 list_idx = (i & 0x7FFF) >> 9
@@ -274,14 +271,9 @@ class CS2Overlay(BaseFeature):
                 )
                 if not pawn:
                     continue
-
-                if pool_idx >= len(self._entity_pool):
-                    break
-
-                ent = self._entity_pool[pool_idx]
-                if ent.update(ctrl, pawn, self.use_transliteration, self.enable_skeleton):
+                ent = Entity(ctrl, pawn, self.memory_manager)
+                if ent.update(self.use_transliteration, self.enable_skeleton):
                     yield ent
-                    pool_idx += 1
             except Exception as exc:
                 logger.debug("Failed to read entity %d: %s", i, exc)
 
@@ -290,7 +282,7 @@ class CS2Overlay(BaseFeature):
         size = 14
         pad_x, pad_y = 8, 5
         w = overlay.measure_text(text, size)
-        sw = self.screen_width
+        sw = overlay.get_screen_width()
         fw = w + pad_x * 2
         fh = size + pad_y * 2
         fx = sw - fw - 10
@@ -307,7 +299,7 @@ class CS2Overlay(BaseFeature):
             for bid in ALL_BONE_IDS:
                 if bid in ent.all_bones_pos_3d:
                     p2 = self._world_to_screen(vm, ent.all_bones_pos_3d[bid])
-                    if p2 and self._is_on_screen(p2):
+                    if p2 and ent.validate_screen_position(p2):
                         pts[bid] = p2
             for start, ends in SKELETON_BONES.items():
                 if start in pts:
@@ -325,7 +317,7 @@ class CS2Overlay(BaseFeature):
             head2d = self._world_to_screen(vm, head3d)
             if pos2d is None or head2d is None:
                 return
-            if not self._is_on_screen(pos2d) or not self._is_on_screen(head2d):
+            if not ent.validate_screen_position(pos2d) or not ent.validate_screen_position(head2d):
                 return
 
             ent.pos2d = pos2d

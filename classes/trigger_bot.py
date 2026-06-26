@@ -66,7 +66,7 @@ class CS2TriggerBot(BaseFeature):
 
     def start(self) -> None:
         self.is_running = True
-        # Clear here — the only correct place — so stop() can always set it.
+        # Clear here - the only correct place - so stop() can always set it.
         self.stop_event.clear()
 
         if self._mouse_listener is None or not self._mouse_listener.running:

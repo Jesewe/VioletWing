@@ -34,7 +34,7 @@ class MemoryManager:
         self.m_hPlayerPawn = None
         self.m_flFlashBangTime = None
         self.m_pBoneArray = None
-        self.dwForceJump = None
+        self.jump = None
         self.m_AttributeManager = None
         self.m_iItemDefinitionIndex = None
         self.m_Item = None
@@ -109,7 +109,7 @@ class MemoryManager:
             self.dwLocalPlayerPawn = extracted["dwLocalPlayerPawn"]
             self.dwLocalPlayerController = extracted["dwLocalPlayerController"]
             self.dwViewMatrix = extracted["dwViewMatrix"]
-            self.dwForceJump = extracted["dwForceJump"]
+            self.jump = extracted["jump"]
             self.m_iHealth = extracted["m_iHealth"]
             self.m_iTeamNum = extracted["m_iTeamNum"]
             self.m_iIDEntIndex = extracted["m_iIDEntIndex"]

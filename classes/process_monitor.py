@@ -5,7 +5,7 @@ import sys
 
 import psutil
 
-# Matches the constant in game_process.py — defined here directly to avoid
+# Matches the constant in game_process.py - defined here directly to avoid
 # pulling in pygetwindow, which is Windows-only and not needed by this module.
 _CS2_PROCESS = "cs2.exe"
 

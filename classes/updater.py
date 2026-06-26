@@ -159,14 +159,14 @@ class DownloadProgressModal:
                     _d, _t = downloaded, total_bytes
                     self._root.after(0, lambda d=_d, t=_t: self._update_progress(d, t))
 
-            logger.info("Update downloaded — writing updater script.")
+            logger.info("Update downloaded - writing updater script.")
             logger.info("bat_file path: %s", bat_file)
             logger.info("current_exe:   %s", current_exe)
             logger.info("temp_exe:      %s", temp_exe)
 
             # Batch files on Windows require CRLF line endings.
             # Unix newlines (\n only) cause `goto` label resolution to fail
-            # silently — the script runs but jumps never land.
+            # silently - the script runs but jumps never land.
             bat_content = "\r\n".join([
                 "@echo off",
                 "title VioletWing Updater",
@@ -216,7 +216,7 @@ class DownloadProgressModal:
                 ["cmd.exe", "/c", bat_file],
                 creationflags=subprocess.CREATE_NEW_CONSOLE,
             )
-            logger.info("Updater process launched — pid %d", proc.pid)
+            logger.info("Updater process launched - pid %d", proc.pid)
             self._root.after(0, lambda: self._finish(success=True, exc=None))
 
         except Exception as exc:
@@ -247,7 +247,7 @@ class Updater:
 
     def _fetch_worker(self, on_complete: callable) -> None:
         if not getattr(sys, "frozen", False):
-            logger.info("Running from source — update download disabled; changelog check proceeds.")
+            logger.info("Running from source - update download disabled; changelog check proceeds.")
 
         logger.info("Fetching latest release from GitHub (%s)...", _GITHUB_REPO)
         release = fetch_latest_release(_GITHUB_REPO)

@@ -55,24 +55,23 @@ class ClientManager:
             return False
 
     def start_client(self) -> None:
-        if not self.main_window.offsets:
-            if self.main_window._offsets_fetching:
-                self.main_window.update_client_status("Fetching offsets…", "#f59e0b")
-                return
-            self.main_window.update_client_status("Fetching offsets…", "#f59e0b")
-            self.main_window.fetch_offsets_async(on_success=self.start_client)
-            return
-
+        # cs2-dumper needs CS2 running before it can dump -- check upfront so
+        # the user sees a clear error rather than a cryptic subprocess failure.
         if not is_game_running():
             messagebox.showerror(
                 "Game Not Running",
-                "Could not find cs2.exe. Make sure the game is running.",
+                "Could not find cs2.exe. Launch CS2 before starting the client.",
             )
             return
 
-        # Only initialize if we don't already have a valid memory handle.
-        # Re-initializing while features are running replaces the shared pymem
-        # handle underneath active threads.
+        if not self.main_window.offsets:
+            if self.main_window._offsets_fetching:
+                self.main_window.update_client_status("Dumping offsets…", "#f59e0b")
+                return
+            self.main_window.update_client_status("Dumping offsets…", "#f59e0b")
+            self.main_window.fetch_offsets_async(on_success=self.start_client)
+            return
+
         if not self.memory_manager.is_initialized:
             if not self.memory_manager.initialize():
                 messagebox.showerror(
@@ -88,7 +87,7 @@ class ClientManager:
             if not config["General"].get(config_key, False):
                 continue
             name = feature_data["name"]
-            obj = feature_data["instance"]
+            obj  = feature_data["instance"]
             if getattr(obj, "is_running", False):
                 logger.info("%s is already running.", name)
                 any_started = True
@@ -113,6 +112,16 @@ class ClientManager:
         # Reset the memory handle so the next start_client gets a fresh attach.
         self.memory_manager.reset()
 
+        # Always clear the offset cache on Stop so the next Start re-dumps
+        # from live memory -- guarantees fresh offsets after a CS2 update.
+        self.main_window.offsets      = {}
+        self.main_window.client_data  = {}
+        self.main_window.buttons_data = {}
+        self.main_window.memory_manager.offsets      = {}
+        self.main_window.memory_manager.client_data  = {}
+        self.main_window.memory_manager.buttons_data = {}
+        logger.debug("Offset cache cleared -- will re-dump on next Start.")
+
         if stopped_any:
             self.main_window.update_client_status("Inactive", "#ef4444")
         else:
@@ -121,19 +130,16 @@ class ClientManager:
     def apply_feature_state_changes(self, old_config: dict, new_config: dict) -> None:
         """Stop features whose enabled flag was turned off.
 
-        Intentionally does NOT start features — that is exclusively the job of
+        Intentionally does NOT start features - that is exclusively the job of
         start_client(). Toggling a checkbox in General Settings is a config
         change, not a start command.
         """
         for key, feature_data in self.features.items():
-            old_on = old_config["General"].get(key, False)
-            new_on = new_config["General"].get(key, False)
+            old_on  = old_config["General"].get(key, False)
+            new_on  = new_config["General"].get(key, False)
             running = getattr(feature_data["instance"], "is_running", False)
-
             if old_on == new_on:
                 continue
-
-            # Only act on features that were turned OFF while running.
             if not new_on and running:
                 self._stop_feature(feature_data["name"], feature_data["instance"])
 
@@ -151,6 +157,5 @@ class ClientManager:
                 instance.update_config(new_config)
                 logger.debug("Config updated for %s.", feature_data["name"])
                 any_running = True
-
         status, color = ("Active", "#22c55e") if any_running else ("Inactive", "#ef4444")
         self.main_window.update_client_status(status, color)

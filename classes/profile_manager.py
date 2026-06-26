@@ -11,12 +11,15 @@ import classes.error_codes as EC
 
 logger = Logger.get_logger(__name__)
 
-# Keys excluded from profiles — they are identity/env-specific, not playstyle.
+# Keys excluded from profiles - they are identity/env-specific, not playstyle.
 _EXCLUDED_TOP_LEVEL = {"user_id", "seen_changelog_version", "GitHub"}
 # Inside General, these are env-specific and should not roam with a profile.
-_EXCLUDED_GENERAL = {"OffsetSource", "OffsetsFile", "ClientDLLFile", "ButtonsFile"}
+# Empty since the legacy offset path keys were removed in the live dump redesign.
+# Preserved as a set so future env-specific General keys can be added here without
+# touching save_profile / load_profile logic.
+_EXCLUDED_GENERAL: set[str] = set()
 
-# Only alphanumeric, spaces, dashes, underscores — avoids path traversal entirely.
+# Only alphanumeric, spaces, dashes, underscores - avoids path traversal entirely.
 # Allows letters, digits, underscores, single spaces, and hyphens only.
 # Literal space (not \s) intentionally excludes tabs and newlines.
 _VALID_NAME_RE = re.compile(r'^[\w \-]{1,64}$')

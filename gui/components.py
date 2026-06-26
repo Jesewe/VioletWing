@@ -43,7 +43,7 @@ def create_section_header(parent, title, subtitle, icon_file=None) -> ctk.CTkFra
 def build_item_scaffold(parent, label_text, description, is_last=False) -> ctk.CTkFrame:
     """Build the standard setting-item card (label on left, widget slot on right).
 
-    Bottom padding is 40 px for the last item in a section, 30 px otherwise —
+    Bottom padding is 40 px for the last item in a section, 30 px otherwise -
     matching the visual rhythm used across all settings tabs.
 
     Returns the right-side widget frame for the caller to populate.

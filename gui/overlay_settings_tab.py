@@ -223,7 +223,7 @@ def _make_color_picker(parent, key, main_window):
     row = ctk.CTkFrame(parent, fg_color="transparent")
     row.pack()
 
-    # Swatch — live colored preview square
+    # Swatch - live colored preview square
     swatch = ctk.CTkFrame(
         row, width=28, height=28, corner_radius=6,
         fg_color=current_hex, border_width=1, border_color=COLOR_WIDGET_BORDER,
@@ -249,7 +249,7 @@ def _make_color_picker(parent, key, main_window):
     )
     combo.pack(side="left", padx=(0, 8))
 
-    # Hex entry — free-form input, validated on commit
+    # Hex entry - free-form input, validated on commit
     entry = ctk.CTkEntry(
         row, width=100, height=45, justify="center",
         corner_radius=ENTRY_STYLE["corner_radius"],

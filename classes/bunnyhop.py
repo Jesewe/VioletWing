@@ -85,11 +85,11 @@ class CS2Bunnyhop(BaseFeature):
         logger.debug("Bunnyhop stopped.")
 
     def _init_address(self) -> bool:
-        if self.memory_manager.dwForceJump is None:
+        if self.memory_manager.jump is None:
             Logger.error_code(EC.E3001)
             return False
         try:
-            self.force_jump_address = self.memory_manager.client_base + self.memory_manager.dwForceJump
+            self.force_jump_address = self.memory_manager.client_base + self.memory_manager.jump
             return True
         except Exception as exc:
             logger.error("Error setting force-jump address: %s", exc)

@@ -13,17 +13,8 @@ import classes.error_codes as EC
 logger = Logger.get_logger(__name__)
 
 class ConfigManager:
-    """
-    Thread-safe configuration manager for the application.
-    
-    Provides methods to load and save configuration settings with:
-    - Automatic caching for performance
-    - Thread-safe operations
-    - Automatic migration of missing keys
-    - Validation and error recovery
-    """
-    
-    # Application version
+    """Thread-safe configuration manager for the application."""
+
     VERSION = "v1.3.3.0"
     
     # Directory paths
@@ -36,7 +27,6 @@ class ConfigManager:
     )
     CONFIG_DIRECTORY  = str(_BASE)
     UPDATE_DIRECTORY  = str(_BASE / "Update")
-    OFFSETS_DIRECTORY = str(_BASE / "Offsets")
     CONFIG_FILE       = _BASE / "config.json"
     
     # Default configuration settings
@@ -44,61 +34,57 @@ class ConfigManager:
         "user_id": None,
         "seen_changelog_version": None,
         "General": {
-            "Trigger": False,
-            "Overlay": False,
-            "Bunnyhop": False,
-            "Noflash": False,
-            "Disguise": False,
+            "Trigger":      False,
+            "Overlay":      False,
+            "Bunnyhop":     False,
+            "Noflash":      False,
+            "Disguise":     False,
             "DetailedLogs": False,
-            "OffsetSource": "a2x",
-            "OffsetsFile": str(Path(OFFSETS_DIRECTORY) / "offsets.json"),
-            "ClientDLLFile": str(Path(OFFSETS_DIRECTORY) / "client_dll.json"),
-            "ButtonsFile": str(Path(OFFSETS_DIRECTORY) / "buttons.json")
         },
         "Trigger": {
-            "TriggerKey": "x",
-            "ToggleMode": False,
+            "TriggerKey":        "x",
+            "ToggleMode":        False,
             "AttackOnTeammates": False,
             "active_weapon_type": "Rifles",
             "WeaponSettings": {
                 "Pistols": {"ShotDelayMin": 0.02, "ShotDelayMax": 0.04, "PostShotDelay": 0.02},
-                "Rifles": {"ShotDelayMin": 0.01, "ShotDelayMax": 0.03, "PostShotDelay": 0.02},
-                "Snipers": {"ShotDelayMin": 0.05, "ShotDelayMax": 0.1, "PostShotDelay": 0.5},
-                "SMGs": {"ShotDelayMin": 0.01, "ShotDelayMax": 0.02, "PostShotDelay": 0.05},
-                "Heavy": {"ShotDelayMin": 0.03, "ShotDelayMax": 0.05, "PostShotDelay": 0.2}
-            }
+                "Rifles":  {"ShotDelayMin": 0.01, "ShotDelayMax": 0.03, "PostShotDelay": 0.02},
+                "Snipers": {"ShotDelayMin": 0.05, "ShotDelayMax": 0.1,  "PostShotDelay": 0.5},
+                "SMGs":    {"ShotDelayMin": 0.01, "ShotDelayMax": 0.02, "PostShotDelay": 0.05},
+                "Heavy":   {"ShotDelayMin": 0.03, "ShotDelayMax": 0.05, "PostShotDelay": 0.2},
+            },
         },
         "Overlay": {
-            "target_fps": 60,
-            "enable_box": True,
-            "enable_skeleton": False,
-            "draw_snaplines": True,
+            "target_fps":         60,
+            "enable_box":         True,
+            "enable_skeleton":    False,
+            "draw_snaplines":     True,
             "snaplines_color_hex": "#FFFFFF",
             "box_line_thickness": 1.0,
-            "box_color_hex": "#FFA500",
-            "text_color_hex": "#FFFFFF",
+            "box_color_hex":      "#FFA500",
+            "text_color_hex":     "#FFFFFF",
             "draw_health_numbers": True,
             "use_transliteration": False,
-            "draw_nicknames": True,
-            "draw_teammates": False,
-            "teammate_color_hex": "#00FFFF"
+            "draw_nicknames":     True,
+            "draw_teammates":     False,
+            "teammate_color_hex": "#00FFFF",
         },
         "Bunnyhop": {
-            "JumpKey": "space",
-            "JumpDelay": 0.01
+            "JumpKey":   "space",
+            "JumpDelay": 0.01,
         },
         "NoFlash": {
-            "FlashSuppressionStrength": 0.0
+            "FlashSuppressionStrength": 0.0,
         },
         "GitHub": {
-            "AccessToken": None
-        }
+            "AccessToken": None,
+        },
     }
     
     # Cache and thread safety - RLock allows set_value to re-enter load_config
     _config_cache: Optional[Dict[str, Any]] = None
     _lock: threading.RLock = threading.RLock()
-    
+
     @classmethod
     def load_config(cls) -> Dict[str, Any]:
         """
@@ -115,8 +101,7 @@ class ConfigManager:
         # Fast path: return cached config if available (no lock needed for read)
         if cls._config_cache is not None:
             return copy.deepcopy(cls._config_cache)
-        
-        # Slow path: load from file (needs lock)
+
         with cls._lock:
             # Double-check pattern: another thread might have loaded it
             if cls._config_cache is not None:
@@ -130,37 +115,32 @@ class ConfigManager:
                 cls._create_default_config()
             else:
                 cls._load_existing_config()
-            
+
             return copy.deepcopy(cls._config_cache)
-    
+
     @classmethod
     def _ensure_directories(cls) -> None:
         """Ensure all required directories exist."""
         try:
             Path(cls.CONFIG_DIRECTORY).mkdir(parents=True, exist_ok=True)
-            Path(cls.OFFSETS_DIRECTORY).mkdir(parents=True, exist_ok=True)
         except OSError as e:
             Logger.error_code(EC.E1001, "%s", e)
-    
+
     @classmethod
     def _create_default_config(cls) -> None:
         """Create a new configuration file with default settings."""
-        logger.info(f"config.json not found at {cls.CONFIG_FILE}, creating default configuration.")
+        logger.info("config.json not found at %s, creating default.", cls.CONFIG_FILE)
         default_copy = copy.deepcopy(cls.DEFAULT_CONFIG)
         cls._config_cache = default_copy
         cls._save_to_file(default_copy, log_info=False)
-    
+
     @classmethod
     def _load_existing_config(cls) -> None:
         """Load configuration from existing file."""
         try:
-            file_bytes = cls.CONFIG_FILE.read_bytes()
-            loaded_config = orjson.loads(file_bytes)
-            
-            # Validate that loaded config is a dictionary
+            loaded_config = orjson.loads(cls.CONFIG_FILE.read_bytes())
             if not isinstance(loaded_config, dict):
                 raise ValueError("Configuration file does not contain a valid dictionary")
-            
             cls._config_cache = loaded_config
             logger.debug("Loaded configuration.")
             
@@ -168,13 +148,12 @@ class ConfigManager:
             if cls._update_config(cls.DEFAULT_CONFIG, cls._config_cache):
                 logger.info("Configuration updated with missing keys.")
                 cls._save_to_file(cls._config_cache, log_info=False)
-                
         except (orjson.JSONDecodeError, IOError, ValueError) as e:
             Logger.error_code(EC.E1002, "%s", e)
             default_copy = copy.deepcopy(cls.DEFAULT_CONFIG)
             cls._config_cache = default_copy
             cls._save_to_file(default_copy, log_info=False)
-    
+
     @classmethod
     def _update_config(cls, default: Dict[str, Any], current: Dict[str, Any]) -> bool:
         """
@@ -192,12 +171,12 @@ class ConfigManager:
             if key not in current:
                 current[key] = copy.deepcopy(value)
                 updated = True
-                logger.debug(f"Added missing config key: {key}")
+                logger.debug("Added missing config key: %s", key)
             elif isinstance(value, dict) and isinstance(current.get(key), dict):
                 if cls._update_config(value, current[key]):
                     updated = True
         return updated
-    
+
     @classmethod
     def save_config(cls, config: Dict[str, Any], log_info: bool = True) -> bool:
         """
@@ -215,35 +194,19 @@ class ConfigManager:
             cls._config_cache = copy.deepcopy(config)
             # Save to file
             return cls._save_to_file(config, log_info)
-    
+
     @classmethod
     def _save_to_file(cls, config: Dict[str, Any], log_info: bool = True) -> bool:
-        """
-        Internal method to save configuration to file.
-        
-        Args:
-            config: Configuration dictionary to save
-            log_info: Whether to log the save operation
-            
-        Returns:
-            True if save was successful, False otherwise
-        """
         try:
-            # Ensure directory exists
             Path(cls.CONFIG_DIRECTORY).mkdir(parents=True, exist_ok=True)
-            
-            # Serialize and write configuration
-            config_bytes = orjson.dumps(config, option=orjson.OPT_INDENT_2)
-            cls.CONFIG_FILE.write_bytes(config_bytes)
-            
+            cls.CONFIG_FILE.write_bytes(orjson.dumps(config, option=orjson.OPT_INDENT_2))
             if log_info:
-                logger.info(f"Saved configuration to {cls.CONFIG_FILE}.")
+                logger.info("Saved configuration to %s.", cls.CONFIG_FILE)
             return True
-            
         except (OSError, IOError) as e:
             Logger.error_code(EC.E1003, "%s", e)
             return False
-    
+
     @classmethod
     def reset_to_default(cls) -> Dict[str, Any]:
         """
@@ -258,14 +221,14 @@ class ConfigManager:
             cls._save_to_file(default_copy, log_info=True)
             logger.info("Configuration reset to default values.")
             return copy.deepcopy(default_copy)
-    
+
     @classmethod
     def invalidate_cache(cls) -> None:
         """Invalidate the configuration cache, forcing a reload on next access."""
         with cls._lock:
             cls._config_cache = None
             logger.debug("Configuration cache invalidated.")
-    
+
     @classmethod
     def get_value(cls, *keys: str, default: Any = None) -> Any:
         """
@@ -284,16 +247,14 @@ class ConfigManager:
         # Ensure cache is populated without paying for a deepcopy on every read.
         if cls._config_cache is None:
             cls.load_config()
-
         current = cls._config_cache
         for key in keys:
             if isinstance(current, dict) and key in current:
                 current = current[key]
             else:
                 return default
-
         return current
-    
+
     @classmethod
     def set_value(cls, *keys: str, value: Any) -> bool:
         """
@@ -315,43 +276,41 @@ class ConfigManager:
         with cls._lock:
             config = cls.load_config()
             current = config
-
             for key in keys[:-1]:
                 if key not in current:
                     current[key] = {}
                 current = current[key]
-
             current[keys[-1]] = value
             return cls._save_to_file(config, log_info=False)
 
 # Color choices for Overlay
 COLOR_CHOICES = {
     "Orange": "#FFA500",
-    "Red": "#FF0000",
-    "Green": "#00FF00",
-    "Blue": "#0000FF",
-    "White": "#FFFFFF",
-    "Black": "#000000",
-    "Cyan": "#00FFFF",
-    "Yellow": "#FFFF00"
+    "Red":    "#FF0000",
+    "Green":  "#00FF00",
+    "Blue":   "#0000FF",
+    "White":  "#FFFFFF",
+    "Black":  "#000000",
+    "Cyan":   "#00FFFF",
+    "Yellow": "#FFFF00",
 }
 
 # Import pyMeow colors
 try:
     from pyMeow import get_color, fade_color
-    
+
     class Colors:
         """Pre-defined colors for overlay rendering using pyMeow."""
         orange = get_color("orange")
-        black = get_color("black")
-        cyan = get_color("cyan")
-        white = get_color("white")
-        grey = fade_color(get_color("#242625"), 0.7)
-        red = get_color("red")
-        green = get_color("green")
-        blue = get_color("blue")
+        black  = get_color("black")
+        cyan   = get_color("cyan")
+        white  = get_color("white")
+        grey   = fade_color(get_color("#242625"), 0.7)
+        red    = get_color("red")
+        green  = get_color("green")
+        blue   = get_color("blue")
         yellow = get_color("yellow")
-        
+
 except ImportError:
     logger.warning("pyMeow not available, Colors class will not be initialized")
     Colors = None

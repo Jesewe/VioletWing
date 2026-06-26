@@ -9,7 +9,7 @@ import webbrowser
 
 import customtkinter as ctk
 from PIL import Image
-from tkinter import messagebox, TclError
+from tkinter import messagebox
 from watchdog.observers import Observer
 
 from classes.updater import Updater
@@ -525,17 +525,11 @@ class MainWindow:
         if hasattr(self, "bot_status_label"):
             self.bot_status_label.configure(text=status, text_color=color)
 
-    def start_client(self):  self.client_manager.start_client()
+    def start_client(self):
+        self.client_manager.start_client()
 
     def stop_client(self) -> None:
         self.client_manager.stop_client()
-        notice = getattr(self, "offset_source_notice", None)
-        if notice is not None:
-            try:
-                notice.pack_forget()
-                notice.configure(text="")
-            except TclError:
-                pass
 
     def update_weapon_settings_display(self) -> None:
         weapon_type = self.ui_bridge.get_value("active_weapon_type")
@@ -613,9 +607,6 @@ class MainWindow:
             val = self.ui_bridge.get_value(key)
             if val is not None:
                 s[key] = val
-        if self.ui_bridge.registered("OffsetSource"):
-            display = self.ui_bridge.get_value("OffsetSource")
-            s["OffsetSource"] = getattr(self, "offset_source_mapping", {}).get(display, "a2x")
 
     def _save_trigger(self, config: dict) -> None:
         s = config["Trigger"]
@@ -1022,7 +1013,7 @@ class MainWindow:
             if m:
                 tag = self._LEVEL_TAG.get(m.group(1))
                 if tag:
-                    # m.start()/end() are byte offsets into first_line — use as col indices
+                    # m.start()/end() are byte offsets into first_line - use as col indices
                     start = f"{line_num}.{m.start()}"
                     end   = f"{line_num}.{m.end()}"
                     widget.tag_add(tag, start, end)

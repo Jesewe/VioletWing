@@ -29,20 +29,8 @@ class Utility:
         return _gp.is_game_running()
 
     @staticmethod
-    def load_offset_sources() -> dict:
-        return _of.load_offset_sources()
-
-    @staticmethod
     def fetch_offsets():
         return _of.fetch_offsets()
-
-    @staticmethod
-    def get_available_offset_sources() -> list[dict]:
-        return _of.get_available_offset_sources()
-
-    @staticmethod
-    def check_for_updates(current_version: str) -> tuple:
-        return _of.check_for_updates(current_version)
 
     @staticmethod
     def get_vk_code(key: str) -> int:
@@ -91,13 +79,22 @@ class Utility:
             buttons = buttons_data.get("client.dll", {})
             classes = client_data.get("client.dll", {}).get("classes", {})
 
+            def _resolve_field_value(raw):
+                """Extract an integer offset from either format:
+                - a2x:           field value is a bare int
+                - OffsetFetcher: field value is {"type": "...", "offset": int}
+                """
+                if isinstance(raw, dict):
+                    return raw.get("offset")
+                return raw
+
             def get_field(class_name: str, field_name: str):
                 class_info = classes.get(class_name)
                 if not class_info:
                     raise KeyError(f"Class '{class_name}' not found")
-                field = class_info.get("fields", {}).get(field_name)
-                if field is not None:
-                    return field
+                raw = class_info.get("fields", {}).get(field_name)
+                if raw is not None:
+                    return _resolve_field_value(raw)
                 parent = class_info.get("parent")
                 if parent:
                     return get_field(parent, field_name)
@@ -108,7 +105,7 @@ class Utility:
                 "dwLocalPlayerPawn":      client.get("dwLocalPlayerPawn"),
                 "dwLocalPlayerController": client.get("dwLocalPlayerController"),
                 "dwViewMatrix":           client.get("dwViewMatrix"),
-                "dwForceJump":            buttons.get("jump"),
+                "jump":                   buttons.get("jump"),
                 "m_iHealth":              get_field("C_BaseEntity", "m_iHealth"),
                 "m_iTeamNum":             get_field("C_BaseEntity", "m_iTeamNum"),
                 "m_pGameSceneNode":       get_field("C_BaseEntity", "m_pGameSceneNode"),

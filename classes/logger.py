@@ -319,7 +319,7 @@ class Logger:
             # Append caller detail after the catalog label
             detail_fmt = args[0]
             detail_args = args[1:]
-            msg = f"{base} — {detail_fmt}"
+            msg = f"{base} - {detail_fmt}"
             Logger.get_logger().error(msg, *detail_args, **kwargs)
         else:
             Logger.get_logger().error(base, **kwargs)

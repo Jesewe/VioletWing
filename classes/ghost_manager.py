@@ -18,7 +18,7 @@ def _load() -> list[dict]:
         with open(path, "r", encoding="utf-8") as fh:
             data = json.load(fh)
     except FileNotFoundError:
-        logger.warning("ghosts.json not found at %s — disguise disabled.", path)
+        logger.warning("ghosts.json not found at %s - disguise disabled.", path)
         return []
     except json.JSONDecodeError as exc:
         Logger.error_code(EC.E1004, "%s", exc)
@@ -37,7 +37,7 @@ def _load() -> list[dict]:
         valid.append(entry)
 
     if not valid:
-        logger.warning("No valid ghost profiles found — disguise disabled.")
+        logger.warning("No valid ghost profiles found - disguise disabled.")
 
     return valid
 

@@ -158,7 +158,7 @@ def _create_log_body(main_window, parent):
         "search_hl", background="#f59e0b", foreground="#000000",
     )
 
-    # Per-level foreground tags — applied to the [LEVEL] token only
+    # Per-level foreground tags - applied to the [LEVEL] token only
     tb = main_window.log_text._textbox
     tb.tag_config("log_debug",    foreground="#6b7280")
     tb.tag_config("log_info",     foreground="#10b981")
