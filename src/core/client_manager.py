@@ -128,11 +128,10 @@ class ClientManager:
             logger.debug("No features were running.")
 
     def apply_feature_state_changes(self, old_config: dict, new_config: dict) -> None:
-        """Stop features whose enabled flag was turned off.
+        """Apply feature toggles from the General Settings tab.
 
-        Intentionally does NOT start features - that is exclusively the job of
-        start_client(). Toggling a checkbox in General Settings is a config
-        change, not a start command.
+        Stops running features if toggled off.
+        Starts new features if toggled on AND the client is currently active.
         """
         for key, feature_data in self.features.items():
             old_on  = old_config["General"].get(key, False)
@@ -142,6 +141,9 @@ class ClientManager:
                 continue
             if not new_on and running:
                 self._stop_feature(feature_data["name"], feature_data["instance"])
+            elif new_on and not running:
+                if self.memory_manager.is_initialized:
+                    self._start_feature(feature_data["name"], feature_data["instance"], new_config)
 
     def update_running_feature_configs(self, new_config: dict) -> None:
         """Push a fresh config to every running feature and refresh the status indicator.
