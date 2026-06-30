@@ -91,12 +91,8 @@ class MainWindow:
         self.memory_manager = MemoryManager(self.offsets, self.client_data, self.buttons_data)
         self.initialize_features()
 
-        # Pick a ghost profile for dynamic disguise
-        config = ConfigManager.load_config()
-        if config["General"].get("Disguise", False):
-            self.ghost = _gm.pick()
-        else:
-            self.ghost = None
+        # The setup_disguise function will handle executable cloning if enabled
+        self.ghost = _gm.setup_disguise()
 
         # Single unified widget registry - overlay tab migrated to use this too.
         self.ui_bridge = UIConfigBridge()
@@ -127,6 +123,11 @@ class MainWindow:
 
         if platform.system() == "Windows":
             import ctypes
+            
+            # Detach the taskbar icon from the executable's embedded icon
+            app_id = f'VioletWing.Ghost.{self.ghost["id"]}' if self.ghost else 'VioletWing.App.Main'
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(app_id)
+            
             gdi32 = ctypes.WinDLL("gdi32")
             for font in [
                 "assets/fonts/Outfit-Regular.ttf", "assets/fonts/Outfit-Bold.ttf",
