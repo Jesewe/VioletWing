@@ -69,33 +69,32 @@ FONT_ITEM_DESCRIPTION =    (FONT_FAMILY_REGULAR[0], FONT_SIZE_P)
 FONT_WIDGET =              (FONT_FAMILY_BOLD[0],    FONT_SIZE_H4, FONT_FAMILY_BOLD[2])
 FONT_LOG =                 (FONT_FAMILY_REGULAR[0], FONT_SIZE_P)
 FONT_DROPDOWN =            (FONT_FAMILY_REGULAR[0], FONT_SIZE_P)
+FONT_TABULAR =             (FONT_FAMILY_REGULAR[0], FONT_SIZE_H4, "bold")
 
 # Component Styles
 SECTION_STYLE = {
-    "corner_radius": 16,
+    "corner_radius": 24,
     "fg_color": COLOR_BACKGROUND,
-    "border_width": 1,
-    "border_color": COLOR_BORDER
+    "border_width": 0,
 }
 
 SECTION_STYLE_DANGER = {
-    "corner_radius": 16,
+    "corner_radius": 24,
     "fg_color": COLOR_BACKGROUND,
     "border_width": 2,
     "border_color": COLOR_BUTTON_DANGER_BORDER
 }
 
 SETTING_ITEM_STYLE = {
-    "corner_radius": 10,
+    "corner_radius": 16,
     "fg_color": COLOR_WIDGET_BACKGROUND,
-    "border_width": 1,
-    "border_color": COLOR_BORDER
+    "border_width": 0,
 }
 
 CHECKBOX_STYLE = {
     "width": 30,
     "height": 30,
-    "corner_radius": 8,
+    "corner_radius": 6,
     "border_width": 2,
     "fg_color": COLOR_ACCENT_FG,
     "hover_color": COLOR_ACCENT_HOVER,
@@ -105,7 +104,7 @@ CHECKBOX_STYLE = {
 ENTRY_STYLE = {
     "width": 220,
     "height": 45,
-    "corner_radius": 10,
+    "corner_radius": 8,
     "border_width": 1,
     "border_color": COLOR_WIDGET_BORDER,
     "fg_color": COLOR_WIDGET_FG,
@@ -116,8 +115,8 @@ ENTRY_STYLE = {
 SLIDER_STYLE = {
     "width": 200,
     "height": 20,
-    "corner_radius": 10,
-    "button_corner_radius": 10,
+    "corner_radius": 8,
+    "button_corner_radius": 8,
     "border_width": 0,
     "fg_color": COLOR_BORDER,
     "progress_color": COLOR_ACCENT_FG,
@@ -128,7 +127,7 @@ SLIDER_STYLE = {
 COMBOBOX_STYLE = {
     "width": 180,
     "height": 45,
-    "corner_radius": 10,
+    "corner_radius": 8,
     "fg_color": COLOR_WIDGET_FG,
     "text_color": COLOR_TEXT_PRIMARY,
     "font": FONT_WIDGET,
@@ -142,7 +141,7 @@ COMBOBOX_STYLE = {
 
 BUTTON_STYLE_PRIMARY = {
     "font": (FONT_FAMILY_BOLD[0], FONT_SIZE_H3, FONT_FAMILY_BOLD[2]),
-    "corner_radius": 12,
+    "corner_radius": 8,
     "fg_color": COLOR_BUTTON_PRIMARY_FG,
     "hover_color": COLOR_BUTTON_PRIMARY_HOVER,
     "border_width": 1,
@@ -153,7 +152,7 @@ BUTTON_STYLE_PRIMARY = {
 
 BUTTON_STYLE_DANGER = {
     "font": (FONT_FAMILY_BOLD[0], FONT_SIZE_H3, FONT_FAMILY_BOLD[2]),
-    "corner_radius": 12,
+    "corner_radius": 8,
     "fg_color": COLOR_BUTTON_DANGER_FG,
     "hover_color": COLOR_BUTTON_DANGER_HOVER,
     "border_width": 1,
