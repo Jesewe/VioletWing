@@ -15,7 +15,7 @@ logger = Logger.get_logger(__name__)
 class ConfigManager:
     """Thread-safe configuration manager for the application."""
 
-    VERSION = "v1.3.4.0"
+    VERSION = "v1.3.4.1"
     
     # Directory paths
     # Path.home() / "AppData" / ... keeps this importable on Linux/Mac during
