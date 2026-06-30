@@ -10,7 +10,7 @@ from src.utils.config_manager import ConfigManager
 from src.core.process_monitor import ProcessMonitor
 from src.gui.theme import (
     FONT_TITLE, FONT_SUBTITLE, FONT_SECTION_TITLE, FONT_SECTION_DESCRIPTION,
-    FONT_ITEM_LABEL, FONT_ITEM_DESCRIPTION, FONT_WIDGET,
+    FONT_ITEM_LABEL, FONT_ITEM_DESCRIPTION, FONT_WIDGET, FONT_TABULAR,
     COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY, COLOR_ACCENT_FG,
     COLOR_BUTTON_DANGER_FG,
     SECTION_STYLE, BUTTON_STYLE_PRIMARY, BUTTON_STYLE_DANGER,
@@ -192,7 +192,7 @@ def _stat_banner_item(parent, title, value, color, icon_file=None):
         icon_label(item, icon_file, size=(18, 18), padx=(0, 8))
     ctk.CTkLabel(item, text=f"{title}:", font=FONT_ITEM_LABEL,
                  text_color=COLOR_TEXT_SECONDARY).pack(side="left", padx=(0, 6))
-    val_label = ctk.CTkLabel(item, text=value, font=FONT_WIDGET, text_color=color)
+    val_label = ctk.CTkLabel(item, text=value, font=FONT_TABULAR, text_color=color)
     val_label.pack(side="left")
     return item, val_label
 
