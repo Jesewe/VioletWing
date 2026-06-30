@@ -4,11 +4,11 @@ import argparse
 import logging
 from pathlib import Path
 
-from classes.logger import Logger, LoggerConfig
-from classes.config_manager import ConfigManager
-from classes.process_monitor import ProcessMonitor
+from src.utils.logger import Logger, LoggerConfig
+from src.utils.config_manager import ConfigManager
+from src.core.process_monitor import ProcessMonitor
 
-from gui.main_window import MainWindow
+from src.gui.main_window import MainWindow
 
 def setup_signal_handlers(logger):
     """Set up signal handlers for graceful shutdown."""
