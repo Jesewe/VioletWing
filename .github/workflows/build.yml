@@ -45,15 +45,10 @@ jobs:
           pyinstaller --noconfirm \
             --onefile \
             --windowed \
-            --icon "src/assets/icon.ico" \
+            --icon "assets/assets/icon.ico" \
             --name "VioletWing" \
             --version-file "version.txt" \
-            --add-data "classes;classes/" \
-            --add-data "gui;gui/" \
-            --add-data "constants;constants/" \
-            --add-data "src/assets/*;src/assets" \
-            --add-data "src/fonts/*;src/fonts" \
-            --add-data "src/*;src" \
+            --add-data "assets;assets/" \
             "main.py"
 
       - name: Upload Build Artifact

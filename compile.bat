@@ -5,7 +5,7 @@ setlocal enabledelayedexpansion
 set "PROJECT_NAME=VioletWing"
 set "MAIN_FILE=main.py"
 set "OUTPUT_DIR=output"
-set "ICON_FILE=src\assets\icon.ico"
+set "ICON_FILE=assets\assets\icon.ico"
 set "VERSION_FILE=version.txt"
 
 :: Display header
@@ -56,9 +56,11 @@ if not exist "%VERSION_FILE%" (
 
 :: Cleaning up cache directories...
 echo Cleaning up cache directories...
-if exist "classes\__pycache__" rmdir /s /q "classes\__pycache__" 2>nul
-if exist "gui\__pycache__" rmdir /s /q "gui\__pycache__" 2>nul
-if exist "constants\__pycache__" rmdir /s /q "constants\__pycache__" 2>nul
+if exist "src\core\__pycache__" rmdir /s /q "src\core\__pycache__" 2>nul
+if exist "src\features\__pycache__" rmdir /s /q "src\features\__pycache__" 2>nul
+if exist "src\utils\__pycache__" rmdir /s /q "src\utils\__pycache__" 2>nul
+if exist "src\gui\__pycache__" rmdir /s /q "src\gui\__pycache__" 2>nul
+if exist "src\constants\__pycache__" rmdir /s /q "src\constants\__pycache__" 2>nul
 if exist "__pycache__" rmdir /s /q "__pycache__" 2>nul
 
 :: Find and remove all __pycache__ directories
@@ -87,12 +89,7 @@ set "PYINSTALLER_CMD=pyinstaller --noconfirm --onefile --windowed"
 set "PYINSTALLER_CMD=%PYINSTALLER_CMD% %ICON_PARAM%"
 set "PYINSTALLER_CMD=%PYINSTALLER_CMD% --name "%PROJECT_NAME%""
 set "PYINSTALLER_CMD=%PYINSTALLER_CMD% %VERSION_PARAM%"
-set "PYINSTALLER_CMD=%PYINSTALLER_CMD% --add-data "classes;classes/""
-set "PYINSTALLER_CMD=%PYINSTALLER_CMD% --add-data "gui;gui/""
-set "PYINSTALLER_CMD=%PYINSTALLER_CMD% --add-data "constants;constants/""
-set "PYINSTALLER_CMD=%PYINSTALLER_CMD% --add-data "src/assets/*;src/assets""
-set "PYINSTALLER_CMD=%PYINSTALLER_CMD% --add-data "src/fonts/*;src/fonts""
-set "PYINSTALLER_CMD=%PYINSTALLER_CMD% --add-data "src/*;src""
+set "PYINSTALLER_CMD=%PYINSTALLER_CMD% --add-data "assets;assets/""
 set "PYINSTALLER_CMD=%PYINSTALLER_CMD% --distpath "%OUTPUT_DIR%""
 set "PYINSTALLER_CMD=%PYINSTALLER_CMD% "%MAIN_FILE%""
 
