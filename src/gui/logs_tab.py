@@ -3,7 +3,8 @@ import re
 from src.gui.icon_loader import icon_label
 import os
 from src.utils.logger import Logger
-from src.gui.theme import (FONT_TITLE, FONT_SUBTITLE, FONT_WIDGET, FONT_LOG,
+from src.gui.theme import (
+    COLOR_BACKGROUND,FONT_TITLE, FONT_SUBTITLE, FONT_WIDGET, FONT_LOG,
                        COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY, SECTION_STYLE)
 
 # Detects the start of a level-tagged log line, e.g. [INFO] or [ERROR].

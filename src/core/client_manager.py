@@ -74,6 +74,7 @@ class ClientManager:
 
         if not self.memory_manager.is_initialized:
             if not self.memory_manager.initialize():
+                self.main_window.update_client_status("Inactive", "#ef4444")
                 messagebox.showerror(
                     "Initialisation Error",
                     "Failed to initialise memory manager. Check logs for details.",
@@ -97,6 +98,7 @@ class ClientManager:
         if any_started:
             self.main_window.update_client_status("Active", "#22c55e")
         else:
+            self.main_window.update_client_status("Inactive", "#ef4444")
             logger.warning("No features enabled in General settings.")
             messagebox.showwarning(
                 "No Features Enabled",
