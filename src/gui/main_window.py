@@ -471,6 +471,8 @@ class MainWindow:
             return
         if self.current_view and self.current_view in self.tab_frames:
             self.tab_frames[self.current_view].pack_forget()
+            # Force Tkinter to redraw the exposed area immediately to prevent artifacts
+            self.root.update_idletasks()
         self.current_view = view_key
         self.set_active_nav(view_key)
         if view_key in self.tab_frames:
@@ -516,6 +518,7 @@ class MainWindow:
             on_success()
 
     def _on_offsets_failed(self) -> None:
+        self.update_client_status("Inactive", "#ef4444")
         AppModal.error(self.root, "Offset Error", "Failed to fetch offsets. Check logs.")
         if hasattr(self, "loading_label"):
             self.loading_label.configure(text="Failed to load offsets.", text_color="#ef4444")

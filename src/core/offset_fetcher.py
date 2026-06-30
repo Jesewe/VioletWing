@@ -187,6 +187,7 @@ def _run_cs2_dumper(output_dir: str) -> bool:
             stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
+            cwd=output_dir,
             text=True,
             startupinfo=startupinfo,
             creationflags=creationflags,

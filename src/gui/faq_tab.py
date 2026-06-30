@@ -1,6 +1,7 @@
 import customtkinter as ctk
 from src.gui.icon_loader import icon_label, load_icon
 from src.gui.theme import (
+    COLOR_BACKGROUND,
     FONT_TITLE, FONT_SUBTITLE, FONT_SECTION_TITLE, FONT_SECTION_DESCRIPTION, FONT_ITEM_LABEL,
     FONT_ITEM_DESCRIPTION, FONT_WIDGET,
     COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY, COLOR_ACCENT_FG,
@@ -114,7 +115,7 @@ def populate_faq(main_window, frame):
     # Scrollable container for FAQ content
     faq_container = ctk.CTkScrollableFrame(
         frame,
-        fg_color="transparent"
+        fg_color=COLOR_BACKGROUND
     )
     faq_container.pack(fill="both", expand=True, padx=40, pady=40)
     

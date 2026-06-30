@@ -3,6 +3,7 @@ from src.gui.icon_loader import icon_label
 from src.gui.components import create_section_frame, create_section_header, build_item_scaffold
 from src.gui.keybind_recorder import KeybindRecorder
 from src.gui.theme import (
+    COLOR_BACKGROUND,
     FONT_TITLE, FONT_SUBTITLE,
     COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY,
     ENTRY_STYLE, SLIDER_STYLE,
@@ -13,7 +14,7 @@ def populate_additional_settings(main_window, frame):
     # Create a scrollable container for settings
     settings = ctk.CTkScrollableFrame(
         frame,
-        fg_color="transparent"
+        fg_color=COLOR_BACKGROUND
     )
     settings.pack(fill="both", expand=True, padx=40, pady=40)
     

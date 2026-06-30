@@ -3,6 +3,7 @@ from src.gui.icon_loader import icon_label
 from src.gui.components import create_section_frame, create_section_header, build_item_scaffold
 from src.gui.keybind_recorder import KeybindRecorder
 from src.gui.theme import (
+    COLOR_BACKGROUND,
     FONT_TITLE, FONT_SUBTITLE, COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY,
     CHECKBOX_STYLE, ENTRY_STYLE, COMBOBOX_STYLE,
 )
@@ -13,7 +14,7 @@ def populate_trigger_settings(main_window, frame):
     """Populate the settings frame with configuration options."""
     main_window.trigger_settings_frame = frame
     
-    settings = ctk.CTkScrollableFrame(frame, fg_color="transparent")
+    settings = ctk.CTkScrollableFrame(frame, fg_color=COLOR_BACKGROUND)
     settings.pack(fill="both", expand=True, padx=40, pady=40)
     
     # Configure faster scroll speed by modifying canvas

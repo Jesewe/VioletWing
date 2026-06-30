@@ -5,6 +5,7 @@ from src.utils.config_manager import COLOR_CHOICES
 from src.utils.utility import Utility
 from src.gui.components import create_section_frame, create_section_header, build_item_scaffold
 from src.gui.theme import (
+    COLOR_BACKGROUND,
     CHECKBOX_STYLE, COMBOBOX_STYLE, ENTRY_STYLE, SLIDER_STYLE,
     FONT_TITLE, FONT_SUBTITLE, COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY,
     COLOR_BORDER, COLOR_WIDGET_BORDER,
@@ -17,7 +18,7 @@ _COMBO_VALUES = list(COLOR_CHOICES.keys()) + ["Custom"]
 
 def populate_overlay_settings(main_window, frame):
     """Populate the Overlay Settings tab."""
-    settings = ctk.CTkScrollableFrame(frame, fg_color="transparent")
+    settings = ctk.CTkScrollableFrame(frame, fg_color=COLOR_BACKGROUND)
     settings.pack(fill="both", expand=True, padx=40, pady=40)
     settings._parent_canvas.configure(yscrollincrement=5)
 

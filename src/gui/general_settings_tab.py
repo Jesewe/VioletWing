@@ -5,6 +5,7 @@ import src.utils.profile_manager as ProfileManager
 from src.gui.components import create_section_frame, create_section_header, build_item_scaffold
 from src.gui.modal import AppModal
 from src.gui.theme import (
+    COLOR_BACKGROUND,
     FONT_TITLE, FONT_SUBTITLE, FONT_ITEM_LABEL, FONT_ITEM_DESCRIPTION, FONT_WIDGET,
     COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY,
     CHECKBOX_STYLE, COMBOBOX_STYLE,
@@ -24,7 +25,7 @@ PROGRAM_SETTINGS = [
 ]
 
 def populate_general_settings(main_window, frame):
-    settings = ctk.CTkScrollableFrame(frame, fg_color="transparent")
+    settings = ctk.CTkScrollableFrame(frame, fg_color=COLOR_BACKGROUND)
     settings.pack(fill="both", expand=True, padx=40, pady=40)
     settings._parent_canvas.configure(yscrollincrement=5)
 
