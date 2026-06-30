@@ -1,8 +1,14 @@
 import json
 import random
+import sys
+import os
+import shutil
+import tempfile
+import subprocess
 
 from src.utils.logger import Logger
 from src.utils.utility import Utility
+from src.utils.config_manager import ConfigManager
 import src.utils.error_codes as EC
 
 logger = Logger.get_logger(__name__)
@@ -41,11 +47,53 @@ def _load() -> list[dict]:
 
     return valid
 
-def pick() -> dict | None:
-    """Return a random ghost profile, or None if none are available."""
+def setup_disguise() -> dict | None:
+    """Check if disguise is enabled, clone executable if needed, and return the ghost profile."""
+    config = ConfigManager.load_config()
+    if not config["General"].get("Disguise", False):
+        return None
+
     ghosts = _load()
     if not ghosts:
         return None
+
+    is_frozen = getattr(sys, 'frozen', False)
+    if not is_frozen:
+        # Not a compiled executable, just return a random ghost
+        ghost = random.choice(ghosts)
+        logger.debug("Running from source. Selected ghost profile: %s", ghost["name"])
+        return ghost
+
+    current_exe = sys.executable
+    current_name = os.path.basename(current_exe).lower()
+
+    # Check if we are already running as one of the ghosts
+    for g in ghosts:
+        expected_name = f"{g['name']}.exe".lower()
+        if current_name == expected_name:
+            logger.debug("Already disguised as %s", g['name'])
+            return g
+
+    # We are not disguised. Pick a random one and relaunch.
     ghost = random.choice(ghosts)
-    logger.debug("Selected ghost profile: %s (id=%s)", ghost["name"], ghost["id"])
-    return ghost
+    target_name = f"{ghost['name']}.exe"
+    temp_dir = tempfile.gettempdir()
+    target_exe = os.path.join(temp_dir, target_name)
+
+    try:
+        # If the target already exists (e.g., from a previous run), we overwrite it.
+        # But if it's currently running, copy2 might raise PermissionError.
+        # We can try to delete it first, and if it fails, pick another ghost or ignore.
+        try:
+            if os.path.exists(target_exe):
+                os.remove(target_exe)
+        except Exception:
+            pass # Try to copy anyway, shutil.copy2 might succeed or raise below
+
+        shutil.copy2(current_exe, target_exe)
+        logger.info("Disguising as %s. Relaunching %s...", ghost['name'], target_exe)
+        subprocess.Popen([target_exe] + sys.argv[1:])
+        sys.exit(0)
+    except Exception as exc:
+        logger.error("Failed to copy/relaunch for disguise: %s", exc)
+        return ghost # fallback to returning the ghost for partial disguise
