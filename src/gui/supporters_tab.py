@@ -6,6 +6,7 @@ import requests
 from src.utils.logger import Logger
 from src.utils.utility import Utility
 from src.gui.theme import (FONT_TITLE, FONT_SUBTITLE, FONT_SECTION_TITLE, FONT_ITEM_LABEL, FONT_ITEM_DESCRIPTION,
+                         FONT_TABULAR, FONT_WIDGET,
                          COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY, COLOR_BACKGROUND, COLOR_BORDER,
                          COLOR_WIDGET_BACKGROUND, SECTION_STYLE)
 
@@ -429,16 +430,16 @@ def populate_supporters(main_window, frame):
 
         # Error message
         ctk.CTkLabel(
-            content, text="Failed to Load Data", font=("Chivo", 22, "bold"), 
+            content, text="Failed to Load Data", font=FONT_SECTION_TITLE,
             text_color=("#DC2626", "#F87171")
         ).pack(pady=(20, 8))
         ctk.CTkLabel(
-            content, text=error_msg, font=("Gambetta", 16), 
+            content, text=error_msg, font=FONT_ITEM_LABEL,
             text_color=("#991B1B", "#EF4444"), wraplength=500
         ).pack()
         ctk.CTkLabel(
-            content, text="Please check your internet connection and try again", 
-            font=("Gambetta", 14), text_color=("#B91C1C", "#FCA5A5")
+            content, text="Please check your internet connection and try again",
+            font=FONT_ITEM_DESCRIPTION, text_color=("#B91C1C", "#FCA5A5")
         ).pack(pady=(12, 0))
     
     # Start fetching supporters data

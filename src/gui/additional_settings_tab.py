@@ -4,7 +4,7 @@ from src.gui.components import create_section_frame, create_section_header, buil
 from src.gui.keybind_recorder import KeybindRecorder
 from src.gui.theme import (
     COLOR_BACKGROUND,
-    FONT_TITLE, FONT_SUBTITLE,
+    FONT_TITLE, FONT_SUBTITLE, FONT_TABULAR,
     COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY,
     ENTRY_STYLE, SLIDER_STYLE,
 )
@@ -106,7 +106,7 @@ def create_setting_item(parent, label_text, description, widget_type, key, main_
         initial_val = main_window.noflash.config["NoFlash"].get(key, 0.0)
         value_label = ctk.CTkLabel(
             value_frame, text=f"{initial_val:.1f}",
-            font=ENTRY_STYLE["font"], text_color=COLOR_TEXT_PRIMARY,
+            font=FONT_TABULAR, text_color=COLOR_TEXT_PRIMARY,
         )
         value_label.pack(expand=True)
 
