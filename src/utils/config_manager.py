@@ -66,6 +66,8 @@ class ConfigManager:
             "draw_health_numbers": True,
             "use_transliteration": False,
             "draw_nicknames":     True,
+            "draw_weapon_names":  True,
+            "weapon_color_hex":   "#FFFFFF",
             "draw_teammates":     False,
             "teammate_color_hex": "#00FFFF",
         },

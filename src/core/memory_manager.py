@@ -224,6 +224,54 @@ class MemoryManager:
             logger.debug(f"Failed to get weapon type: {e}")
             return "Rifles"
 
+    def get_entity_weapon_name(self, pawn_ptr: int) -> str:
+        """Get the specific weapon name for an arbitrary player pawn."""
+        try:
+            if not pawn_ptr:
+                return ""
+
+            weapon_services = self.read_longlong(pawn_ptr + self.m_pWeaponServices)
+            if not weapon_services:
+                return ""
+
+            weapon_handle = self.read_longlong(weapon_services + self.m_hActiveWeapon)
+            if not weapon_handle:
+                return ""
+
+            weapon_index = weapon_handle & 0x7FFF
+            ent_list = self.read_longlong(self.client_base + self.dwEntityList)
+            list_entry = self.read_longlong(ent_list + 8 * (weapon_index >> 9) + 16)
+            if not list_entry:
+                return ""
+
+            weapon_entity = self.read_longlong(list_entry + 112 * (weapon_index & 0x1FF))
+            if not weapon_entity:
+                return ""
+
+            item_id = self.read_int(
+                weapon_entity + self.m_AttributeManager + self.m_Item + self.m_iItemDefinitionIndex
+            ) & 0xFFFF
+
+            if item_id >= 500 or item_id in (42, 59):
+                return "Knife"
+                
+            weapon_names = {
+                1: "Desert Eagle", 2: "Dual Berettas", 3: "Five-SeveN", 4: "Glock-18",
+                7: "AK-47", 8: "AUG", 9: "AWP", 10: "FAMAS", 11: "G3SG1", 13: "Galil AR",
+                14: "M249", 16: "M4A4", 17: "MAC-10", 19: "P90", 23: "MP5-SD", 24: "UMP-45",
+                25: "XM1014", 26: "Bizon", 27: "MAG-7", 28: "Negev", 29: "Sawed-Off",
+                30: "Tec-9", 31: "Zeus x27", 32: "P2000", 33: "MP7", 34: "MP9", 35: "Nova",
+                36: "P250", 38: "SCAR-20", 39: "SG 553", 40: "SSG 08", 43: "Flashbang",
+                44: "HE Grenade", 45: "Smoke Grenade", 46: "Molotov", 47: "Decoy",
+                48: "Incendiary", 49: "C4 Explosive", 60: "M4A1-S", 61: "USP-S",
+                63: "CZ75-Auto", 64: "R8 Revolver",
+            }
+            return weapon_names.get(item_id, "Unknown")
+
+        except Exception as e:
+            logger.debug(f"Failed to get entity weapon name: {e}")
+            return ""
+
     def write_float(self, address: int, value: float) -> None:
         """Write a float to memory."""
         try:
