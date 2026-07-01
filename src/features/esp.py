@@ -171,37 +171,38 @@ class CS2Overlay(BaseFeature):
             frame_time = 1.0 / max(self.target_fps, 1)
             start = time.time()
             try:
-                if not is_game_active():
-                    sleep(MAIN_LOOP_SLEEP)
-                    continue
+                game_active = is_game_active()
 
-                vm = self.memory_manager.read_floats(
-                    self.memory_manager.client_dll_base + self.memory_manager.dwViewMatrix, 16
-                )
-                local_ctrl = self.memory_manager.read_longlong(
-                    self.memory_manager.client_dll_base + self.memory_manager.dwLocalPlayerController
-                )
-                if local_ctrl:
-                    local_pawn = self.memory_manager.read_longlong(
-                        self.memory_manager.client_dll_base + self.memory_manager.dwLocalPlayerPawn
+                if game_active:
+                    vm = self.memory_manager.read_floats(
+                        self.memory_manager.client_dll_base + self.memory_manager.dwViewMatrix, 16
                     )
-                    self.local_team = (
-                        self.memory_manager.read_int(local_pawn + self.memory_manager.m_iTeamNum)
-                        if local_pawn else None
+                    local_ctrl = self.memory_manager.read_longlong(
+                        self.memory_manager.client_dll_base + self.memory_manager.dwLocalPlayerController
                     )
+                    if local_ctrl:
+                        local_pawn = self.memory_manager.read_longlong(
+                            self.memory_manager.client_dll_base + self.memory_manager.dwLocalPlayerPawn
+                        )
+                        self.local_team = (
+                            self.memory_manager.read_int(local_pawn + self.memory_manager.m_iTeamNum)
+                            if local_pawn else None
+                        )
+                    else:
+                        self.local_team = None
+                    entities = list(self._iterate_entities(local_ctrl))
                 else:
-                    self.local_team = None
-
-                entities = list(self._iterate_entities(local_ctrl))
+                    entities = []
 
                 if overlay.overlay_loop():
                     overlay.begin_drawing()
-                    self._draw_watermark()
-                    for ent in entities:
-                        is_teammate = self.local_team is not None and ent.team == self.local_team
-                        if is_teammate and not self.draw_teammates:
-                            continue
-                        self._draw_entity(ent, vm, is_teammate)
+                    if game_active:
+                        self._draw_watermark()
+                        for ent in entities:
+                            is_teammate = self.local_team is not None and ent.team == self.local_team
+                            if is_teammate and not self.draw_teammates:
+                                continue
+                            self._draw_entity(ent, vm, is_teammate)
                     overlay.end_drawing()
 
                 elapsed = time.time() - start
