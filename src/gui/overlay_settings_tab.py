@@ -7,7 +7,7 @@ from src.gui.components import create_section_frame, create_section_header, buil
 from src.gui.theme import (
     COLOR_BACKGROUND,
     CHECKBOX_STYLE, COMBOBOX_STYLE, ENTRY_STYLE, SLIDER_STYLE,
-    FONT_TITLE, FONT_SUBTITLE, COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY,
+    FONT_TITLE, FONT_SUBTITLE, FONT_TABULAR, COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY,
     COLOR_BORDER, COLOR_WIDGET_BORDER,
 )
 
@@ -132,8 +132,10 @@ def _make_slider(parent, key, main_window):
     value_frame.pack_propagate(False)
 
     initial = main_window.overlay.config["Overlay"].get(key, 1.0)
-    value_label = ctk.CTkLabel(value_frame, text=f"{initial:.1f}",
-                                font=ENTRY_STYLE["font"], text_color=COLOR_TEXT_PRIMARY)
+    value_label = ctk.CTkLabel(
+        value_frame, text=f"{initial:.1f}",
+        font=FONT_TABULAR, text_color=COLOR_TEXT_PRIMARY,
+    )
     value_label.pack(expand=True)
 
     def _on_change(val):
