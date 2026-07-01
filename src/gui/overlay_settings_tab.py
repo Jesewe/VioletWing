@@ -61,6 +61,7 @@ def populate_overlay_settings(main_window, frame):
             "description": "Settings for displaying player details",
             "settings": [
                 ("Draw Health Numbers", "checkbox", "draw_health_numbers",  "Show health numbers above players"),
+                ("Draw Armor Bar",      "checkbox", "draw_armor",           "Show armor bars below players"),
                 ("Draw Nicknames",      "checkbox", "draw_nicknames",       "Display player nicknames"),
                 ("Draw Weapon Names",   "checkbox", "draw_weapon_names",    "Display player's active weapon name"),
                 ("Use Transliteration", "checkbox", "use_transliteration",  "Transliterate non-Latin characters"),

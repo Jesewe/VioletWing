@@ -64,6 +64,7 @@ class ConfigManager:
             "box_color_hex":      "#FFA500",
             "text_color_hex":     "#FFFFFF",
             "draw_health_numbers": True,
+            "draw_armor":         True,
             "use_transliteration": False,
             "draw_nicknames":     True,
             "draw_weapon_names":  True,

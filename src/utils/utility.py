@@ -113,6 +113,7 @@ class Utility:
                 "m_vecAbsOrigin":         get_field("CGameSceneNode", "m_vecAbsOrigin"),
                 "m_pWeaponServices":      get_field("C_BasePlayerPawn", "m_pWeaponServices"),
                 "m_iIDEntIndex":          get_field("C_CSPlayerPawn", "m_iIDEntIndex"),
+                "m_ArmorValue":           get_field("C_CSPlayerPawn", "m_ArmorValue"),
                 "m_flFlashBangTime":      get_field("C_CSPlayerPawnBase", "m_flFlashBangTime"),
                 "m_hPlayerPawn":          get_field("CCSPlayerController", "m_hPlayerPawn"),
                 "m_iszPlayerName":        get_field("CBasePlayerController", "m_iszPlayerName"),

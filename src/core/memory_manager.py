@@ -25,6 +25,7 @@ class MemoryManager:
         self.dwLocalPlayerController = None
         self.dwViewMatrix = None
         self.m_iHealth = None
+        self.m_ArmorValue = None
         self.m_iTeamNum = None
         self.m_iIDEntIndex = None
         self.m_iszPlayerName = None
@@ -111,6 +112,7 @@ class MemoryManager:
             self.dwViewMatrix = extracted["dwViewMatrix"]
             self.jump = extracted["jump"]
             self.m_iHealth = extracted["m_iHealth"]
+            self.m_ArmorValue = extracted["m_ArmorValue"]
             self.m_iTeamNum = extracted["m_iTeamNum"]
             self.m_iIDEntIndex = extracted["m_iIDEntIndex"]
             self.m_iszPlayerName = extracted["m_iszPlayerName"]

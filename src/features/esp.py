@@ -49,6 +49,7 @@ class Entity:
         self.head_pos2d: Optional[Dict[str, float]] = None
         self.name: str = ""
         self.health: int = 0
+        self.armor: int = 0
         self.team: int = -1
         self.pos: Dict[str, float] = {"x": 0.0, "y": 0.0, "z": 0.0}
         self.dormant: bool = True
@@ -58,6 +59,7 @@ class Entity:
     def update(self, use_transliteration: bool, skeleton_enabled: bool, draw_weapon_names: bool = False) -> bool:
         try:
             self.health = self.memory_manager.read_int(self.pawn_ptr + self.memory_manager.m_iHealth)
+            self.armor = self.memory_manager.read_int(self.pawn_ptr + self.memory_manager.m_ArmorValue)
             if self.health <= 0:
                 return False
             self.dormant = bool(self.memory_manager.read_int(self.pawn_ptr + self.memory_manager.m_bDormant))
@@ -136,6 +138,7 @@ class CS2Overlay(BaseFeature):
         self.draw_nicknames = s["draw_nicknames"]
         self.draw_weapon_names = s.get("draw_weapon_names", True)
         self.weapon_color_hex = s.get("weapon_color_hex", "#FFFFFF")
+        self.draw_armor = s.get("draw_armor", True)
         self.draw_teammates = s["draw_teammates"]
         self.teammate_color_hex = s["teammate_color_hex"]
         self.target_fps = int(s["target_fps"])
@@ -153,6 +156,10 @@ class CS2Overlay(BaseFeature):
 
         try:
             overlay.overlay_init("Counter-Strike 2", fps=0)
+            try:
+                self.custom_font = overlay.load_font("C:\\Windows\\Fonts\\Consolas.ttf", 12)
+            except Exception:
+                self.custom_font = None
         except Exception as exc:
             Logger.error_code(EC.E3005, "%s", exc)
             self.is_running = False
@@ -283,8 +290,8 @@ class CS2Overlay(BaseFeature):
                 logger.debug("Failed to read entity %d: %s", i, exc)
 
     def _draw_watermark(self) -> None:
-        text = f"VioletWing | {overlay.get_fps()}"
-        size = 14
+        text = f"VioletWing | {overlay.get_fps()} fps"
+        size = 16
         pad_x, pad_y = 8, 5
         w = overlay.measure_text(text, size)
         sw = overlay.get_screen_width()
@@ -315,6 +322,23 @@ class CS2Overlay(BaseFeature):
         except Exception as exc:
             logger.error("Error drawing skeleton: %s", exc)
 
+    def _draw_custom_text(self, text: str, x: float, y: float, size: int, color: tuple) -> None:
+        if getattr(self, "custom_font", None):
+            overlay.draw_font(self.custom_font, text, x, y, size, 1, color)
+        else:
+            overlay.draw_text(text, x, y, size, color)
+
+    def _measure_custom_text(self, text: str, size: int) -> float:
+        if getattr(self, "custom_font", None):
+            try:
+                # pyMeow doesn't easily expose measure_font, so fallback to default measure_text
+                # It's usually close enough for horizontal centering.
+                return overlay.measure_text(text, size)
+            except Exception:
+                return overlay.measure_text(text, size)
+        else:
+            return overlay.measure_text(text, size)
+
     def _draw_entity(self, ent: Entity, vm: list, is_teammate: bool = False) -> None:
         try:
             head3d = ent.bone_pos(7)
@@ -331,59 +355,85 @@ class CS2Overlay(BaseFeature):
             h = pos2d["y"] - head2d["y"]
             w = h / 2
             hw = w / 2
+            
+            top_left = {"x": head2d["x"] - hw, "y": head2d["y"] - hw / 2}
+            bottom_right = {"x": head2d["x"] + hw, "y": head2d["y"] + h}
+            
             color = self._color_teammate if is_teammate else self._color_box
+
+            if self.draw_snaplines:
+                self._render_player_tracers(head2d)
+
+            if self.enable_box:
+                self._render_player_box(top_left, bottom_right, color)
 
             if self.enable_skeleton and ent.all_bones_pos_3d:
                 self._draw_skeleton(ent, vm, color)
 
-            if self.draw_snaplines:
-                overlay.draw_line(
-                    self.screen_width / 2, self.screen_height / 2,
-                    head2d["x"], head2d["y"], self._color_snapline, 2,
-                )
-
-            if self.enable_box:
-                overlay.draw_rectangle(
-                    head2d["x"] - hw, head2d["y"] - hw / 2, w, h + hw / 2, Colors.grey
-                )
-                overlay.draw_rectangle_lines(
-                    head2d["x"] - hw, head2d["y"] - hw / 2, w, h + hw / 2,
-                    color, self.box_line_thickness,
-                )
-
-            if self.draw_nicknames:
-                fs = 11
-                nw = overlay.measure_text(ent.name, fs)
-                overlay.draw_text(ent.name, head2d["x"] - nw // 2,
-                                  head2d["y"] - hw / 2 - 15, fs, self._color_text)
-
-            if self.draw_weapon_names and ent.weapon_name:
-                fs = 11
-                ww = overlay.measure_text(ent.weapon_name, fs)
-                # Position it directly under the box (head2d["y"] + h - hw / 2 is the bottom of the bounding box)
-                # Box bottom Y = head2d["y"] - hw / 2 + h + hw / 2 = head2d["y"] + h
-                box_bottom = head2d["y"] - hw / 2 + (h + hw / 2)
-                overlay.draw_text(ent.weapon_name, head2d["x"] - ww // 2,
-                                  box_bottom + 4, fs, getattr(self, "_color_weapon", self._color_text))
-
-            bar_w, bar_m = 4, 2
-            bx = head2d["x"] - hw - bar_w - bar_m
-            by = head2d["y"] - hw / 2
-            bh = h + hw / 2
-            overlay.draw_rectangle(bx, by, bar_w, bh, self._color_health_bg)
-            pct = max(0, min(ent.health, 100))
-            fill_h = (pct / 100.0) * bh
-            fill_color = (
-                self._color_health_low if pct <= 20
-                else self._color_health_mid if pct <= 50
-                else self._color_health_ok
-            )
-            overlay.draw_rectangle(bx, by + (bh - fill_h), bar_w, fill_h, fill_color)
-
-            if self.draw_health_numbers:
-                overlay.draw_text(
-                    str(ent.health), int(bx - 25), int(by + bh / 2 - 5),
-                    10, self._color_text,
-                )
+            self._render_player_bars(ent, top_left, bottom_right)
+            self._render_player_flags(ent, top_left, bottom_right, color)
         except Exception as exc:
             logger.debug("Error drawing entity: %s", exc)
+
+    def _render_player_box(self, tl: dict, br: dict, color: tuple) -> None:
+        width = br["x"] - tl["x"]
+        height = br["y"] - tl["y"]
+        overlay.draw_rectangle_lines(tl["x"], tl["y"], width, height, color, self.box_line_thickness)
+
+    def _render_player_bars(self, ent: Entity, tl: dict, br: dict) -> None:
+        bg_color = overlay.get_color("black")
+        
+        # Health Bar
+        if self.draw_health_numbers: # Using this toggle for health bar for now
+            x_start = tl["x"] - 6
+            x_end = x_start + 2
+            y_start = tl["y"]
+            y_end = br["y"]
+            height = y_end - y_start
+            
+            pct = max(0, min(ent.health, 100))
+            filled_height = height * (pct / 100.0)
+            
+            overlay.draw_rectangle(x_start - 1, y_start - 1, 4, height + 2, bg_color)
+            overlay.draw_rectangle(x_start, y_end - filled_height, 2, filled_height, overlay.get_color("#64FF64"))
+            
+            if pct < 100:
+                txt = str(ent.health)
+                fs = 10
+                tw = self._measure_custom_text(txt, fs)
+                # Centered over the health bar unfilled space
+                self._draw_custom_text(txt, (x_start + x_end) / 2 - tw / 2, y_end - filled_height - fs / 2 - 4, fs, self._color_text)
+
+        # Armor Bar
+        if getattr(self, "draw_armor", False):
+            y_start = br["y"] + 4
+            y_end = y_start + 2
+            x_start = tl["x"]
+            x_end = br["x"]
+            width = x_end - x_start
+            
+            pct_armor = max(0, min(ent.armor, 100))
+            filled_width = width * (pct_armor / 100.0)
+            
+            overlay.draw_rectangle(x_start - 1, y_start - 1, width + 2, 4, bg_color)
+            overlay.draw_rectangle(x_start, y_start, filled_width, 2, overlay.get_color("#9696FF"))
+
+    def _render_player_flags(self, ent: Entity, tl: dict, br: dict, color: tuple) -> None:
+        if self.draw_nicknames:
+            name = f"{ent.name} (Bot)" if getattr(ent, "is_bot", False) else ent.name
+            fs = 12
+            nw = self._measure_custom_text(name, fs)
+            self._draw_custom_text(name, (tl["x"] + br["x"]) / 2 - nw / 2, tl["y"] - 20, fs, self._color_text)
+
+        if self.draw_weapon_names and ent.weapon_name:
+            fs = 12
+            ww = self._measure_custom_text(ent.weapon_name, fs)
+            # Offset by 10 below if armor is drawn, else 6
+            y_offset = br["y"] + (10 if getattr(self, "draw_armor", False) else 6)
+            self._draw_custom_text(ent.weapon_name, (tl["x"] + br["x"]) / 2 - ww / 2, y_offset, fs, getattr(self, "_color_weapon", self._color_text))
+
+    def _render_player_tracers(self, head2d: dict) -> None:
+        screen_w = overlay.get_screen_width()
+        screen_h = overlay.get_screen_height()
+        overlay.draw_line(screen_w / 2, screen_h / 2,
+                          head2d["x"], head2d["y"], self._color_snapline, 2)
