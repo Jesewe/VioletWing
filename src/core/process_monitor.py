@@ -14,6 +14,9 @@ _CS2_PROCESS = "cs2.exe"
 # reusing the same object across polls gives accurate readings from poll 2 onward.
 _cs2_proc_cache: psutil.Process | None = None
 _self_proc: psutil.Process = psutil.Process(os.getpid())
+# psutil.cpu_percent sums across all logical cores (e.g. 200% on a 2-core burst);
+# normalizing here keeps callers in the [0, 100] range Windows Task Manager uses.
+_CPU_COUNT: int = max(psutil.cpu_count(logical=True) or 1, 1)
 
 class ProcessMonitor:
     @staticmethod
@@ -37,7 +40,7 @@ class ProcessMonitor:
 
             return {
                 "pid":         _cs2_proc_cache.pid,
-                "cpu_percent": _cs2_proc_cache.cpu_percent(interval=None),
+                "cpu_percent": _cs2_proc_cache.cpu_percent(interval=None) / _CPU_COUNT,
                 "mem_mb":      _cs2_proc_cache.memory_info().rss / (1024 ** 2),
             }
         except Exception:
@@ -49,7 +52,7 @@ class ProcessMonitor:
         """Return {cpu_percent, mem_mb} for the VioletWing process itself."""
         try:
             return {
-                "cpu_percent": _self_proc.cpu_percent(interval=None),
+                "cpu_percent": _self_proc.cpu_percent(interval=None) / _CPU_COUNT,
                 "mem_mb":      _self_proc.memory_info().rss / (1024 ** 2),
             }
         except Exception:
