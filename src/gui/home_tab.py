@@ -96,7 +96,8 @@ def populate_dashboard(main_window, frame):
                      text_color=COLOR_TEXT_SECONDARY, anchor="w", width=140).pack(side="left")
         val_frame = ctk.CTkFrame(row, fg_color="transparent")
         val_frame.pack(side="left")
-        ctk.CTkLabel(val_frame, text="Loading...", font=FONT_ITEM_DESCRIPTION,
+        # placeholder uses FONT_TABULAR so the column width is stable before first poll
+        ctk.CTkLabel(val_frame, text="Loading...", font=FONT_TABULAR,
                      text_color=COLOR_TEXT_SECONDARY).pack(side="left")
         return val_frame
 
@@ -115,7 +116,7 @@ def start_process_monitor_poll(main_window) -> None:
     _RAM_COLOR_AMBER = "#f59e0b"
     _RAM_COLOR_RED   = COLOR_BUTTON_DANGER_FG[1]
 
-    def _set_chips(frame_attr: str, chips: list[tuple[str, str]]) -> None:
+    def _set_chips(frame_attr: str, chips: list[tuple]) -> None:
         def _apply():
             try:
                 frame = getattr(main_window, frame_attr, None)
@@ -123,10 +124,13 @@ def start_process_monitor_poll(main_window) -> None:
                     return
                 for child in frame.winfo_children():
                     child.destroy()
-                for text, color in chips:
+                for chip in chips:
+                    text, color = chip[0], chip[1]
+                    # optional third element overrides font for numeric labels (tabular-nums)
+                    font = chip[2] if len(chip) > 2 else FONT_ITEM_DESCRIPTION
                     ctk.CTkLabel(
                         frame, text=text,
-                        font=FONT_ITEM_DESCRIPTION,
+                        font=font,
                         text_color=color, anchor="w",
                     ).pack(side="left")
             except Exception:
@@ -143,11 +147,11 @@ def start_process_monitor_poll(main_window) -> None:
                 _set_chips("_sysmon_cs2_frame", [
                     (f"PID {cs2['pid']}",          COLOR_TEXT_SECONDARY),
                     _dot(),
-                    (f"{cs2['mem_mb']:.0f}",        COLOR_TEXT_PRIMARY),
-                    (" MB",                          COLOR_TEXT_SECONDARY),
+                    (f"{cs2['mem_mb']:.0f}",        COLOR_TEXT_PRIMARY,    FONT_TABULAR),
+                    (" MB",                          COLOR_TEXT_SECONDARY,  FONT_ITEM_DESCRIPTION),
                     _dot(),
-                    (f"{cs2['cpu_percent']:.1f}%",  COLOR_TEXT_PRIMARY),
-                    (" CPU",                         COLOR_TEXT_SECONDARY),
+                    (f"{cs2['cpu_percent']:.1f}%",  COLOR_TEXT_PRIMARY,    FONT_TABULAR),
+                    (" CPU",                         COLOR_TEXT_SECONDARY,  FONT_ITEM_DESCRIPTION),
                 ])
             else:
                 _set_chips("_sysmon_cs2_frame", [("Not running", _RAM_COLOR_RED)])
@@ -155,11 +159,11 @@ def start_process_monitor_poll(main_window) -> None:
             slf = ProcessMonitor.get_self_stats()
             if slf:
                 _set_chips("_sysmon_self_frame", [
-                    (f"{slf['mem_mb']:.0f}",         COLOR_TEXT_PRIMARY),
-                    (" MB",                           COLOR_TEXT_SECONDARY),
+                    (f"{slf['mem_mb']:.0f}",         COLOR_TEXT_PRIMARY,    FONT_TABULAR),
+                    (" MB",                           COLOR_TEXT_SECONDARY,  FONT_ITEM_DESCRIPTION),
                     _dot(),
-                    (f"{slf['cpu_percent']:.1f}%",   COLOR_TEXT_PRIMARY),
-                    (" CPU",                          COLOR_TEXT_SECONDARY),
+                    (f"{slf['cpu_percent']:.1f}%",   COLOR_TEXT_PRIMARY,    FONT_TABULAR),
+                    (" CPU",                          COLOR_TEXT_SECONDARY,  FONT_ITEM_DESCRIPTION),
                 ])
             else:
                 _set_chips("_sysmon_self_frame", [("-", COLOR_TEXT_SECONDARY)])
@@ -173,10 +177,10 @@ def start_process_monitor_poll(main_window) -> None:
                     _RAM_COLOR_OK
                 )
                 _set_chips("_sysmon_ram_frame", [
-                    (f"{ram['used_gb']:.1f}",         COLOR_TEXT_PRIMARY),
-                    (f" / {ram['total_gb']:.1f} GB",  COLOR_TEXT_SECONDARY),
+                    (f"{ram['used_gb']:.1f}",         COLOR_TEXT_PRIMARY,   FONT_TABULAR),
+                    (f" / {ram['total_gb']:.1f} GB",  COLOR_TEXT_SECONDARY, FONT_ITEM_DESCRIPTION),
                     _dot(),
-                    (f"{pct:.0f}%",                   pct_color),
+                    (f"{pct:.0f}%",                   pct_color,            FONT_TABULAR),
                 ])
             else:
                 _set_chips("_sysmon_ram_frame", [("-", COLOR_TEXT_SECONDARY)])
