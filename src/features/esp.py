@@ -53,8 +53,9 @@ class Entity:
         self.pos: Dict[str, float] = {"x": 0.0, "y": 0.0, "z": 0.0}
         self.dormant: bool = True
         self.all_bones_pos_3d: Optional[Dict[int, Dict[str, float]]] = None
+        self.weapon_name: str = ""
 
-    def update(self, use_transliteration: bool, skeleton_enabled: bool) -> bool:
+    def update(self, use_transliteration: bool, skeleton_enabled: bool, draw_weapon_names: bool = False) -> bool:
         try:
             self.health = self.memory_manager.read_int(self.pawn_ptr + self.memory_manager.m_iHealth)
             if self.health <= 0:
@@ -67,6 +68,7 @@ class Entity:
             raw = self.memory_manager.read_string(self.controller_ptr + self.memory_manager.m_iszPlayerName)
             self.name = Utility.transliterate(raw) if use_transliteration else raw
             self.all_bones_pos_3d = self._all_bone_pos() if skeleton_enabled else None
+            self.weapon_name = self.memory_manager.get_entity_weapon_name(self.pawn_ptr) if draw_weapon_names else ""
             return True
         except Exception as exc:
             logger.debug("Entity update failed: %s", exc)
@@ -132,6 +134,8 @@ class CS2Overlay(BaseFeature):
         self.draw_health_numbers = s["draw_health_numbers"]
         self.use_transliteration = s["use_transliteration"]
         self.draw_nicknames = s["draw_nicknames"]
+        self.draw_weapon_names = s.get("draw_weapon_names", True)
+        self.weapon_color_hex = s.get("weapon_color_hex", "#FFFFFF")
         self.draw_teammates = s["draw_teammates"]
         self.teammate_color_hex = s["teammate_color_hex"]
         self.target_fps = int(s["target_fps"])
@@ -216,6 +220,7 @@ class CS2Overlay(BaseFeature):
             self._color_box        = overlay.get_color(self.box_color_hex)
             self._color_teammate   = overlay.get_color(self.teammate_color_hex)
             self._color_text       = overlay.get_color(self.text_color_hex)
+            self._color_weapon     = overlay.get_color(self.weapon_color_hex)
             self._color_snapline   = overlay.get_color(self.snaplines_color_hex)
             self._color_health_bg  = overlay.get_color("black")
             self._color_health_low = overlay.get_color("red")
@@ -224,7 +229,7 @@ class CS2Overlay(BaseFeature):
             self._color_panel_bg   = overlay.fade_color(overlay.get_color("#1A1A1A"), 0.72)
             self._color_panel_border = overlay.fade_color(overlay.get_color("#606060"), 0.82)
         except Exception:
-            self._color_box = self._color_teammate = self._color_text = None
+            self._color_box = self._color_teammate = self._color_text = self._color_weapon = None
             self._color_snapline = self._color_health_bg = None
             self._color_health_low = self._color_health_mid = self._color_health_ok = None
             self._color_panel_bg = self._color_panel_border = None
@@ -272,7 +277,7 @@ class CS2Overlay(BaseFeature):
                 if not pawn:
                     continue
                 ent = Entity(ctrl, pawn, self.memory_manager)
-                if ent.update(self.use_transliteration, self.enable_skeleton):
+                if ent.update(self.use_transliteration, self.enable_skeleton, self.draw_weapon_names):
                     yield ent
             except Exception as exc:
                 logger.debug("Failed to read entity %d: %s", i, exc)
@@ -351,6 +356,15 @@ class CS2Overlay(BaseFeature):
                 nw = overlay.measure_text(ent.name, fs)
                 overlay.draw_text(ent.name, head2d["x"] - nw // 2,
                                   head2d["y"] - hw / 2 - 15, fs, self._color_text)
+
+            if self.draw_weapon_names and ent.weapon_name:
+                fs = 11
+                ww = overlay.measure_text(ent.weapon_name, fs)
+                # Position it directly under the box (head2d["y"] + h - hw / 2 is the bottom of the bounding box)
+                # Box bottom Y = head2d["y"] - hw / 2 + h + hw / 2 = head2d["y"] + h
+                box_bottom = head2d["y"] - hw / 2 + (h + hw / 2)
+                overlay.draw_text(ent.weapon_name, head2d["x"] - ww // 2,
+                                  box_bottom + 4, fs, getattr(self, "_color_weapon", self._color_text))
 
             bar_w, bar_m = 4, 2
             bx = head2d["x"] - hw - bar_w - bar_m

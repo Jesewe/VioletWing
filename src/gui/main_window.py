@@ -634,7 +634,7 @@ class MainWindow:
         s = config["Overlay"]
         checkboxes = (
             "enable_box", "enable_skeleton", "draw_snaplines",
-            "draw_health_numbers", "draw_nicknames", "use_transliteration", "draw_teammates",
+            "draw_health_numbers", "draw_nicknames", "draw_weapon_names", "use_transliteration", "draw_teammates",
         )
         for key in checkboxes:
             val = self.ui_bridge.get_value(key)
@@ -656,6 +656,7 @@ class MainWindow:
             "box_color_hex":       "#FFA500",
             "snaplines_color_hex": "#FFFFFF",
             "text_color_hex":      "#FFFFFF",
+            "weapon_color_hex":    "#FFFFFF",
             "teammate_color_hex":  "#00FFFF",
         }
         for key, default in color_defaults.items():
@@ -706,7 +707,7 @@ class MainWindow:
         s = config["Overlay"]
         checkboxes = (
             "enable_box", "enable_skeleton", "draw_snaplines",
-            "draw_health_numbers", "draw_nicknames", "use_transliteration", "draw_teammates",
+            "draw_health_numbers", "draw_nicknames", "draw_weapon_names", "use_transliteration", "draw_teammates",
         )
         for key in checkboxes:
             self.ui_bridge.set_value(key, s.get(key, False))
@@ -714,7 +715,7 @@ class MainWindow:
         for key, fmt in (("box_line_thickness", ".1f"), ("target_fps", ".0f")):
             self.ui_bridge.set_value(key, s.get(key, 0))
 
-        for key in ("box_color_hex", "snaplines_color_hex", "text_color_hex", "teammate_color_hex"):
+        for key in ("box_color_hex", "snaplines_color_hex", "text_color_hex", "weapon_color_hex", "teammate_color_hex"):
             self.ui_bridge.set_value(key, s.get(key, "#FFFFFF").upper())
 
     def _load_additional(self, config: dict) -> None:
