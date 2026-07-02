@@ -6,11 +6,11 @@ from src.gui.theme import (
     COLOR_BACKGROUND,
     FONT_TITLE, FONT_SUBTITLE, FONT_TABULAR,
     COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY,
-    ENTRY_STYLE, SLIDER_STYLE,
+    ENTRY_STYLE,
 )
 
 def populate_additional_settings(main_window, frame):
-    """Populate the additional settings frame with configuration options for Bunnyhop and NoFlash."""
+    """Populate the additional settings frame with configuration options for Bunnyhop."""
     # Create a scrollable container for settings
     settings = ctk.CTkScrollableFrame(
         frame,
@@ -38,87 +38,33 @@ def populate_additional_settings(main_window, frame):
     # Subtitle providing context
     subtitle_label = ctk.CTkLabel(
         title_frame,
-        text="Configure Bunnyhop and NoFlash preferences",
+        text="Configure Bunnyhop preferences",
         font=FONT_SUBTITLE,
         text_color=COLOR_TEXT_SECONDARY,
         anchor="w"
     )
     subtitle_label.pack(side="left", padx=(20, 0), pady=(10, 0))
     
-    # Create sections for Bunnyhop and NoFlash settings
+    # Create sections for Bunnyhop settings
     create_bunnyhop_config_section(main_window, settings)
-    create_noflash_config_section(main_window, settings)
 
 def create_bunnyhop_config_section(main_window, parent):
     section = create_section_frame(parent)
     create_section_header(section, "Bunnyhop Configuration", "Control Bunnyhop behavior",
                           icon_file="paw_icon.png")
-    settings_list = [
-        ("Jump Key",   "keybind", "JumpKey",   "Click and press any key or mouse button"),
-        ("Jump Delay", "entry",   "JumpDelay", "Delay between jumps in seconds (0.01-0.5)"),
-    ]
-    for i, (label_text, widget_type, key, description) in enumerate(settings_list):
-        create_setting_item(section, label_text, description, widget_type, key, main_window,
-                            is_last=(i == len(settings_list) - 1))
 
-def create_noflash_config_section(main_window, parent):
-    section = create_section_frame(parent)
-    create_section_header(section, "NoFlash Configuration", "Control flash suppression behavior",
-                          icon_file="sun_icon.png")
-    settings_list = [
-        ("Flash Suppression Strength", "slider", "FlashSuppressionStrength",
-         "Strength of flash suppression (0.0-100.0)"),
-    ]
-    for i, (label_text, widget_type, key, description) in enumerate(settings_list):
-        create_setting_item(section, label_text, description, widget_type, key, main_window,
-                            is_last=(i == len(settings_list) - 1))
+    wf_key = build_item_scaffold(section, "Jump Key", "Click and press any key or mouse button")
+    initial_key = main_window.bunnyhop.config.get("Bunnyhop", {}).get("JumpKey", "space")
+    key_var = ctk.StringVar(value=initial_key)
+    recorder = KeybindRecorder(wf_key, var=key_var, on_capture=main_window.save_settings)
+    recorder.pack()
+    main_window.ui_bridge.register("JumpKey", var=key_var)
 
-def create_setting_item(parent, label_text, description, widget_type, key, main_window, is_last=False):
-    wf = build_item_scaffold(parent, label_text, description, is_last)
-
-    if widget_type == "keybind":
-        initial = main_window.bunnyhop.config.get("Bunnyhop", {}).get(key, "space")
-        var = ctk.StringVar(value=initial)
-        recorder = KeybindRecorder(wf, var=var, on_capture=main_window.save_settings)
-        recorder.pack()
-        main_window.ui_bridge.register(key, var=var)
-
-    elif widget_type == "entry":
-        widget = ctk.CTkEntry(wf, justify="center", **ENTRY_STYLE)
-        if key == "JumpDelay":
-            widget.insert(0, str(main_window.bunnyhop.config.get("Bunnyhop", {}).get("JumpDelay", 0.01)))
-        widget.bind("<FocusOut>", lambda e: main_window.save_settings())
-        widget.bind("<Return>",   lambda e: main_window.save_settings())
-        main_window.ui_bridge.register(key, widget=widget)
-        widget.pack()
-
-    elif widget_type == "slider":
-        slider_container = ctk.CTkFrame(wf, fg_color="transparent")
-        slider_container.pack()
-
-        value_frame = ctk.CTkFrame(
-            slider_container, corner_radius=8,
-            fg_color=("#e2e8f0", "#374151"), width=60, height=35,
-        )
-        value_frame.pack(side="right", padx=(15, 0))
-        value_frame.pack_propagate(False)
-
-        initial_val = main_window.noflash.config["NoFlash"].get(key, 0.0)
-        value_label = ctk.CTkLabel(
-            value_frame, text=f"{initial_val:.1f}",
-            font=FONT_TABULAR, text_color=COLOR_TEXT_PRIMARY,
-        )
-        value_label.pack(expand=True)
-
-        widget = ctk.CTkSlider(
-            slider_container,
-            from_=0.0, to=100.0, number_of_steps=1000,
-            command=lambda val: (
-                value_label.configure(text=f"{val:.1f}"),
-                main_window.save_settings(show_message=False),
-            ),
-            **SLIDER_STYLE,
-        )
-        widget.set(initial_val)
-        widget.pack(side="left")
-        main_window.ui_bridge.register(key, widget=widget, value_label=value_label, fmt=".1f")
+    wf_delay = build_item_scaffold(section, "Jump Delay", "Delay between jumps in seconds (0.01-0.5)",
+                                   is_last=True)
+    delay_entry = ctk.CTkEntry(wf_delay, justify="center", **ENTRY_STYLE)
+    delay_entry.insert(0, str(main_window.bunnyhop.config.get("Bunnyhop", {}).get("JumpDelay", 0.01)))
+    delay_entry.bind("<FocusOut>", lambda e: main_window.save_settings())
+    delay_entry.bind("<Return>",   lambda e: main_window.save_settings())
+    main_window.ui_bridge.register("JumpDelay", widget=delay_entry)
+    delay_entry.pack()

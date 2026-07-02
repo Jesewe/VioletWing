@@ -21,7 +21,7 @@ class CS2NoFlash(BaseFeature):
         self.load_configuration()
 
     def load_configuration(self) -> None:
-        self.suppression = self.config.get("NoFlash", {}).get("FlashSuppressionStrength", 0.0)
+        pass  # Flash duration is always written as 0.0 to fully suppress
 
     def update_config(self, config: dict) -> None:
         self.config = config
@@ -42,8 +42,6 @@ class CS2NoFlash(BaseFeature):
 
         local_player_addr = self.local_player_address
         flash_offset = self.flash_duration_offset
-
-        last_player_position = 0
         failed_reads = 0
         max_failed_reads = 10
         reinit_backoff = 0.1
@@ -57,8 +55,6 @@ class CS2NoFlash(BaseFeature):
                     logged_waiting = False
                     continue
 
-                suppression = self.suppression
-
                 player_position = read_longlong(local_player_addr)
 
                 if player_position and player_position > 0:
@@ -71,10 +67,8 @@ class CS2NoFlash(BaseFeature):
 
                     try:
                         current = self.memory_manager.pm.read_float(player_position + flash_offset)
-                        if abs(current - suppression) > 1e-6:
-                            self.memory_manager.write_float(
-                                player_position + flash_offset, suppression
-                            )
+                        if current != 0.0:
+                            self.memory_manager.write_float(player_position + flash_offset, 0.0)
                     except Exception as exc:
                         logger.debug("Error writing flash duration: %s", exc)
                         failed_reads += 1
@@ -107,7 +101,7 @@ class CS2NoFlash(BaseFeature):
     def _init_player(self) -> bool:
         if (
             self.memory_manager.dwLocalPlayerPawn is None
-            or self.memory_manager.m_flFlashBangTime is None
+            or self.memory_manager.m_flFlashDuration is None
         ):
             Logger.error_code(EC.E3003)
             return False
@@ -115,7 +109,7 @@ class CS2NoFlash(BaseFeature):
             self.local_player_address = (
                 self.memory_manager.client_base + self.memory_manager.dwLocalPlayerPawn
             )
-            self.flash_duration_offset = self.memory_manager.m_flFlashBangTime
+            self.flash_duration_offset = self.memory_manager.m_flFlashDuration
             return True
         except Exception as exc:
             logger.error("Error setting local player address: %s", exc)

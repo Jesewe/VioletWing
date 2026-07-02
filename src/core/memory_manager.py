@@ -35,7 +35,7 @@ class MemoryManager:
         self.m_pGameSceneNode = None
         self.m_bDormant = None
         self.m_hPlayerPawn = None
-        self.m_flFlashBangTime = None
+        self.m_flFlashDuration = None
         self.m_pBoneArray = None
         self.jump = None
         self.m_AttributeManager = None
@@ -132,7 +132,7 @@ class MemoryManager:
             self.m_pGameSceneNode = extracted["m_pGameSceneNode"]
             self.m_bDormant = extracted["m_bDormant"]
             self.m_hPlayerPawn = extracted["m_hPlayerPawn"]
-            self.m_flFlashBangTime = extracted["m_flFlashBangTime"]
+            self.m_flFlashDuration = extracted["m_flFlashDuration"]
             self.m_pBoneArray = extracted["m_pBoneArray"]
             self.m_AttributeManager = extracted["m_AttributeManager"]
             self.m_iItemDefinitionIndex = extracted["m_iItemDefinitionIndex"]
