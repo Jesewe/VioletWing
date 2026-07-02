@@ -633,7 +633,7 @@ class MainWindow:
     def _save_overlay(self, config: dict) -> None:
         s = config["Overlay"]
         checkboxes = (
-            "enable_box", "enable_skeleton", "draw_snaplines",
+            "enable_box", "enable_skeleton", "draw_snaplines", "draw_bomb_timer",
             "draw_health_numbers", "draw_armor", "draw_nicknames", "draw_weapon_names", "use_transliteration", "draw_teammates",
         )
         for key in checkboxes:
@@ -663,6 +663,10 @@ class MainWindow:
             val = self.ui_bridge.get_value(key)
             if val is not None:
                 s[key] = val.upper() if re.match(r'^#[0-9A-Fa-f]{6}$', val) else default
+                
+        pos = self.ui_bridge.get_value("bomb_timer_position")
+        if pos is not None:
+            s["bomb_timer_position"] = pos
 
     def _save_additional(self, config: dict) -> None:
         bh = config.setdefault("Bunnyhop", {})
@@ -706,7 +710,7 @@ class MainWindow:
     def _load_overlay(self, config: dict) -> None:
         s = config["Overlay"]
         checkboxes = (
-            "enable_box", "enable_skeleton", "draw_snaplines",
+            "enable_box", "enable_skeleton", "draw_snaplines", "draw_bomb_timer",
             "draw_health_numbers", "draw_armor", "draw_nicknames", "draw_weapon_names", "use_transliteration", "draw_teammates",
         )
         for key in checkboxes:
@@ -717,6 +721,8 @@ class MainWindow:
 
         for key in ("box_color_hex", "snaplines_color_hex", "text_color_hex", "weapon_color_hex", "teammate_color_hex"):
             self.ui_bridge.set_value(key, s.get(key, "#FFFFFF").upper())
+            
+        self.ui_bridge.set_value("bomb_timer_position", s.get("bomb_timer_position", "Center-Left"))
 
     def _load_additional(self, config: dict) -> None:
         bh = config.get("Bunnyhop", {})

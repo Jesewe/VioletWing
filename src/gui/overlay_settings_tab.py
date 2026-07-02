@@ -67,6 +67,15 @@ def populate_overlay_settings(main_window, frame):
                 ("Use Transliteration", "checkbox", "use_transliteration",  "Transliterate non-Latin characters"),
             ],
         },
+        "Game Information": {
+            "icon": "layer_group_icon.png",
+            "title": "Game Information",
+            "description": "Settings for global game information",
+            "settings": [
+                ("Draw Bomb Timer",  "checkbox", "draw_bomb_timer",      "Show the C4 timer when planted"),
+                ("Timer Position",   "combobox", "bomb_timer_position",  "Select position for the bomb timer"),
+            ],
+        },
         "Team": {
             "icon": "users_icon.png",
             "title": "Team Configuration",
@@ -105,6 +114,7 @@ def _create_setting_item(parent, label_text, description, widget_type, key, main
         "checkbox": _make_checkbox,
         "slider":   _make_slider,
         "color":    _make_color_picker,
+        "combobox": _make_combobox,
     }
     if widget_type in creators:
         creators[widget_type](wf, key, main_window)
@@ -116,6 +126,32 @@ def _make_checkbox(parent, key, main_window):
         command=lambda: main_window.save_settings(show_message=False),
         **CHECKBOX_STYLE,
     ).pack()
+    main_window.ui_bridge.register(key, var=var)
+
+def _make_combobox(parent, key, main_window):
+    if key == "bomb_timer_position":
+        values = ["Center-Left", "Center-Right", "Center-Top", "Center-Bottom"]
+    else:
+        values = ["Option 1", "Option 2"]
+        
+    initial = main_window.overlay.config["Overlay"].get(key, values[0])
+    var = ctk.StringVar(value=initial)
+    
+    combo = ctk.CTkComboBox(
+        parent, values=values, state="readonly", justify="center",
+        variable=var, width=150, height=35, corner_radius=8,
+        fg_color=COMBOBOX_STYLE["fg_color"],
+        text_color=COMBOBOX_STYLE["text_color"],
+        font=COMBOBOX_STYLE["font"],
+        dropdown_font=COMBOBOX_STYLE["dropdown_font"],
+        button_color=COMBOBOX_STYLE["button_color"],
+        button_hover_color=COMBOBOX_STYLE["button_hover_color"],
+        dropdown_fg_color=COMBOBOX_STYLE["dropdown_fg_color"],
+        dropdown_hover_color=COMBOBOX_STYLE["dropdown_hover_color"],
+        dropdown_text_color=COMBOBOX_STYLE["dropdown_text_color"],
+        command=lambda _: main_window.save_settings(show_message=False)
+    )
+    combo.pack(side="right", padx=(15, 0))
     main_window.ui_bridge.register(key, var=var)
 
 def _make_slider(parent, key, main_window):

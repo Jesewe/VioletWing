@@ -63,6 +63,8 @@ class ConfigManager:
             "box_line_thickness": 1.0,
             "box_color_hex":      "#FFA500",
             "text_color_hex":     "#FFFFFF",
+            "draw_bomb_timer":    False,
+            "bomb_timer_position": "Center-Left",
             "draw_health_numbers": True,
             "draw_armor":         True,
             "use_transliteration": False,

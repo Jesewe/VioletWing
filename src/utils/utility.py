@@ -105,6 +105,9 @@ class Utility:
                 "dwLocalPlayerPawn":      client.get("dwLocalPlayerPawn"),
                 "dwLocalPlayerController": client.get("dwLocalPlayerController"),
                 "dwViewMatrix":           client.get("dwViewMatrix"),
+                "dwPlantedC4":            client.get("dwPlantedC4"),
+                "dwGameRules":            client.get("dwGameRules"),
+                "dwGlobalVars":           client.get("dwGlobalVars"),
                 "jump":                   buttons.get("jump"),
                 "m_iHealth":              get_field("C_BaseEntity", "m_iHealth"),
                 "m_iTeamNum":             get_field("C_BaseEntity", "m_iTeamNum"),
@@ -123,6 +126,14 @@ class Utility:
                 "m_Item":                 get_field("C_AttributeContainer", "m_Item"),
                 "m_iItemDefinitionIndex": get_field("C_EconItemView", "m_iItemDefinitionIndex"),
                 "m_pBoneArray":           get_field("CSkeletonInstance", "m_modelState") + 0x80,
+                "m_bBombTicking":         get_field("C_PlantedC4", "m_bBombTicking"),
+                "m_flC4Blow":             get_field("C_PlantedC4", "m_flC4Blow"),
+                "m_bBeingDefused":        get_field("C_PlantedC4", "m_bBeingDefused"),
+                "m_flDefuseCountDown":    get_field("C_PlantedC4", "m_flDefuseCountDown"),
+                "m_bHasExploded":         get_field("C_PlantedC4", "m_bHasExploded"),
+                "m_bBombDefused":         get_field("C_PlantedC4", "m_bBombDefused"),
+                "m_nBombSite":            get_field("C_PlantedC4", "m_nBombSite"),
+                "m_bBombPlanted":         get_field("C_CSGameRules", "m_bBombPlanted"),
             }
 
             missing = [k for k, v in extracted.items() if v is None]
