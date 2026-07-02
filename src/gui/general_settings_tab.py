@@ -12,18 +12,6 @@ from src.gui.theme import (
     BUTTON_STYLE_PRIMARY, BUTTON_STYLE_DANGER,
 )
 
-FEATURE_SETTINGS = [
-    ("Enable Trigger",  "checkbox", "Trigger",      "Toggle the trigger bot feature"),
-    ("Enable Overlay",  "checkbox", "Overlay",       "Toggle the ESP overlay feature"),
-    ("Enable Bunnyhop", "checkbox", "Bunnyhop",      "Toggle the bunnyhop feature"),
-    ("Enable Noflash",  "checkbox", "Noflash",       "Toggle the noflash feature"),
-]
-
-PROGRAM_SETTINGS = [
-    ("Detailed Logs",   "checkbox", "DetailedLogs",  "Show verbose debug log instead of the standard log"),
-    ("Enable Disguise", "checkbox", "Disguise",       "Disguise the program as another app on next startup"),
-]
-
 def populate_general_settings(main_window, frame):
     settings = ctk.CTkScrollableFrame(frame, fg_color=COLOR_BACKGROUND)
     settings.pack(fill="both", expand=True, padx=40, pady=40)
@@ -47,18 +35,23 @@ def _create_features_section(main_window, parent):
     create_section_header(section, "Feature Configuration",
                           "Enable or disable main application features",
                           icon_file="sliders_icon.png")
-    for i, (label, widget, key, desc) in enumerate(FEATURE_SETTINGS):
-        _create_checkbox_item(section, label, desc, key, main_window,
-                              is_last=(i == len(FEATURE_SETTINGS) - 1))
+    
+    wf = build_item_scaffold(section, "Enable Features", "", is_last=True)
+    
+    _create_checkbox_item(wf, "Trigger", "Trigger", main_window)
+    _create_checkbox_item(wf, "Overlay", "Overlay", main_window)
+    _create_checkbox_item(wf, "Bunnyhop", "Bunnyhop", main_window)
+    _create_checkbox_item(wf, "Noflash", "Noflash", main_window)
 
 def _create_program_section(main_window, parent):
     section = create_section_frame(parent)
     create_section_header(section, "Program Settings",
                           "Configure core program behaviour and disguise",
                           icon_file="user_secret_icon.png")
-    for i, (label, widget, key, desc) in enumerate(PROGRAM_SETTINGS):
-        _create_checkbox_item(section, label, desc, key, main_window,
-                              is_last=(i == len(PROGRAM_SETTINGS) - 1))
+    
+    wf_prog = build_item_scaffold(section, "Program Behaviour", "", is_last=False)
+    _create_checkbox_item(wf_prog, "Detailed Logs", "DetailedLogs", main_window)
+    _create_checkbox_item(wf_prog, "Enable Disguise", "Disguise", main_window)
 
     wf = build_item_scaffold(section, "Active Profile",
                              "The program this instance is currently disguised as.",
@@ -226,10 +219,10 @@ def _delete_selected_profile(main_window) -> None:
         AppModal.error(main_window.root, "Delete Failed",
                        f"Could not delete profile '{name}'. Check logs.")
 
-def _create_checkbox_item(parent, label_text, description, key, main_window, is_last=False):
-    wf = build_item_scaffold(parent, label_text, description, is_last)
+def _create_checkbox_item(parent, label_text, key, main_window):
     var = ctk.BooleanVar(value=main_window.triggerbot.config["General"].get(key, False))
-    ctk.CTkCheckBox(wf, text="", variable=var,
-                    command=lambda: main_window.save_settings(show_message=False),
-                    **CHECKBOX_STYLE).pack()
+    cb = ctk.CTkCheckBox(parent, text=label_text, variable=var,
+                         command=lambda: main_window.save_settings(show_message=False),
+                         **CHECKBOX_STYLE)
+    cb.pack(side="left", padx=(0, 20))
     main_window.ui_bridge.register(key, var=var)
