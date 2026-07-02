@@ -51,14 +51,23 @@ def create_trigger_config_section(main_window, parent):
     create_section_header(section, "Configuration", "Control how the trigger responds",
                           icon_file="bullseye_icon.png")
 
-    settings_list = [
-        ("Trigger Key",       "keybind",  "TriggerKey",        "Click and press any key or mouse button"),
-        ("Toggle Mode",       "checkbox", "ToggleMode",        "Enable toggle mode instead of hold mode"),
-        ("Attack Teammates",  "checkbox", "AttackOnTeammates", "Allow triggering on teammates"),
-    ]
-    for i, (label, widget_type, key, desc) in enumerate(settings_list):
-        create_setting_item(section, main_window, label, desc, widget_type, key,
-                            is_last=(i == len(settings_list) - 1))
+    wf = build_item_scaffold(section, "Behavior", "Trigger key and behavior toggles", is_last=True)
+    
+    # Keybind on the left
+    initial = main_window.triggerbot.config["Trigger"].get("TriggerKey", "")
+    key_var = ctk.StringVar(value=initial)
+    recorder = KeybindRecorder(wf, var=key_var, on_capture=main_window.save_settings)
+    recorder.pack(side="left", padx=(0, 20))
+    main_window.ui_bridge.register("TriggerKey", var=key_var)
+
+    # Checkboxes to the right
+    toggle_var = ctk.BooleanVar(value=main_window.triggerbot.config["Trigger"].get("ToggleMode", False))
+    ctk.CTkCheckBox(wf, text="Toggle Mode", variable=toggle_var, command=main_window.save_settings, **CHECKBOX_STYLE).pack(side="left", padx=(0, 20))
+    main_window.ui_bridge.register("ToggleMode", var=toggle_var)
+
+    team_var = ctk.BooleanVar(value=main_window.triggerbot.config["Trigger"].get("AttackOnTeammates", False))
+    ctk.CTkCheckBox(wf, text="Attack Teammates", variable=team_var, command=main_window.save_settings, **CHECKBOX_STYLE).pack(side="left")
+    main_window.ui_bridge.register("AttackOnTeammates", var=team_var)
 
 def create_timing_settings_section(main_window, parent):
     section = create_section_frame(parent)
@@ -78,40 +87,23 @@ def create_timing_settings_section(main_window, parent):
         **COMBOBOX_STYLE,
     ).pack(side="right", padx=(0, 10))
 
-    settings_list = [
-        ("Min Shot Delay",  "entry", "ShotDelayMin",  "Minimum delay before shooting (seconds)"),
-        ("Max Shot Delay",  "entry", "ShotDelayMax",  "Maximum delay before shooting (seconds)"),
-        ("Post Shot Delay", "entry", "PostShotDelay", "Delay after shooting (seconds)"),
-    ]
-    for i, (label, widget_type, key, desc) in enumerate(settings_list):
-        create_setting_item(section, main_window, label, desc, widget_type, key,
-                            is_last=(i == len(settings_list) - 1), is_weapon_specific=True)
-    main_window.update_weapon_settings_display()
+    wf = build_item_scaffold(section, "Delays", "Delay thresholds in seconds", is_last=True)
 
-def create_setting_item(parent, main_window, label_text, description, widget_type, key,
-                        is_last=False, is_weapon_specific=False):
-    wf = build_item_scaffold(parent, label_text, description, is_last)
-    _populate_widget(wf, main_window, widget_type, key, is_weapon_specific)
-
-def _populate_widget(wf, main_window, widget_type, key, is_weapon_specific):
-    """Create the input widget directly inside the pre-built widget frame."""
-    if widget_type == "keybind":
-        initial = main_window.triggerbot.config["Trigger"].get(key, "")
-        var = ctk.StringVar(value=initial)
-        recorder = KeybindRecorder(wf, var=var, on_capture=main_window.save_settings)
-        recorder.pack()
-        main_window.ui_bridge.register(key, var=var)
-    elif widget_type == "entry":
-        widget = ctk.CTkEntry(wf, justify="center", **ENTRY_STYLE)
+    def _make_delay_column(parent, title, key, default_val):
+        col = ctk.CTkFrame(parent, fg_color="transparent")
+        ctk.CTkLabel(col, text=title, text_color=COLOR_TEXT_SECONDARY).pack()
+        
+        widget = ctk.CTkEntry(col, justify="center", **{**ENTRY_STYLE, "width": 70})
         widget.bind("<FocusOut>", lambda e: main_window.save_settings())
         widget.bind("<Return>",   lambda e: main_window.save_settings())
-        if is_weapon_specific:
-            defaults = {"ShotDelayMin": 0.01, "ShotDelayMax": 0.03, "PostShotDelay": 0.1}
-            widget.insert(0, str(defaults.get(key, "")))
-        main_window.ui_bridge.register(key, widget=widget)
+        widget.insert(0, str(default_val))
         widget.pack()
-    elif widget_type == "checkbox":
-        var = ctk.BooleanVar(value=main_window.triggerbot.config["Trigger"].get(key, False))
-        ctk.CTkCheckBox(wf, text="", variable=var,
-                        command=main_window.save_settings, **CHECKBOX_STYLE).pack()
-        main_window.ui_bridge.register(key, var=var)
+        
+        main_window.ui_bridge.register(key, widget=widget)
+        return col
+
+    _make_delay_column(wf, "Min", "ShotDelayMin", 0.01).pack(side="left", padx=(0, 15))
+    _make_delay_column(wf, "Max", "ShotDelayMax", 0.03).pack(side="left", padx=(0, 15))
+    _make_delay_column(wf, "Post", "PostShotDelay", 0.1).pack(side="left")
+
+    main_window.update_weapon_settings_display()

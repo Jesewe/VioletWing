@@ -24,72 +24,11 @@ def populate_overlay_settings(main_window, frame):
 
     create_title_section(settings)
 
-    sections = {
-        "Bounding Box": {
-            "icon": "vector_square_icon.png",
-            "title": "Bounding Box Configuration",
-            "description": "Settings for enemy bounding boxes",
-            "settings": [
-                ("Enable Bounding Box", "checkbox", "enable_box",          "Toggle visibility of enemy bounding boxes"),
-                ("Enable Skeleton ESP", "checkbox", "enable_skeleton",     "Toggle visibility of player skeletons"),
-                ("Line Thickness",      "slider",   "box_line_thickness",  "Adjust thickness of bounding box lines (0.5-5.0)"),
-                ("Box Color",           "color",    "box_color_hex",       "Select color for bounding boxes"),
-                ("Target FPS",          "slider",   "target_fps",          "Adjust target FPS for overlay rendering (60-420)"),
-            ],
-        },
-        "Snaplines": {
-            "icon": "crosshairs_icon.png",
-            "title": "Snaplines Configuration",
-            "description": "Settings for snaplines to enemies",
-            "settings": [
-                ("Draw Snaplines",  "checkbox", "draw_snaplines",      "Toggle drawing of snaplines to enemies"),
-                ("Snaplines Color", "color",    "snaplines_color_hex", "Select color for snaplines"),
-            ],
-        },
-        "Text": {
-            "icon": "font_icon.png",
-            "title": "Text Configuration",
-            "description": "Settings for text display",
-            "settings": [
-                ("Text Color", "color", "text_color_hex", "Select color for text"),
-                ("Weapon Text Color", "color", "weapon_color_hex", "Select color for weapon names"),
-            ],
-        },
-        "Player Info": {
-            "icon": "user_icon.png",
-            "title": "Player Information",
-            "description": "Settings for displaying player details",
-            "settings": [
-                ("Draw Health Numbers", "checkbox", "draw_health_numbers",  "Show health numbers above players"),
-                ("Draw Armor Bar",      "checkbox", "draw_armor",           "Show armor bars below players"),
-                ("Draw Nicknames",      "checkbox", "draw_nicknames",       "Display player nicknames"),
-                ("Draw Weapon Names",   "checkbox", "draw_weapon_names",    "Display player's active weapon name"),
-                ("Use Transliteration", "checkbox", "use_transliteration",  "Transliterate non-Latin characters"),
-            ],
-        },
-        "Game Information": {
-            "icon": "layer_group_icon.png",
-            "title": "Game Information",
-            "description": "Settings for global game information",
-            "settings": [
-                ("Draw Bomb Timer",  "checkbox", "draw_bomb_timer",      "Show the C4 timer when planted"),
-                ("Timer Position",   "combobox", "bomb_timer_position",  "Select position for the bomb timer"),
-            ],
-        },
-        "Team": {
-            "icon": "users_icon.png",
-            "title": "Team Configuration",
-            "description": "Settings for teammate display",
-            "settings": [
-                ("Draw Teammates", "checkbox", "draw_teammates",     "Show teammates on the overlay"),
-                ("Teammate Color", "color",    "teammate_color_hex", "Select color for teammates"),
-            ],
-        },
-    }
-
-    for data in sections.values():
-        _create_section(main_window, settings, data["title"], data["description"],
-                        data["settings"], data.get("icon"))
+    _create_bounding_box_section(main_window, settings)
+    _create_snaplines_section(main_window, settings)
+    _create_player_info_section(main_window, settings)
+    _create_game_info_section(main_window, settings)
+    _create_colors_and_team_section(main_window, settings)
 
 def create_title_section(parent):
     title_frame = ctk.CTkFrame(parent, fg_color="transparent")
@@ -101,32 +40,80 @@ def create_title_section(parent):
                  font=FONT_SUBTITLE, text_color=COLOR_TEXT_SECONDARY,
                  anchor="w").pack(side="left", padx=(20, 0), pady=(10, 0))
 
-def _create_section(main_window, parent, title, description, settings_list, icon_file=None):
+def _create_bounding_box_section(main_window, parent):
     section = create_section_frame(parent)
-    create_section_header(section, title, description, icon_file=icon_file)
-    for i, (label, widget_type, key, desc) in enumerate(settings_list):
-        _create_setting_item(section, label, desc, widget_type, key, main_window,
-                             is_last=(i == len(settings_list) - 1))
+    create_section_header(section, "Bounding Box Configuration", "Settings for enemy bounding boxes", icon_file="vector_square_icon.png")
 
-def _create_setting_item(parent, label_text, description, widget_type, key, main_window, is_last=False):
-    wf = build_item_scaffold(parent, label_text, description, is_last)
-    creators = {
-        "checkbox": _make_checkbox,
-        "slider":   _make_slider,
-        "color":    _make_color_picker,
-        "combobox": _make_combobox,
-    }
-    if widget_type in creators:
-        creators[widget_type](wf, key, main_window)
+    wf = build_item_scaffold(section, "Visibility & Color", "")
+    _make_checkbox(wf, "enable_box", main_window, text="Enable Bounding Box").pack(side="left", padx=(0, 15))
+    _make_color_picker(wf, "box_color_hex", main_window, swatch_only=True).pack(side="left", padx=(0, 30))
+    _make_checkbox(wf, "enable_skeleton", main_window, text="Enable Skeleton ESP").pack(side="left")
 
-def _make_checkbox(parent, key, main_window):
+    wf2 = build_item_scaffold(section, "Line Thickness", "", is_last=False)
+    _make_slider(wf2, "box_line_thickness", main_window).pack(side="right")
+
+    wf3 = build_item_scaffold(section, "Target FPS", "", is_last=True)
+    _make_fps_entry(wf3, "target_fps", main_window).pack(side="right")
+
+def _create_snaplines_section(main_window, parent):
+    section = create_section_frame(parent)
+    create_section_header(section, "Snaplines Configuration", "Settings for snaplines to enemies", icon_file="crosshairs_icon.png")
+
+    wf = build_item_scaffold(section, "Draw Snaplines", "", is_last=True)
+    _make_checkbox(wf, "draw_snaplines", main_window, text="").pack(side="left", padx=(0, 15))
+    _make_color_picker(wf, "snaplines_color_hex", main_window, swatch_only=True).pack(side="left")
+
+def _create_player_info_section(main_window, parent):
+    section = create_section_frame(parent)
+    create_section_header(section, "Player Information", "Settings for displaying player details", icon_file="user_icon.png")
+
+    wf = build_item_scaffold(section, "Details", "", is_last=True)
+    grid = ctk.CTkFrame(wf, fg_color="transparent")
+    grid.pack(side="right")
+
+    row1 = ctk.CTkFrame(grid, fg_color="transparent")
+    row1.pack(fill="x", pady=(0, 10))
+    _make_checkbox(row1, "draw_nicknames", main_window, text="Draw Nicknames").pack(side="left", padx=(0, 20))
+    _make_checkbox(row1, "draw_weapon_names", main_window, text="Draw Weapon Names").pack(side="left", padx=(0, 20))
+    _make_checkbox(row1, "use_transliteration", main_window, text="Use Transliteration").pack(side="left")
+
+    row2 = ctk.CTkFrame(grid, fg_color="transparent")
+    row2.pack(fill="x")
+    _make_checkbox(row2, "draw_health_numbers", main_window, text="Draw Health Numbers").pack(side="left", padx=(0, 20))
+    _make_checkbox(row2, "draw_armor", main_window, text="Draw Armor Bar").pack(side="left")
+
+def _create_game_info_section(main_window, parent):
+    section = create_section_frame(parent)
+    create_section_header(section, "Game Information", "Settings for global game information", icon_file="layer_group_icon.png")
+
+    wf = build_item_scaffold(section, "Bomb Timer", "", is_last=True)
+    _make_checkbox(wf, "draw_bomb_timer", main_window, text="Draw Bomb Timer").pack(side="left", padx=(0, 20))
+    _make_combobox(wf, "bomb_timer_position", main_window).pack(side="left")
+
+def _create_colors_and_team_section(main_window, parent):
+    section = create_section_frame(parent)
+    create_section_header(section, "Colors & Team", "Configure text and teammate colors", icon_file="font_icon.png")
+
+    wf = build_item_scaffold(section, "Text Colors", "", is_last=False)
+    ctk.CTkLabel(wf, text="Main Text:", text_color=COLOR_TEXT_PRIMARY).pack(side="left", padx=(0, 10))
+    _make_color_picker(wf, "text_color_hex", main_window, swatch_only=True).pack(side="left", padx=(0, 20))
+    
+    ctk.CTkLabel(wf, text="Weapon Text:", text_color=COLOR_TEXT_PRIMARY).pack(side="left", padx=(0, 10))
+    _make_color_picker(wf, "weapon_color_hex", main_window, swatch_only=True).pack(side="left")
+
+    wf2 = build_item_scaffold(section, "Team ESP", "", is_last=True)
+    _make_checkbox(wf2, "draw_teammates", main_window, text="Draw Teammates").pack(side="left", padx=(0, 20))
+    _make_color_picker(wf2, "teammate_color_hex", main_window, swatch_only=True).pack(side="left")
+
+def _make_checkbox(parent, key, main_window, text=""):
     var = ctk.BooleanVar(value=main_window.overlay.config["Overlay"].get(key, False))
-    ctk.CTkCheckBox(
-        parent, text="", variable=var,
+    cb = ctk.CTkCheckBox(
+        parent, text=text, variable=var,
         command=lambda: main_window.save_settings(show_message=False),
         **CHECKBOX_STYLE,
-    ).pack()
+    )
     main_window.ui_bridge.register(key, var=var)
+    return cb
 
 def _make_combobox(parent, key, main_window):
     if key == "bomb_timer_position":
@@ -151,8 +138,9 @@ def _make_combobox(parent, key, main_window):
         dropdown_text_color=COMBOBOX_STYLE["dropdown_text_color"],
         command=lambda _: main_window.save_settings(show_message=False)
     )
-    combo.pack(side="right", padx=(15, 0))
+    combo.pack_configure = combo.pack
     main_window.ui_bridge.register(key, var=var)
+    return combo
 
 def _make_slider(parent, key, main_window):
     if key == "target_fps":
@@ -160,7 +148,6 @@ def _make_slider(parent, key, main_window):
         return
 
     container = ctk.CTkFrame(parent, fg_color="transparent")
-    container.pack()
 
     value_frame = ctk.CTkFrame(container, corner_radius=8, fg_color=COLOR_BORDER,
                                 width=60, height=35)
@@ -183,7 +170,9 @@ def _make_slider(parent, key, main_window):
     widget.set(initial)
     widget.pack(side="left")
 
+    container.pack_configure = container.pack
     main_window.ui_bridge.register(key, widget=widget, value_label=value_label, fmt=".1f")
+    return container
 
 def _make_fps_entry(parent, key, main_window):
     """Entry-based FPS input. Accepts any integer in [60, 420] and saves on commit.
@@ -197,7 +186,6 @@ def _make_fps_entry(parent, key, main_window):
     initial = int(main_window.overlay.config["Overlay"].get(key, _FPS_MIN))
 
     container = ctk.CTkFrame(parent, fg_color="transparent")
-    container.pack()
 
     entry = ctk.CTkEntry(
         container,
@@ -238,11 +226,13 @@ def _make_fps_entry(parent, key, main_window):
     entry.bind("<FocusOut>", _commit)
     entry.bind("<Return>",   _commit)
 
+    container.pack_configure = container.pack
     # refresh_cb keeps the entry in sync when update_ui_from_config() pushes a new value.
     main_window.ui_bridge.register(
         key, widget=entry,
         refresh_cb=lambda v: (entry.delete(0, "end"), entry.insert(0, str(int(float(v))))),
     )
+    return container
 
 def _hex_to_combo_name(hex_val: str) -> str:
     """Return the named preset label for a hex value, or 'Custom' if not in the list."""
@@ -252,18 +242,12 @@ def _hex_to_combo_name(hex_val: str) -> str:
             return name
     return "Custom"
 
-def _make_color_picker(parent, key, main_window):
-    """Composite color picker: live swatch + named-preset combo + free hex entry.
-
-    The UIConfigBridge var stores the hex string directly (e.g. '#FFA500').
-    _save_overlay reads this hex and writes it straight to config, eliminating
-    the name-to-hex lookup that existed before.
-    """
+def _make_color_picker(parent, key, main_window, swatch_only=False):
+    """Composite color picker: live swatch + named-preset combo + free hex entry."""
     current_hex = main_window.overlay.config["Overlay"].get(key, "#FFFFFF").upper()
     var = ctk.StringVar(value=current_hex)
 
     row = ctk.CTkFrame(parent, fg_color="transparent")
-    row.pack()
 
     # Swatch - live colored preview square
     swatch = ctk.CTkFrame(
@@ -273,72 +257,86 @@ def _make_color_picker(parent, key, main_window):
     swatch.pack(side="left", padx=(0, 8))
     swatch.pack_propagate(False)
 
-    # Named-preset combo (read-only; "Custom" sentinel for unknown hex)
-    combo_var = ctk.StringVar(value=_hex_to_combo_name(current_hex))
-    combo = ctk.CTkComboBox(
-        row, values=_COMBO_VALUES, state="readonly",
-        justify="center", variable=combo_var,
-        width=150, height=45, corner_radius=10,
-        fg_color=COMBOBOX_STYLE["fg_color"],
-        text_color=COMBOBOX_STYLE["text_color"],
-        font=COMBOBOX_STYLE["font"],
-        dropdown_font=COMBOBOX_STYLE["dropdown_font"],
-        button_color=COMBOBOX_STYLE["button_color"],
-        button_hover_color=COMBOBOX_STYLE["button_hover_color"],
-        dropdown_fg_color=COMBOBOX_STYLE["dropdown_fg_color"],
-        dropdown_hover_color=COMBOBOX_STYLE["dropdown_hover_color"],
-        dropdown_text_color=COMBOBOX_STYLE["dropdown_text_color"],
-    )
-    combo.pack(side="left", padx=(0, 8))
+    if not swatch_only:
+        # Named-preset combo (read-only; "Custom" sentinel for unknown hex)
+        combo_var = ctk.StringVar(value=_hex_to_combo_name(current_hex))
+        combo = ctk.CTkComboBox(
+            row, values=_COMBO_VALUES, state="readonly",
+            justify="center", variable=combo_var,
+            width=150, height=45, corner_radius=10,
+            fg_color=COMBOBOX_STYLE["fg_color"],
+            text_color=COMBOBOX_STYLE["text_color"],
+            font=COMBOBOX_STYLE["font"],
+            dropdown_font=COMBOBOX_STYLE["dropdown_font"],
+            button_color=COMBOBOX_STYLE["button_color"],
+            button_hover_color=COMBOBOX_STYLE["button_hover_color"],
+            dropdown_fg_color=COMBOBOX_STYLE["dropdown_fg_color"],
+            dropdown_hover_color=COMBOBOX_STYLE["dropdown_hover_color"],
+            dropdown_text_color=COMBOBOX_STYLE["dropdown_text_color"],
+        )
+        combo.pack(side="left", padx=(0, 8))
 
-    # Hex entry - free-form input, validated on commit
-    entry = ctk.CTkEntry(
-        row, width=100, height=45, justify="center",
-        corner_radius=ENTRY_STYLE["corner_radius"],
-        border_width=ENTRY_STYLE["border_width"],
-        border_color=ENTRY_STYLE["border_color"],
-        fg_color=ENTRY_STYLE["fg_color"],
-        text_color=ENTRY_STYLE["text_color"],
-        font=ENTRY_STYLE["font"],
-        placeholder_text="#RRGGBB",
-    )
-    entry.insert(0, current_hex)
-    entry.pack(side="left")
+        # Hex entry - free-form input, validated on commit
+        entry = ctk.CTkEntry(
+            row, width=100, height=45, justify="center",
+            corner_radius=ENTRY_STYLE["corner_radius"],
+            border_width=ENTRY_STYLE["border_width"],
+            border_color=ENTRY_STYLE["border_color"],
+            fg_color=ENTRY_STYLE["fg_color"],
+            text_color=ENTRY_STYLE["text_color"],
+            font=ENTRY_STYLE["font"],
+            placeholder_text="#RRGGBB",
+        )
+        entry.insert(0, current_hex)
+        entry.pack(side="left")
 
     def _apply_hex(hex_val: str, save: bool = True) -> None:
         """Normalize and push a valid hex value to all three sub-widgets."""
         hex_val = hex_val.upper()
         var.set(hex_val)
         swatch.configure(fg_color=hex_val)
-        entry.delete(0, "end")
-        entry.insert(0, hex_val)
-        combo_var.set(_hex_to_combo_name(hex_val))
+        if not swatch_only:
+            entry.delete(0, "end")
+            entry.insert(0, hex_val)
+            combo_var.set(_hex_to_combo_name(hex_val))
         if save:
             main_window.save_settings(show_message=False)
 
     def _on_combo_select(_event=None) -> None:
+        if swatch_only: return
         name = combo_var.get()
-        # "Custom" is display-only; selecting it again does nothing.
         if name in COLOR_CHOICES:
             _apply_hex(COLOR_CHOICES[name])
 
     def _on_entry_commit(_event=None) -> None:
+        if swatch_only: return
         raw = entry.get().strip()
         if raw and not raw.startswith("#"):
             raw = "#" + raw
         if _HEX_RE.match(raw):
             _apply_hex(raw)
         else:
-            # Revert to the last accepted value and flash the border red.
             entry.delete(0, "end")
             entry.insert(0, var.get())
             entry.configure(border_color="#ef4444")
             parent.after(900, lambda: entry.configure(border_color=ENTRY_STYLE["border_color"]))
 
-    combo.configure(command=_on_combo_select)
-    entry.bind("<FocusOut>", _on_entry_commit)
-    entry.bind("<Return>",   _on_entry_commit)
+    if not swatch_only:
+        combo.configure(command=_on_combo_select)
+        entry.bind("<FocusOut>", _on_entry_commit)
+        entry.bind("<Return>",   _on_entry_commit)
 
-    # refresh_cb lets update_ui_from_config() keep the swatch/combo/entry in sync
-    # when set_value() is called externally (e.g. config reload or reset to default).
+    # Allow users to click the swatch to open a standard color picker if we removed the combo box
+    def _pick_color(_event):
+        import tkinter.colorchooser
+        color = tkinter.colorchooser.askcolor(title="Select Color", color=var.get())
+        if color and color[1]:
+            _apply_hex(color[1])
+
+    if swatch_only:
+        # Binding click to swatch frame
+        swatch.bind("<Button-1>", _pick_color)
+
+    row.pack_configure = row.pack
     main_window.ui_bridge.register(key, var=var, refresh_cb=lambda v: _apply_hex(v, save=False))
+    return row

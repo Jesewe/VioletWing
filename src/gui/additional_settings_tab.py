@@ -53,18 +53,23 @@ def create_bunnyhop_config_section(main_window, parent):
     create_section_header(section, "Bunnyhop Configuration", "Control Bunnyhop behavior",
                           icon_file="paw_icon.png")
 
-    wf_key = build_item_scaffold(section, "Jump Key", "Click and press any key or mouse button")
+    wf = build_item_scaffold(section, "Jump Settings", "", is_last=True)
+
+    # Jump Key
     initial_key = main_window.bunnyhop.config.get("Bunnyhop", {}).get("JumpKey", "space")
     key_var = ctk.StringVar(value=initial_key)
-    recorder = KeybindRecorder(wf_key, var=key_var, on_capture=main_window.save_settings)
-    recorder.pack()
+    recorder = KeybindRecorder(wf, var=key_var, on_capture=main_window.save_settings)
+    recorder.pack(side="left", padx=(0, 20))
     main_window.ui_bridge.register("JumpKey", var=key_var)
 
-    wf_delay = build_item_scaffold(section, "Jump Delay", "Delay between jumps in seconds (0.01-0.5)",
-                                   is_last=True)
-    delay_entry = ctk.CTkEntry(wf_delay, justify="center", **ENTRY_STYLE)
+    # Jump Delay
+    delay_frame = ctk.CTkFrame(wf, fg_color="transparent")
+    delay_frame.pack(side="left")
+    ctk.CTkLabel(delay_frame, text="Delay:", text_color=COLOR_TEXT_SECONDARY).pack(side="left", padx=(0, 10))
+    
+    delay_entry = ctk.CTkEntry(delay_frame, justify="center", **{**ENTRY_STYLE, "width": 70})
     delay_entry.insert(0, str(main_window.bunnyhop.config.get("Bunnyhop", {}).get("JumpDelay", 0.01)))
     delay_entry.bind("<FocusOut>", lambda e: main_window.save_settings())
     delay_entry.bind("<Return>",   lambda e: main_window.save_settings())
     main_window.ui_bridge.register("JumpDelay", widget=delay_entry)
-    delay_entry.pack()
+    delay_entry.pack(side="left")
