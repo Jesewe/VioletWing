@@ -78,9 +78,7 @@ class ConfigManager:
             "JumpKey":   "space",
             "JumpDelay": 0.01,
         },
-        "NoFlash": {
-            "FlashSuppressionStrength": 0.0,
-        },
+        "NoFlash": {},
         "GitHub": {
             "AccessToken": None,
         },

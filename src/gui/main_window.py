@@ -681,9 +681,6 @@ class MainWindow:
                 pass
 
         nf = config.setdefault("NoFlash", {})
-        st = self.ui_bridge.get_value("FlashSuppressionStrength")
-        if st is not None:
-            nf["FlashSuppressionStrength"] = st
 
     def update_ui_from_config(self) -> None:
         config = ConfigManager.load_config()
@@ -728,9 +725,7 @@ class MainWindow:
         bh = config.get("Bunnyhop", {})
         self.ui_bridge.set_value("JumpKey",   bh.get("JumpKey", "space"))
         self.ui_bridge.set_value("JumpDelay", str(bh.get("JumpDelay", 0.01)))
-        nf = config.get("NoFlash", {})
-        self.ui_bridge.set_value("FlashSuppressionStrength",
-                                 nf.get("FlashSuppressionStrength", 0.0))
+
 
     def _validate_inputs(self) -> dict[str, str]:
         errors = {}
@@ -802,9 +797,7 @@ class MainWindow:
             except ValueError:
                 errors["JumpDelay"] = "Must be a valid number."
 
-        strength = self.ui_bridge.get_value("FlashSuppressionStrength")
-        if strength is not None and not (0.0 <= strength <= 100.0):
-            errors["FlashSuppressionStrength"] = "Must be between 0.0 and 100.0."
+
 
         return errors
 
