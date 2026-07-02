@@ -133,6 +133,8 @@ class CS2Overlay(BaseFeature):
         self.box_line_thickness = s["box_line_thickness"]
         self.box_color_hex = s["box_color_hex"]
         self.text_color_hex = s["text_color_hex"]
+        self.draw_bomb_timer = s.get("draw_bomb_timer", False)
+        self.bomb_timer_position = s.get("bomb_timer_position", "Center-Left")
         self.draw_health_numbers = s["draw_health_numbers"]
         self.use_transliteration = s["use_transliteration"]
         self.draw_nicknames = s["draw_nicknames"]
@@ -198,6 +200,7 @@ class CS2Overlay(BaseFeature):
                     overlay.begin_drawing()
                     if game_active:
                         self._draw_watermark()
+                        self._draw_bomb_timer()
                         for ent in entities:
                             is_teammate = self.local_team is not None and ent.team == self.local_team
                             if is_teammate and not self.draw_teammates:
@@ -303,6 +306,78 @@ class CS2Overlay(BaseFeature):
         overlay.draw_rectangle(fx, fy, fw, fh, self._color_panel_bg)
         overlay.draw_rectangle_lines(fx, fy, fw, fh, self._color_panel_border, 1)
         overlay.draw_text(text, fx + pad_x, fy + pad_y, size, self._color_text)
+
+    def _draw_bomb_timer(self) -> None:
+        if not self.draw_bomb_timer:
+            return
+
+        bomb_info = self.memory_manager.get_bomb_info()
+        if not bomb_info or not bomb_info["is_planted"]:
+            return
+
+        curtime = bomb_info["curtime"]
+        
+        if bomb_info["is_defusing"]:
+            time_left = max(0.0, bomb_info["defuse_countdown"] - curtime)
+            action_text = "Defusing"
+        else:
+            time_left = max(0.0, bomb_info["blow_time"] - curtime)
+            action_text = "C4"
+
+        if bomb_info["is_defused"]:
+            text = f"[ BOMB DEFUSED ] Site {bomb_info['bomb_site']}"
+            color = self._color_health_ok
+        elif bomb_info["has_exploded"] or (time_left <= 0 and not bomb_info["is_defusing"]):
+            text = f"[ BOMB EXPLODED ] Site {bomb_info['bomb_site']}"
+            color = self._color_health_low
+        else:
+            if bomb_info["is_defusing"]:
+                text = f"[ DEFUSING ] Site {bomb_info['bomb_site']} | {time_left:.1f}s left"
+                color = overlay.get_color("#4A90E2") # Blue for defusing
+            else:
+                if time_left < 5.0:
+                    text = f"[ RUN! ] Site {bomb_info['bomb_site']} | {time_left:.1f}s"
+                    color = self._color_health_low
+                elif time_left < 10.0:
+                    text = f"[ NO TIME W/O KIT ] Site {bomb_info['bomb_site']} | {time_left:.1f}s"
+                    color = self._color_health_mid
+                else:
+                    text = f"[ C4 PLANTED ] Site {bomb_info['bomb_site']} | {time_left:.1f}s"
+                    color = overlay.get_color("white")
+
+        size = 18
+        pad_x, pad_y = 12, 8
+        w = overlay.measure_text(text, size)
+        sw = overlay.get_screen_width()
+        sh = overlay.get_screen_height()
+        fw = w + pad_x * 2
+        fh = size + pad_y * 2
+        
+        pos = getattr(self, "bomb_timer_position", "Center-Left")
+        if pos == "Center-Left":
+            fx = 20
+            fy = sh / 2 - fh / 2
+        elif pos == "Center-Right":
+            fx = sw - fw - 20
+            fy = sh / 2 - fh / 2
+        elif pos == "Center-Top":
+            fx = sw / 2 - fw / 2
+            fy = 20
+        elif pos == "Center-Bottom":
+            fx = sw / 2 - fw / 2
+            fy = sh - fh - 20
+        else:
+            fx = 20
+            fy = sh / 2 - fh / 2
+        
+        overlay.draw_rectangle(fx, fy, fw, fh, self._color_panel_bg)
+        overlay.draw_rectangle_lines(fx, fy, fw, fh, self._color_panel_border, 1)
+        
+        # Draw the text manually to handle custom font for bomb timer if available
+        if getattr(self, "custom_font", None):
+            overlay.draw_font(self.custom_font, text, fx + pad_x, fy + pad_y, size, 1, color)
+        else:
+            overlay.draw_text(text, fx + pad_x, fy + pad_y, size, color)
 
     def _draw_skeleton(self, ent: Entity, vm: list, color: tuple) -> None:
         if not ent.all_bones_pos_3d:

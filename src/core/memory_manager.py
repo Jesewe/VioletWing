@@ -24,6 +24,8 @@ class MemoryManager:
         self.dwLocalPlayerPawn = None
         self.dwLocalPlayerController = None
         self.dwViewMatrix = None
+        self.dwPlantedC4 = None
+        self.dwGlobalVars = None
         self.m_iHealth = None
         self.m_ArmorValue = None
         self.m_iTeamNum = None
@@ -41,6 +43,13 @@ class MemoryManager:
         self.m_Item = None
         self.m_pWeaponServices = None
         self.m_hActiveWeapon = None
+        self.m_bBombTicking = None
+        self.m_flC4Blow = None
+        self.m_bBeingDefused = None
+        self.m_flDefuseCountDown = None
+        self.m_bHasExploded = None
+        self.m_bBombDefused = None
+        self.m_nBombSite = None
 
         self._cached_weapon_handle: int = 0
         self._cached_weapon_type: str = "Rifles"
@@ -110,6 +119,9 @@ class MemoryManager:
             self.dwLocalPlayerPawn = extracted["dwLocalPlayerPawn"]
             self.dwLocalPlayerController = extracted["dwLocalPlayerController"]
             self.dwViewMatrix = extracted["dwViewMatrix"]
+            self.dwPlantedC4 = extracted["dwPlantedC4"]
+            self.dwGameRules = extracted["dwGameRules"]
+            self.dwGlobalVars = extracted["dwGlobalVars"]
             self.jump = extracted["jump"]
             self.m_iHealth = extracted["m_iHealth"]
             self.m_ArmorValue = extracted["m_ArmorValue"]
@@ -127,6 +139,14 @@ class MemoryManager:
             self.m_Item = extracted["m_Item"]
             self.m_pWeaponServices = extracted["m_pWeaponServices"]
             self.m_hActiveWeapon = extracted["m_hActiveWeapon"]
+            self.m_bBombTicking = extracted["m_bBombTicking"]
+            self.m_flC4Blow = extracted["m_flC4Blow"]
+            self.m_bBeingDefused = extracted["m_bBeingDefused"]
+            self.m_flDefuseCountDown = extracted["m_flDefuseCountDown"]
+            self.m_bHasExploded = extracted["m_bHasExploded"]
+            self.m_bBombDefused = extracted["m_bBombDefused"]
+            self.m_nBombSite = extracted["m_nBombSite"]
+            self.m_bBombPlanted = extracted["m_bBombPlanted"]
         else:
             Logger.error_code(EC.E2005)
 
@@ -140,6 +160,88 @@ class MemoryManager:
             return self.read_longlong(ent_entry + entity_offset)
         except Exception as e:
             logger.debug(f"Error reading entity: {e}")
+            return None
+
+    def get_bomb_info(self) -> dict | None:
+        """Retrieve information about the planted C4."""
+        try:
+            if not self.dwGlobalVars or not self.dwPlantedC4 or not self.dwGameRules:
+                return None
+
+            game_rules = self.read_longlong(self.client_base + self.dwGameRules)
+            if not game_rules:
+                return None
+                
+            # If the bomb isn't actively planted in the current round, ignore any stale C4 pointers
+            is_bomb_planted = bool(self.pm.read_bytes(game_rules + self.m_bBombPlanted, 1)[0])
+            if not is_bomb_planted:
+                return None
+
+            global_vars = self.read_longlong(self.client_base + self.dwGlobalVars)
+            if not global_vars:
+                return None
+            
+            # Extract current time (m_flCurrentTime is at offset 0x2C from GlobalVarsBase)
+            try:
+                data = self.pm.read_bytes(global_vars + 0x2C, 4)
+                curtime = struct.unpack('f', data)[0]
+            except Exception:
+                curtime = 0.0
+
+            planted_c4_list = self.read_longlong(self.client_base + self.dwPlantedC4)
+            if not planted_c4_list:
+                return None
+            
+            planted_c4 = self.read_longlong(planted_c4_list)
+            if not planted_c4:
+                return None
+
+            try:
+                ticking = bool(self.pm.read_bytes(planted_c4 + self.m_bBombTicking, 1)[0])
+            except Exception:
+                ticking = False
+
+            if ticking:
+                blow_time_data = self.pm.read_bytes(planted_c4 + self.m_flC4Blow, 4)
+                defuse_time_data = self.pm.read_bytes(planted_c4 + self.m_flDefuseCountDown, 4)
+                
+                blow_time = struct.unpack('f', blow_time_data)[0]
+                defuse_countdown = struct.unpack('f', defuse_time_data)[0]
+                
+                is_defusing = bool(self.pm.read_bytes(planted_c4 + self.m_bBeingDefused, 1)[0])
+                has_exploded = bool(self.pm.read_bytes(planted_c4 + self.m_bHasExploded, 1)[0])
+                is_defused = bool(self.pm.read_bytes(planted_c4 + self.m_bBombDefused, 1)[0])
+                
+                bomb_site_raw = self.read_int(planted_c4 + self.m_nBombSite)
+                bomb_site = "B" if bomb_site_raw == 1 else "A" if bomb_site_raw == 0 else "?"
+
+                # Dynamically find the correct curtime offset to ensure accurate timers across patches
+                curtime_candidates = [0x28, 0x2C, 0x30, 0x34]
+                actual_curtime = curtime
+                for offset in curtime_candidates:
+                    try:
+                        data = self.pm.read_bytes(global_vars + offset, 4)
+                        ct = struct.unpack('f', data)[0]
+                        # Valid C4 timer should be between -5s and 60s from curtime
+                        if -5.0 < (blow_time - ct) < 60.0:
+                            actual_curtime = ct
+                            break
+                    except Exception:
+                        pass
+
+                return {
+                    "is_planted": True,
+                    "curtime": actual_curtime,
+                    "blow_time": blow_time,
+                    "is_defusing": is_defusing,
+                    "defuse_countdown": defuse_countdown,
+                    "has_exploded": has_exploded,
+                    "is_defused": is_defused,
+                    "bomb_site": bomb_site
+                }
+            return None
+        except Exception as e:
+            logger.debug(f"Error reading bomb info: {e}")
             return None
 
     def get_fire_logic_data(self) -> dict | None:
