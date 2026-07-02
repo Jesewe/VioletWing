@@ -67,7 +67,6 @@ class ConfigManager:
             "bomb_timer_position": "Center-Left",
             "draw_health_numbers": True,
             "draw_armor":         True,
-            "use_transliteration": False,
             "draw_nicknames":     True,
             "draw_weapon_names":  True,
             "weapon_color_hex":   "#FFFFFF",

@@ -56,7 +56,7 @@ class Entity:
         self.all_bones_pos_3d: Optional[Dict[int, Dict[str, float]]] = None
         self.weapon_name: str = ""
 
-    def update(self, use_transliteration: bool, skeleton_enabled: bool, draw_weapon_names: bool = False) -> bool:
+    def update(self, skeleton_enabled: bool, draw_weapon_names: bool = False) -> bool:
         try:
             self.health = self.memory_manager.read_int(self.pawn_ptr + self.memory_manager.m_iHealth)
             self.armor = self.memory_manager.read_int(self.pawn_ptr + self.memory_manager.m_ArmorValue)
@@ -68,7 +68,7 @@ class Entity:
             self.team = self.memory_manager.read_int(self.pawn_ptr + self.memory_manager.m_iTeamNum)
             self.pos = self.memory_manager.read_vec3(self.pawn_ptr + self.memory_manager.m_vOldOrigin)
             raw = self.memory_manager.read_string(self.controller_ptr + self.memory_manager.m_iszPlayerName)
-            self.name = Utility.transliterate(raw) if use_transliteration else raw
+            self.name = Utility.transliterate(raw)
             self.all_bones_pos_3d = self._all_bone_pos() if skeleton_enabled else None
             self.weapon_name = self.memory_manager.get_entity_weapon_name(self.pawn_ptr) if draw_weapon_names else ""
             return True
@@ -136,7 +136,6 @@ class CS2Overlay(BaseFeature):
         self.draw_bomb_timer = s.get("draw_bomb_timer", False)
         self.bomb_timer_position = s.get("bomb_timer_position", "Center-Left")
         self.draw_health_numbers = s["draw_health_numbers"]
-        self.use_transliteration = s["use_transliteration"]
         self.draw_nicknames = s["draw_nicknames"]
         self.draw_weapon_names = s.get("draw_weapon_names", True)
         self.weapon_color_hex = s.get("weapon_color_hex", "#FFFFFF")
@@ -288,7 +287,7 @@ class CS2Overlay(BaseFeature):
                 if not pawn:
                     continue
                 ent = Entity(ctrl, pawn, self.memory_manager)
-                if ent.update(self.use_transliteration, self.enable_skeleton, self.draw_weapon_names):
+                if ent.update(self.enable_skeleton, self.draw_weapon_names):
                     yield ent
             except Exception as exc:
                 logger.debug("Failed to read entity %d: %s", i, exc)

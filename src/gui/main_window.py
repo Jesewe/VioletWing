@@ -634,7 +634,7 @@ class MainWindow:
         s = config["Overlay"]
         checkboxes = (
             "enable_box", "enable_skeleton", "draw_snaplines", "draw_bomb_timer",
-            "draw_health_numbers", "draw_armor", "draw_nicknames", "draw_weapon_names", "use_transliteration", "draw_teammates",
+            "draw_health_numbers", "draw_armor", "draw_nicknames", "draw_weapon_names", "draw_teammates",
         )
         for key in checkboxes:
             val = self.ui_bridge.get_value(key)
@@ -708,7 +708,7 @@ class MainWindow:
         s = config["Overlay"]
         checkboxes = (
             "enable_box", "enable_skeleton", "draw_snaplines", "draw_bomb_timer",
-            "draw_health_numbers", "draw_armor", "draw_nicknames", "draw_weapon_names", "use_transliteration", "draw_teammates",
+            "draw_health_numbers", "draw_armor", "draw_nicknames", "draw_weapon_names", "draw_teammates",
         )
         for key in checkboxes:
             self.ui_bridge.set_value(key, s.get(key, False))
