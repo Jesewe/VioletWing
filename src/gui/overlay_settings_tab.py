@@ -74,8 +74,7 @@ def _create_player_info_section(main_window, parent):
     row1 = ctk.CTkFrame(grid, fg_color="transparent")
     row1.pack(fill="x", pady=(0, 10))
     _make_checkbox(row1, "draw_nicknames", main_window, text="Draw Nicknames").pack(side="left", padx=(0, 20))
-    _make_checkbox(row1, "draw_weapon_names", main_window, text="Draw Weapon Names").pack(side="left", padx=(0, 20))
-    _make_checkbox(row1, "use_transliteration", main_window, text="Use Transliteration").pack(side="left")
+    _make_checkbox(row1, "draw_weapon_names", main_window, text="Draw Weapon Names").pack(side="left")
 
     row2 = ctk.CTkFrame(grid, fg_color="transparent")
     row2.pack(fill="x")
