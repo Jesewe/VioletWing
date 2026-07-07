@@ -21,7 +21,10 @@ def populate_supporters(main_window, frame):
 
     # Scrollable container
     supporters_container = ctk.CTkScrollableFrame(
-        main_container, fg_color=COLOR_BACKGROUND
+        main_container, fg_color=COLOR_BACKGROUND,
+        scrollbar_button_color=COLOR_BACKGROUND,
+        scrollbar_button_hover_color=COLOR_BACKGROUND,
+        scrollbar_fg_color=COLOR_BACKGROUND
     )
     supporters_container.pack(fill="both", expand=True)
     

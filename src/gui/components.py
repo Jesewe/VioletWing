@@ -26,7 +26,10 @@ def create_section_header(parent, title, subtitle, icon_file=None) -> ctk.CTkFra
     title_row.pack(side="left", fill="y")
 
     if icon_file:
-        icon_label(title_row, icon_file, size=(22, 22), padx=(0, 10))
+        icon_frame = ctk.CTkFrame(title_row, fg_color="transparent", width=32, height=32)
+        icon_frame.pack_propagate(False)
+        icon_frame.pack(side="left", padx=(0, 10))
+        icon_label(icon_frame, icon_file, size=(22, 22))
 
     ctk.CTkLabel(
         title_row, text=title, font=FONT_SECTION_TITLE,
@@ -59,14 +62,21 @@ def build_item_scaffold(parent, label_text, description, is_last=False) -> ctk.C
 
     lf = ctk.CTkFrame(content, fg_color="transparent")
     lf.pack(side="left", fill="x", expand=True)
-    ctk.CTkLabel(
-        lf, text=label_text, font=FONT_ITEM_LABEL,
-        text_color=COLOR_TEXT_PRIMARY, anchor="w",
-    ).pack(fill="x", pady=(0, 4))
-    ctk.CTkLabel(
-        lf, text=description, font=FONT_ITEM_DESCRIPTION,
-        text_color=COLOR_TEXT_SECONDARY, anchor="w", wraplength=400,
-    ).pack(fill="x")
+    
+    if description:
+        ctk.CTkLabel(
+            lf, text=label_text, font=FONT_ITEM_LABEL,
+            text_color=COLOR_TEXT_PRIMARY, anchor="w",
+        ).pack(fill="x", pady=(0, 4))
+        ctk.CTkLabel(
+            lf, text=description, font=FONT_ITEM_DESCRIPTION,
+            text_color=COLOR_TEXT_SECONDARY, anchor="w", wraplength=400,
+        ).pack(fill="x")
+    else:
+        ctk.CTkLabel(
+            lf, text=label_text, font=FONT_ITEM_LABEL,
+            text_color=COLOR_TEXT_PRIMARY, anchor="w",
+        ).pack(fill="x")
 
     wf = ctk.CTkFrame(content, fg_color="transparent")
     wf.pack(side="right", padx=(30, 0))

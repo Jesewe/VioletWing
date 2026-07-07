@@ -5,7 +5,7 @@ from src.gui.keybind_recorder import KeybindRecorder
 from src.gui.theme import (
     COLOR_BACKGROUND,
     FONT_TITLE, FONT_SUBTITLE, COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY,
-    CHECKBOX_STYLE, ENTRY_STYLE, COMBOBOX_STYLE,
+    CHECKBOX_STYLE, ENTRY_STYLE, COMBOBOX_STYLE, SETTING_ITEM_STYLE
 )
 
 WEAPON_TYPES = ["Pistols", "Rifles", "Snipers", "SMGs", "Heavy"]
@@ -14,7 +14,12 @@ def populate_trigger_settings(main_window, frame):
     """Populate the settings frame with configuration options."""
     main_window.trigger_settings_frame = frame
     
-    settings = ctk.CTkScrollableFrame(frame, fg_color=COLOR_BACKGROUND)
+    settings = ctk.CTkScrollableFrame(
+        frame, fg_color=COLOR_BACKGROUND,
+        scrollbar_button_color=COLOR_BACKGROUND,
+        scrollbar_button_hover_color=COLOR_BACKGROUND,
+        scrollbar_fg_color=COLOR_BACKGROUND
+    )
     settings.pack(fill="both", expand=True, padx=40, pady=40)
     
     # Configure faster scroll speed by modifying canvas
@@ -71,27 +76,39 @@ def create_trigger_config_section(main_window, parent):
 
 def create_timing_settings_section(main_window, parent):
     section = create_section_frame(parent)
-    header_frame = create_section_header(section, "Timing Settings",
-                                         "Fine-tune shooting delays per weapon type",
-                                         icon_file="stopwatch_icon.png")
+    create_section_header(section, "Timing Settings",
+                          "Fine-tune shooting delays per weapon type",
+                          icon_file="stopwatch_icon.png")
+
+    item_frame = ctk.CTkFrame(section, fg_color="transparent")
+    item_frame.pack(fill="x", padx=40, pady=(0, 40))
+
+    container = ctk.CTkFrame(item_frame, **SETTING_ITEM_STYLE)
+    container.pack(fill="x")
+
+    content = ctk.CTkFrame(container, fg_color="transparent")
+    content.pack(pady=30)
 
     active_weapon_var = ctk.StringVar(
         value=main_window.triggerbot.config["Trigger"].get("active_weapon_type", "Rifles")
     )
     main_window.ui_bridge.register("active_weapon_type", var=active_weapon_var)
+    
+    combo_col = ctk.CTkFrame(content, fg_color="transparent")
+    combo_col.pack(side="left", padx=(0, 40))
+    
+    ctk.CTkLabel(combo_col, text="Weapon Type", text_color=COLOR_TEXT_PRIMARY).pack(pady=(0, 4))
     ctk.CTkOptionMenu(
-        header_frame,
+        combo_col,
         variable=active_weapon_var,
         values=WEAPON_TYPES,
         command=lambda e: main_window.update_weapon_settings_display(),
         **COMBOBOX_STYLE,
-    ).pack(side="right", padx=(0, 10))
-
-    wf = build_item_scaffold(section, "Delays", "Delay thresholds in seconds", is_last=True)
+    ).pack()
 
     def _make_delay_column(parent, title, key, default_val):
         col = ctk.CTkFrame(parent, fg_color="transparent")
-        ctk.CTkLabel(col, text=title, text_color=COLOR_TEXT_SECONDARY).pack()
+        ctk.CTkLabel(col, text=title, text_color=COLOR_TEXT_PRIMARY).pack(pady=(0, 4))
         
         widget = ctk.CTkEntry(col, justify="center", **{**ENTRY_STYLE, "width": 70})
         widget.bind("<FocusOut>", lambda e: main_window.save_settings())
@@ -102,8 +119,8 @@ def create_timing_settings_section(main_window, parent):
         main_window.ui_bridge.register(key, widget=widget)
         return col
 
-    _make_delay_column(wf, "Min", "ShotDelayMin", 0.01).pack(side="left", padx=(0, 15))
-    _make_delay_column(wf, "Max", "ShotDelayMax", 0.03).pack(side="left", padx=(0, 15))
-    _make_delay_column(wf, "Post", "PostShotDelay", 0.1).pack(side="left")
+    _make_delay_column(content, "Min Delay", "ShotDelayMin", 0.01).pack(side="left", padx=(0, 15))
+    _make_delay_column(content, "Max Delay", "ShotDelayMax", 0.03).pack(side="left", padx=(0, 15))
+    _make_delay_column(content, "Post Delay", "PostShotDelay", 0.1).pack(side="left")
 
     main_window.update_weapon_settings_display()
