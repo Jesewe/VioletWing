@@ -72,50 +72,74 @@ def _create_reset_section(main_window, parent):
                           "Manage configuration files, settings, and profiles",
                           icon_file="screwdriver_wrench_icon.png")
 
-    # Row 1: utility buttons
-    btn_frame = ctk.CTkFrame(section, fg_color="transparent")
-    btn_frame.pack(fill="x", padx=40, pady=(0, 20))
+    wf_util = build_item_scaffold(section, "System Config", "Directly manage underlying configuration files", is_last=False)
+    
+    util_col = ctk.CTkFrame(wf_util, fg_color="transparent")
+    util_col.pack(side="right")
 
     _folder = load_icon("folder_open_icon.png", size=(16, 16))
-    ctk.CTkButton(btn_frame, text="Open Config Directory", image=_folder,
-                  compound="left", width=280,
+    ctk.CTkButton(util_col, text="Open Config Directory", image=_folder,
+                  compound="left", width=220,
                   command=main_window.open_config_directory,
-                  **BUTTON_STYLE_PRIMARY).pack(side="left", padx=(0, 20))
+                  **BUTTON_STYLE_PRIMARY).pack(pady=(0, 10), fill="x")
 
     _reset = load_icon("rotate_left_icon.png", size=(16, 16))
-    ctk.CTkButton(btn_frame, text="Reset All Settings", image=_reset,
-                  compound="left", width=280,
+    ctk.CTkButton(util_col, text="Reset All Settings", image=_reset,
+                  compound="left", width=220,
                   command=main_window.reset_to_default_settings,
+                  **BUTTON_STYLE_DANGER).pack(fill="x")
+
+    wf_prof = build_item_scaffold(section, "Profiles", "Save, load, and manage custom setting profiles", is_last=True)
+    _create_profile_row(main_window, wf_prof)
+
+def _create_profile_row(main_window, parent):
+    col = ctk.CTkFrame(parent, fg_color="transparent")
+    col.pack(side="right")
+
+    active_label = ctk.CTkLabel(
+        col, text="", font=FONT_ITEM_DESCRIPTION,
+        text_color=COLOR_TEXT_PRIMARY, fg_color="transparent", anchor="e",
+    )
+    active_label.pack(fill="x", pady=(0, 8))
+    main_window._active_profile_label = active_label
+
+    row1 = ctk.CTkFrame(col, fg_color="transparent")
+    row1.pack(fill="x", pady=(0, 10))
+
+    row2 = ctk.CTkFrame(col, fg_color="transparent")
+    row2.pack(fill="x")
+
+    input_frame = ctk.CTkFrame(col, fg_color="transparent")
+
+    # -- ROW 1: Dropdown, Load, Delete --
+    profiles = ProfileManager.list_profiles()
+    display  = profiles if profiles else ["No profiles"]
+    profile_var = ctk.StringVar(value=display[0])
+    
+    dropdown = ctk.CTkOptionMenu(
+        row1, variable=profile_var, values=display, width=160,
+        **{k: v for k, v in COMBOBOX_STYLE.items() if k != "width"},
+    )
+    dropdown.pack(side="left", padx=(0, 10))
+    main_window._profile_var = profile_var
+    main_window._profile_dropdown = dropdown
+
+    _load_icon = load_icon("rotate_icon.png", size=(16, 16))
+    ctk.CTkButton(row1, text="Load", image=_load_icon, compound="left", width=100,
+                  command=lambda: _load_selected_profile(main_window),
+                  **BUTTON_STYLE_PRIMARY).pack(side="left", padx=(0, 10))
+
+    _del_icon = load_icon("circle_xmark_icon.png", size=(16, 16))
+    ctk.CTkButton(row1, text="Delete", image=_del_icon, compound="left", width=100,
+                  command=lambda: _delete_selected_profile(main_window),
                   **BUTTON_STYLE_DANGER).pack(side="left")
 
-    # Row 2: profile management
-    _create_profile_row(main_window, section)
-
-def _create_profile_row(main_window, section):
-    """Build the Save As / Load / Delete profile controls.
-
-    Layout:
-      Row A (always visible): [Save As Profile] [dropdown] [Load Profile] [Delete Profile]
-      Row B (toggles in):     [name entry] [Confirm] [Cancel]
-    """
-    outer = ctk.CTkFrame(section, fg_color="transparent")
-    outer.pack(fill="x", padx=40, pady=(0, 40))
-
-    # Row A
-    profile_frame = ctk.CTkFrame(outer, fg_color="transparent")
-    profile_frame.pack(fill="x")
-
-    # Row B - inline name-entry, hidden until "Save As Profile" is clicked
-    input_frame = ctk.CTkFrame(outer, fg_color="transparent")
-    # not packed yet; revealed by _toggle_save_input
-
+    # -- ROW 2: Save As button --
+    _save_icon = load_icon("box_archive_icon.png", size=(16, 16))
+    
     from src.gui.theme import ENTRY_STYLE
-    name_entry = ctk.CTkEntry(
-        input_frame,
-        placeholder_text="Profile name…",
-        **{**ENTRY_STYLE, "width": 280},
-    )
-    name_entry.pack(side="left", padx=(0, 12))
+    name_entry = ctk.CTkEntry(input_frame, placeholder_text="Profile name…", **{**ENTRY_STYLE, "width": 200})
+    name_entry.pack(side="left", padx=(0, 10))
 
     def _toggle_save_input():
         if input_frame.winfo_ismapped():
@@ -125,13 +149,16 @@ def _create_profile_row(main_window, section):
             name_entry.delete(0, "end")
             name_entry.focus_set()
 
+    ctk.CTkButton(row2, text="Save As New Profile", image=_save_icon,
+                  compound="left", width=380, command=_toggle_save_input,
+                  **BUTTON_STYLE_PRIMARY).pack(side="left")
+
     def _confirm_save(event=None):
-        name = name_entry.get()
+        name = name_entry.get().strip()
         err = ProfileManager.validate_name(name)
         if err:
             AppModal.error(main_window.root, "Invalid Name", err)
             return
-        name = name.strip()
         if name in ProfileManager.list_profiles():
             if not AppModal.confirm(
                 main_window.root, "Overwrite Profile",
@@ -151,56 +178,15 @@ def _create_profile_row(main_window, section):
 
     _confirm_icon = load_icon("play_icon.png", size=(16, 16))
     ctk.CTkButton(input_frame, text="Confirm", image=_confirm_icon, compound="left",
-                  width=130, command=_confirm_save, **BUTTON_STYLE_PRIMARY).pack(
-        side="left", padx=(0, 8))
+                  width=90, command=_confirm_save, **BUTTON_STYLE_PRIMARY).pack(side="left", padx=(0, 10))
 
     _cancel_icon = load_icon("xmark_icon.png", size=(16, 16))
     ctk.CTkButton(input_frame, text="Cancel", image=_cancel_icon, compound="left",
-                  width=110, command=lambda: input_frame.pack_forget(),
+                  width=80, command=lambda: input_frame.pack_forget(),
                   **BUTTON_STYLE_DANGER).pack(side="left")
-
-    # Row A contents
-    _save_icon = load_icon("box_archive_icon.png", size=(16, 16))
-    ctk.CTkButton(profile_frame, text="Save As Profile", image=_save_icon,
-                  compound="left", width=200, command=_toggle_save_input,
-                  **BUTTON_STYLE_PRIMARY).pack(side="left", padx=(0, 16))
-
-    # Profile selector dropdown
-    profiles = ProfileManager.list_profiles()
-    display  = profiles if profiles else ["No profiles"]
-    profile_var = ctk.StringVar(value=display[0])
-    dropdown = ctk.CTkOptionMenu(
-        profile_frame, variable=profile_var, values=display, width=200,
-        **{k: v for k, v in COMBOBOX_STYLE.items() if k != "width"},
-    )
-    dropdown.pack(side="left", padx=(0, 12))
-
-    main_window._profile_var      = profile_var
-    main_window._profile_dropdown = dropdown
-
-    # Active profile indicator - updated by main_window.update_active_profile_label()
-    active_label = ctk.CTkLabel(
-        profile_frame, text="", font=FONT_ITEM_DESCRIPTION,
-        text_color=COLOR_TEXT_SECONDARY, fg_color="transparent", anchor="w",
-    )
-    active_label.pack(side="left", padx=(0, 12))
-    main_window._active_profile_label = active_label
-    # Reflect any profile that was loaded before this tab was built
+    
+    # Initialize profile state
     main_window.update_active_profile_label()
-
-    # Load Profile
-    _load_icon = load_icon("rotate_icon.png", size=(16, 16))
-    ctk.CTkButton(profile_frame, text="Load Profile", image=_load_icon,
-                  compound="left", width=160,
-                  command=lambda: _load_selected_profile(main_window),
-                  **BUTTON_STYLE_PRIMARY).pack(side="left", padx=(0, 12))
-
-    # Delete Profile
-    _del_icon = load_icon("circle_xmark_icon.png", size=(16, 16))
-    ctk.CTkButton(profile_frame, text="Delete Profile", image=_del_icon,
-                  compound="left", width=160,
-                  command=lambda: _delete_selected_profile(main_window),
-                  **BUTTON_STYLE_DANGER).pack(side="left")
 
 def _load_selected_profile(main_window) -> None:
     name = main_window._profile_var.get()
