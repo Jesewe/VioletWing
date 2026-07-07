@@ -5,7 +5,7 @@ from src.gui.keybind_recorder import KeybindRecorder
 from src.gui.theme import (
     COLOR_BACKGROUND,
     FONT_TITLE, FONT_SUBTITLE, COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY,
-    CHECKBOX_STYLE, ENTRY_STYLE, COMBOBOX_STYLE, SETTING_ITEM_STYLE
+    CHECKBOX_STYLE, ENTRY_STYLE, COMBOBOX_STYLE,
 )
 
 WEAPON_TYPES = ["Pistols", "Rifles", "Snipers", "SMGs", "Heavy"]
@@ -80,22 +80,15 @@ def create_timing_settings_section(main_window, parent):
                           "Fine-tune shooting delays per weapon type",
                           icon_file="stopwatch_icon.png")
 
-    item_frame = ctk.CTkFrame(section, fg_color="transparent")
-    item_frame.pack(fill="x", padx=40, pady=(0, 40))
-
-    container = ctk.CTkFrame(item_frame, **SETTING_ITEM_STYLE)
-    container.pack(fill="x")
-
-    content = ctk.CTkFrame(container, fg_color="transparent")
-    content.pack(pady=30)
+    wf = build_item_scaffold(section, "Delays", "Delay thresholds in seconds", is_last=True)
 
     active_weapon_var = ctk.StringVar(
         value=main_window.triggerbot.config["Trigger"].get("active_weapon_type", "Rifles")
     )
     main_window.ui_bridge.register("active_weapon_type", var=active_weapon_var)
     
-    combo_col = ctk.CTkFrame(content, fg_color="transparent")
-    combo_col.pack(side="left", padx=(0, 40))
+    combo_col = ctk.CTkFrame(wf, fg_color="transparent")
+    combo_col.pack(side="left", padx=(0, 20))
     
     ctk.CTkLabel(combo_col, text="Weapon Type", text_color=COLOR_TEXT_PRIMARY).pack(pady=(0, 4))
     ctk.CTkOptionMenu(
@@ -119,8 +112,8 @@ def create_timing_settings_section(main_window, parent):
         main_window.ui_bridge.register(key, widget=widget)
         return col
 
-    _make_delay_column(content, "Min Delay", "ShotDelayMin", 0.01).pack(side="left", padx=(0, 15))
-    _make_delay_column(content, "Max Delay", "ShotDelayMax", 0.03).pack(side="left", padx=(0, 15))
-    _make_delay_column(content, "Post Delay", "PostShotDelay", 0.1).pack(side="left")
+    _make_delay_column(wf, "Min Delay", "ShotDelayMin", 0.01).pack(side="left", padx=(0, 15))
+    _make_delay_column(wf, "Max Delay", "ShotDelayMax", 0.03).pack(side="left", padx=(0, 15))
+    _make_delay_column(wf, "Post Delay", "PostShotDelay", 0.1).pack(side="left")
 
     main_window.update_weapon_settings_display()
