@@ -28,7 +28,12 @@ logger = Logger.get_logger(__name__)
 
 def populate_dashboard(main_window, frame):
     """Populate the dashboard frame."""
-    dashboard = ctk.CTkScrollableFrame(frame, fg_color=COLOR_BACKGROUND)
+    dashboard = ctk.CTkScrollableFrame(
+        frame, fg_color=COLOR_BACKGROUND,
+        scrollbar_button_color=COLOR_BACKGROUND,
+        scrollbar_button_hover_color=COLOR_BACKGROUND,
+        scrollbar_fg_color=COLOR_BACKGROUND
+    )
     dashboard.pack(fill="both", expand=True, padx=40, pady=40)
     dashboard._parent_canvas.configure(yscrollincrement=5)
 

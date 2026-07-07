@@ -115,7 +115,10 @@ def populate_faq(main_window, frame):
     # Scrollable container for FAQ content
     faq_container = ctk.CTkScrollableFrame(
         frame,
-        fg_color=COLOR_BACKGROUND
+        fg_color=COLOR_BACKGROUND,
+        scrollbar_button_color=COLOR_BACKGROUND,
+        scrollbar_button_hover_color=COLOR_BACKGROUND,
+        scrollbar_fg_color=COLOR_BACKGROUND
     )
     faq_container.pack(fill="both", expand=True, padx=40, pady=40)
     

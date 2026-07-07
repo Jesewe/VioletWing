@@ -14,7 +14,10 @@ def populate_additional_settings(main_window, frame):
     # Create a scrollable container for settings
     settings = ctk.CTkScrollableFrame(
         frame,
-        fg_color=COLOR_BACKGROUND
+        fg_color=COLOR_BACKGROUND,
+        scrollbar_button_color=COLOR_BACKGROUND,
+        scrollbar_button_hover_color=COLOR_BACKGROUND,
+        scrollbar_fg_color=COLOR_BACKGROUND
     )
     settings.pack(fill="both", expand=True, padx=40, pady=40)
     

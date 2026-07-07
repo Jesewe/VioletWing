@@ -23,7 +23,10 @@ def populate_notifications(main_window, frame):
     # Scrollable container for notifications content
     notifications_container = ctk.CTkScrollableFrame(
         frame,
-        fg_color=COLOR_BACKGROUND
+        fg_color=COLOR_BACKGROUND,
+        scrollbar_button_color=COLOR_BACKGROUND,
+        scrollbar_button_hover_color=COLOR_BACKGROUND,
+        scrollbar_fg_color=COLOR_BACKGROUND
     )
     notifications_container.pack(fill="both", expand=True, padx=40, pady=40)
     

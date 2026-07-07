@@ -13,7 +13,12 @@ from src.gui.theme import (
 )
 
 def populate_general_settings(main_window, frame):
-    settings = ctk.CTkScrollableFrame(frame, fg_color=COLOR_BACKGROUND)
+    settings = ctk.CTkScrollableFrame(
+        frame, fg_color=COLOR_BACKGROUND,
+        scrollbar_button_color=COLOR_BACKGROUND,
+        scrollbar_button_hover_color=COLOR_BACKGROUND,
+        scrollbar_fg_color=COLOR_BACKGROUND
+    )
     settings.pack(fill="both", expand=True, padx=40, pady=40)
     settings._parent_canvas.configure(yscrollincrement=5)
 
