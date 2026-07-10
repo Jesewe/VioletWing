@@ -83,6 +83,26 @@ def _create_reset_section(main_window, parent):
                   command=main_window.open_config_directory,
                   **BUTTON_STYLE_PRIMARY).pack(pady=(0, 10), fill="x")
 
+    def _do_reinstall():
+        import threading
+        from src.core.offset_fetcher import force_reinstall_dumper
+        
+        def _run():
+            success = force_reinstall_dumper()
+            def _finish():
+                if success:
+                    AppModal.info(main_window.root, "Success", "cs2-dumper.exe reinstalled successfully.")
+                else:
+                    AppModal.error(main_window.root, "Failed", "Could not reinstall cs2-dumper.exe. Check logs.")
+            main_window.ui_queue_put(_finish)
+        
+        threading.Thread(target=_run, daemon=True).start()
+
+    _reinstall = load_icon("rotate_icon.png", size=(16, 16))
+    ctk.CTkButton(util_col, text="Reinstall cs2-dumper", image=_reinstall,
+                  compound="left", width=220, command=_do_reinstall,
+                  **BUTTON_STYLE_PRIMARY).pack(pady=(0, 10), fill="x")
+
     _reset = load_icon("rotate_left_icon.png", size=(16, 16))
     ctk.CTkButton(util_col, text="Reset All Settings", image=_reset,
                   compound="left", width=220,

@@ -2,6 +2,7 @@ import threading
 from tkinter import messagebox
 
 from src.core.game_process import is_game_running
+from src.core.offset_fetcher import smart_reinstall_dumper
 from src.utils.logger import Logger
 from src.utils.config_manager import ConfigManager
 
@@ -63,6 +64,9 @@ class ClientManager:
                 "Could not find cs2.exe. Launch CS2 before starting the client.",
             )
             return
+
+        # Check if we need to purge the dumper due to a CS2 update
+        smart_reinstall_dumper()
 
         if not self.main_window.offsets:
             if self.main_window._offsets_fetching:
