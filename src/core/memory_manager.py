@@ -188,11 +188,7 @@ class MemoryManager:
             except Exception:
                 curtime = 0.0
 
-            planted_c4_list = self.read_longlong(self.client_base + self.dwPlantedC4)
-            if not planted_c4_list:
-                return None
-            
-            planted_c4 = self.read_longlong(planted_c4_list)
+            planted_c4 = self.read_longlong(self.client_base + self.dwPlantedC4)
             if not planted_c4:
                 return None
 
