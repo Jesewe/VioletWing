@@ -332,7 +332,7 @@ class CS2Overlay(BaseFeature):
         else:
             if bomb_info["is_defusing"]:
                 text = f"[ DEFUSING ] Site {bomb_info['bomb_site']} | {time_left:.1f}s left"
-                color = overlay.get_color("#4A90E2") # Blue for defusing
+                color = overlay.get_color("#7FC6FF") # Brighter blue for defusing
             else:
                 if time_left < 5.0:
                     text = f"[ RUN! ] Site {bomb_info['bomb_site']} | {time_left:.1f}s"
