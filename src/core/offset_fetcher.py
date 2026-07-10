@@ -96,6 +96,39 @@ def fetch_latest_release(repo: str) -> "dict | None":
         return None
 
 # Binary management
+def force_reinstall_dumper() -> bool:
+    """Manually delete and re-download cs2-dumper.exe."""
+    try:
+        if _CS2_DUMPER_EXE_PATH.exists():
+            _CS2_DUMPER_EXE_PATH.unlink()
+            logger.info("Deleted existing cs2-dumper.exe for forced reinstall.")
+    except Exception as e:
+        logger.error("Failed to delete cs2-dumper.exe: %s", e)
+        return False
+    return _download_cs2_dumper()
+
+def smart_reinstall_dumper() -> None:
+    """Check if the cached CS2 patch date is newer than the dumper binary.
+    If so, delete the binary to force a fresh download.
+    """
+    cache_file = Path(ConfigManager.CONFIG_DIRECTORY) / "cs2_patch_cache.txt"
+    if not cache_file.exists() or not _CS2_DUMPER_EXE_PATH.exists():
+        return
+
+    try:
+        from datetime import datetime
+        date_str = cache_file.read_text().strip()
+        patch_date = datetime.strptime(date_str, "%m/%d/%Y").date()
+        
+        mtime = _CS2_DUMPER_EXE_PATH.stat().st_mtime
+        dumper_date = datetime.fromtimestamp(mtime).date()
+        
+        if patch_date > dumper_date:
+            logger.info("CS2 patch (%s) is newer than cs2-dumper.exe (%s). Forcing re-download.", patch_date, dumper_date)
+            _CS2_DUMPER_EXE_PATH.unlink()
+    except Exception as e:
+        logger.warning("Failed to evaluate smart reinstall for cs2-dumper: %s", e)
+
 def _ensure_binary() -> bool:
     """Return True if the cs2-dumper binary is ready to use.
 
