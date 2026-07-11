@@ -19,24 +19,50 @@ MAIN_LOOP_SLEEP = 0.05
 ENTITY_COUNT = 64          # Full server coverage (was 32)
 ENTITY_ENTRY_SIZE = 112
 
-SKELETON_BONES = {
-    1:  [3, 17, 20],
-    3:  [4],
-    4:  [23],
-    23: [6],
-    6:  [7, 9, 13],
-    9:  [10],
-    10: [11],
-    13: [14],
-    14: [15],
-    17: [18],
-    18: [19],
-    20: [21],
-    21: [22],
-}
-ALL_BONE_IDS = set(SKELETON_BONES.keys())
-for _bones in SKELETON_BONES.values():
-    ALL_BONE_IDS.update(_bones)
+# Standard CS2 bone indices
+HEAD            = 6
+NECK            = 5
+SPINE_2         = 3
+LEFT_SHOULDER   = 13
+RIGHT_SHOULDER  = 9
+LEFT_ELBOW      = 14
+LEFT_HAND       = 15
+RIGHT_ELBOW     = 10
+RIGHT_HAND      = 11
+LEFT_HIP        = 20
+RIGHT_HIP       = 17
+LEFT_KNEE       = 21
+RIGHT_KNEE      = 18
+LEFT_FOOT       = 22
+RIGHT_FOOT      = 19
+
+SKELETON_CONNECTIONS = (
+    # Body: neck -> shoulder connections
+    (NECK, LEFT_SHOULDER),
+    (NECK, RIGHT_SHOULDER),
+    # Body: neck -> spine -> hips
+    (NECK, SPINE_2),
+    (SPINE_2, LEFT_HIP),
+    (SPINE_2, RIGHT_HIP),
+    # Left arm: shoulder -> elbow -> hand
+    (LEFT_SHOULDER, LEFT_ELBOW),
+    (LEFT_ELBOW, LEFT_HAND),
+    # Right arm: shoulder -> elbow -> hand
+    (RIGHT_SHOULDER, RIGHT_ELBOW),
+    (RIGHT_ELBOW, RIGHT_HAND),
+    # Left leg: hip -> knee -> foot
+    (LEFT_HIP, LEFT_KNEE),
+    (LEFT_KNEE, LEFT_FOOT),
+    # Right leg: hip -> knee -> foot
+    (RIGHT_HIP, RIGHT_KNEE),
+    (RIGHT_KNEE, RIGHT_FOOT),
+)
+
+# All unique bone IDs referenced by connections, plus HEAD which is rendered separately
+ALL_BONE_IDS = {HEAD}
+for _a, _b in SKELETON_CONNECTIONS:
+    ALL_BONE_IDS.add(_a)
+    ALL_BONE_IDS.add(_b)
 MAX_BONE_ID = max(ALL_BONE_IDS) if ALL_BONE_IDS else 0
 
 class Entity:
@@ -444,12 +470,32 @@ class CS2Overlay(BaseFeature):
                     p2 = self._world_to_screen(vm, ent.all_bones_pos_3d[bid])
                     if p2 and ent.validate_screen_position(p2):
                         pts[bid] = p2
-            for start, ends in SKELETON_BONES.items():
-                if start in pts:
-                    for end in ends:
-                        if end in pts:
-                            overlay.draw_line(pts[start]["x"], pts[start]["y"],
-                                              pts[end]["x"], pts[end]["y"], color, 1.5)
+
+            for bone_from, bone_to in SKELETON_CONNECTIONS:
+                if bone_from in pts and bone_to in pts:
+                    overlay.draw_line(
+                        pts[bone_from]["x"], pts[bone_from]["y"],
+                        pts[bone_to]["x"],   pts[bone_to]["y"],
+                        color, 1.5
+                    )
+
+            if HEAD in pts and NECK in pts:
+                sh = pts[HEAD]
+                sn = pts[NECK]
+                dx = sh["x"] - sn["x"]
+                dy = sh["y"] - sn["y"]
+                dist = (dx * dx + dy * dy) ** 0.5
+                radius = max(3.0, dist * 0.7)
+                # Circle center above head position
+                cx = sh["x"] + dx * 0.7
+                cy = sh["y"] + dy * 0.7
+                overlay.draw_line(
+                    sn["x"], sn["y"],
+                    cx, cy - radius,
+                    color, 1.5
+                )
+                overlay.draw_circle_lines(cx, cy, radius, color)
+
         except Exception as exc:
             logger.error("Error drawing skeleton: %s", exc)
 
