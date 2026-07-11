@@ -50,7 +50,10 @@ class MemoryManager:
         self.m_bHasExploded = None
         self.m_bBombDefused = None
         self.m_nBombSite = None
-
+        self.m_bIsDefusing = None
+        self.m_flFlashOverlayAlpha = None
+        self.m_bIsScoped = None
+        self.m_bInReload = None
         self._cached_weapon_handle: int = 0
         self._cached_weapon_type: str = "Rifles"
 
@@ -147,6 +150,10 @@ class MemoryManager:
             self.m_bBombDefused = extracted["m_bBombDefused"]
             self.m_nBombSite = extracted["m_nBombSite"]
             self.m_bBombPlanted = extracted["m_bBombPlanted"]
+            self.m_bIsDefusing = extracted["m_bIsDefusing"]
+            self.m_flFlashOverlayAlpha = extracted["m_flFlashOverlayAlpha"]
+            self.m_bIsScoped = extracted["m_bIsScoped"]
+            self.m_bInReload = extracted["m_bInReload"]
         else:
             Logger.error_code(EC.E2005)
 
@@ -324,27 +331,37 @@ class MemoryManager:
             logger.debug(f"Failed to get weapon type: {e}")
             return "Rifles"
 
-    def get_entity_weapon_name(self, pawn_ptr: int) -> str:
-        """Get the specific weapon name for an arbitrary player pawn."""
+    def get_entity_weapon_ptr(self, pawn_ptr: int) -> int:
+        """Get the weapon entity pointer for an arbitrary player pawn."""
         try:
             if not pawn_ptr:
-                return ""
+                return 0
 
             weapon_services = self.read_longlong(pawn_ptr + self.m_pWeaponServices)
             if not weapon_services:
-                return ""
+                return 0
 
             weapon_handle = self.read_longlong(weapon_services + self.m_hActiveWeapon)
             if not weapon_handle:
-                return ""
+                return 0
 
             weapon_index = weapon_handle & 0x7FFF
             ent_list = self.read_longlong(self.client_base + self.dwEntityList)
             list_entry = self.read_longlong(ent_list + 8 * (weapon_index >> 9) + 16)
             if not list_entry:
-                return ""
+                return 0
 
             weapon_entity = self.read_longlong(list_entry + 112 * (weapon_index & 0x1FF))
+            return weapon_entity
+
+        except Exception as e:
+            logger.debug(f"Failed to get entity weapon ptr: {e}")
+            return 0
+
+    def get_entity_weapon_name(self, pawn_ptr: int) -> str:
+        """Get the specific weapon name for an arbitrary player pawn."""
+        try:
+            weapon_entity = self.get_entity_weapon_ptr(pawn_ptr)
             if not weapon_entity:
                 return ""
 
