@@ -54,6 +54,7 @@ class MemoryManager:
         self.m_flFlashOverlayAlpha = None
         self.m_bIsScoped = None
         self.m_bInReload = None
+        self.m_iPing = None
         self._cached_weapon_handle: int = 0
         self._cached_weapon_type: str = "Rifles"
 
@@ -154,6 +155,7 @@ class MemoryManager:
             self.m_flFlashOverlayAlpha = extracted["m_flFlashOverlayAlpha"]
             self.m_bIsScoped = extracted["m_bIsScoped"]
             self.m_bInReload = extracted["m_bInReload"]
+            self.m_iPing = extracted["m_iPing"]
         else:
             Logger.error_code(EC.E2005)
 

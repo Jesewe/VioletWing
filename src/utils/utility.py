@@ -138,6 +138,7 @@ class Utility:
                 "m_flFlashOverlayAlpha":  get_field("C_CSPlayerPawnBase", "m_flFlashOverlayAlpha"),
                 "m_bIsScoped":            get_field("C_CSPlayerPawn", "m_bIsScoped"),
                 "m_bInReload":            get_field("C_CSWeaponBase", "m_bInReload"),
+                "m_iPing":                get_field("CCSPlayerController", "m_iPing"),
             }
 
             missing = [k for k, v in extracted.items() if v is None]

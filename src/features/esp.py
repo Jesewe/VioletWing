@@ -193,7 +193,8 @@ class CS2Overlay(BaseFeature):
         try:
             overlay.overlay_init("Counter-Strike 2", fps=0)
             try:
-                self.custom_font = overlay.load_font("C:\\Windows\\Fonts\\Consolas.ttf", 12)
+                font_path = Utility.resource_path("assets/fonts/RobotoCondensed-Bold.ttf")
+                self.custom_font = overlay.load_font(font_path, 1)
             except Exception:
                 self.custom_font = None
         except Exception as exc:
@@ -216,6 +217,7 @@ class CS2Overlay(BaseFeature):
                     local_ctrl = self.memory_manager.read_longlong(
                         self.memory_manager.client_dll_base + self.memory_manager.dwLocalPlayerController
                     )
+                    local_ping = 0
                     if local_ctrl:
                         local_pawn = self.memory_manager.read_longlong(
                             self.memory_manager.client_dll_base + self.memory_manager.dwLocalPlayerPawn
@@ -224,6 +226,10 @@ class CS2Overlay(BaseFeature):
                             self.memory_manager.read_int(local_pawn + self.memory_manager.m_iTeamNum)
                             if local_pawn else None
                         )
+                        try:
+                            local_ping = self.memory_manager.read_int(local_ctrl + self.memory_manager.m_iPing)
+                        except Exception:
+                            local_ping = 0
                     else:
                         self.local_team = None
                     entities = list(self._iterate_entities(local_ctrl))
@@ -233,7 +239,7 @@ class CS2Overlay(BaseFeature):
                 if overlay.overlay_loop():
                     overlay.begin_drawing()
                     if game_active:
-                        self._draw_watermark()
+                        self._draw_watermark(local_ping)
                         self._draw_bomb_timer()
                         for ent in entities:
                             is_teammate = self.local_team is not None and ent.team == self.local_team
@@ -283,11 +289,19 @@ class CS2Overlay(BaseFeature):
         sx = overlay.get_screen_width() / 2
         sy = overlay.get_screen_height() / 2
         w = vm[12]*pos["x"] + vm[13]*pos["y"] + vm[14]*pos["z"] + vm[15]
-        if w <= 0.01:
+        if w < 0.1:
             return None
-        x = sx + (vm[0]*pos["x"] + vm[1]*pos["y"] + vm[2]*pos["z"] + vm[3]) / w * sx
-        y = sy - (vm[4]*pos["x"] + vm[5]*pos["y"] + vm[6]*pos["z"] + vm[7]) / w * sy
-        return {"x": x, "y": y}
+            
+        x = vm[0]*pos["x"] + vm[1]*pos["y"] + vm[2]*pos["z"] + vm[3]
+        y = vm[4]*pos["x"] + vm[5]*pos["y"] + vm[6]*pos["z"] + vm[7]
+        
+        ndc_x = x / w
+        ndc_y = y / w
+        
+        screen_x = sx * ndc_x + sx
+        screen_y = -sy * ndc_y + sy
+        
+        return {"x": screen_x, "y": screen_y, "z": w}
 
     def _iterate_entities(self, local_ctrl: int) -> Iterator[Entity]:
         try:
@@ -327,8 +341,8 @@ class CS2Overlay(BaseFeature):
             except Exception as exc:
                 logger.debug("Failed to read entity %d: %s", i, exc)
 
-    def _draw_watermark(self) -> None:
-        text = f"VioletWing | {overlay.get_fps()} fps"
+    def _draw_watermark(self, ping: int = 0) -> None:
+        text = f"VioletWing | {overlay.get_fps()} fps, {ping} ms"
         size = 16
         pad_x, pad_y = 8, 5
         w = overlay.measure_text(text, size)
@@ -409,7 +423,7 @@ class CS2Overlay(BaseFeature):
         
         # Draw the text manually to handle custom font for bomb timer if available
         if getattr(self, "custom_font", None):
-            overlay.draw_font(self.custom_font, text, fx + pad_x, fy + pad_y, size, 1, color)
+            overlay.draw_font(self.custom_font, text, fx + pad_x, fy + pad_y, size, 1.0, color)
         else:
             overlay.draw_text(text, fx + pad_x, fy + pad_y, size, color)
 
@@ -434,7 +448,7 @@ class CS2Overlay(BaseFeature):
 
     def _draw_custom_text(self, text: str, x: float, y: float, size: int, color: tuple) -> None:
         if getattr(self, "custom_font", None):
-            overlay.draw_font(self.custom_font, text, x, y, size, 1, color)
+            overlay.draw_font(self.custom_font, text, x, y, size, 1.0, color)
         else:
             overlay.draw_text(text, x, y, size, color)
 
