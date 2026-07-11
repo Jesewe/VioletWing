@@ -50,8 +50,8 @@ def _create_bounding_box_section(main_window, parent):
     create_section_header(section, "Bounding Box Configuration", "Settings for enemy bounding boxes", icon_file="vector_square_icon.png")
 
     wf = build_item_scaffold(section, "Visibility", "")
-    _make_checkbox(wf, "enable_box", main_window, text="Enable Bounding Box").pack(side="left", padx=(0, 15))
-    _make_checkbox(wf, "enable_skeleton", main_window, text="Enable Skeleton ESP").pack(side="left")
+    _make_checkbox(wf, "enable_box", main_window, text="Bounding Box").pack(side="left", padx=(0, 15))
+    _make_checkbox(wf, "enable_skeleton", main_window, text="Skeleton ESP").pack(side="left")
 
     wf_color = build_item_scaffold(section, "Box Color", "")
     _make_color_picker(wf_color, "box_color_hex", main_window).pack(side="left")
@@ -66,8 +66,8 @@ def _create_snaplines_section(main_window, parent):
     section = create_section_frame(parent)
     create_section_header(section, "Snaplines Configuration", "Settings for snaplines to enemies", icon_file="crosshairs_icon.png")
 
-    wf = build_item_scaffold(section, "Draw Snaplines", "")
-    _make_checkbox(wf, "draw_snaplines", main_window, text="Enable Snaplines").pack(side="left", padx=(0, 15))
+    wf = build_item_scaffold(section, "Snaplines", "")
+    _make_checkbox(wf, "draw_snaplines", main_window, text="Enabled").pack(side="left", padx=(0, 15))
 
     wf_color = build_item_scaffold(section, "Snaplines Color", "", is_last=True)
     _make_color_picker(wf_color, "snaplines_color_hex", main_window).pack(side="left")

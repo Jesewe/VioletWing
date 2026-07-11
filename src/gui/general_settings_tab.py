@@ -56,7 +56,7 @@ def _create_program_section(main_window, parent):
     
     wf_prog = build_item_scaffold(section, "Program Behaviour", "", is_last=False)
     _create_checkbox_item(wf_prog, "Detailed Logs", "DetailedLogs", main_window)
-    _create_checkbox_item(wf_prog, "Enable Disguise", "Disguise", main_window)
+    _create_checkbox_item(wf_prog, "Disguise", "Disguise", main_window)
 
     wf = build_item_scaffold(section, "Active Profile",
                              "The program this instance is currently disguised as.",
