@@ -19,6 +19,9 @@ MAIN_LOOP_SLEEP = 0.05
 ENTITY_COUNT = 64          # Full server coverage (was 32)
 ENTITY_ENTRY_SIZE = 112
 
+# AWP=9, G3SG1=11, SCAR-20=38, SSG 08=40
+SNIPER_WEAPON_IDS = frozenset({9, 11, 38, 40})
+
 # Standard CS2 bone indices
 HEAD            = 6
 NECK            = 5
@@ -205,6 +208,7 @@ class CS2Overlay(BaseFeature):
         self.draw_flashed = s.get("draw_flashed", False)
         self.draw_defusing = s.get("draw_defusing", False)
         self.draw_distance = s.get("draw_distance", False)
+        self.draw_sniper_crosshair = s.get("draw_sniper_crosshair", False)
         self._resolve_colors()
 
     def update_config(self, config: dict) -> None:
@@ -262,8 +266,13 @@ class CS2Overlay(BaseFeature):
                             local_pos = self.memory_manager.read_vec3(local_pawn + self.memory_manager.m_vOldOrigin) if local_pawn else None
                         except Exception:
                             local_pos = None
+                        try:
+                            self._local_crosshair = self.memory_manager.get_local_crosshair_data(local_pawn) if local_pawn else (False, -1)
+                        except Exception:
+                            self._local_crosshair = (False, -1)
                     else:
                         self.local_team = None
+                        self._local_crosshair = (False, -1)
                     self.local_pos = local_pos
                     entities = list(self._iterate_entities(local_ctrl))
                 else:
@@ -274,6 +283,7 @@ class CS2Overlay(BaseFeature):
                     if game_active:
                         self._draw_watermark(local_ping)
                         self._draw_bomb_timer()
+                        self._draw_sniper_crosshair()
                         for ent in entities:
                             is_teammate = self.local_team is not None and ent.team == self.local_team
                             if is_teammate and not self.draw_teammates:
@@ -387,6 +397,28 @@ class CS2Overlay(BaseFeature):
         overlay.draw_rectangle(fx, fy, fw, fh, self._color_panel_bg)
         overlay.draw_rectangle_lines(fx, fy, fw, fh, self._color_panel_border, 1)
         overlay.draw_text(text, fx + pad_x, fy + pad_y, size, self._color_text)
+
+    def _draw_sniper_crosshair(self) -> None:
+        if not self.draw_sniper_crosshair:
+            return
+
+        is_scoped, item_id = getattr(self, "_local_crosshair", (False, -1))
+
+        if is_scoped:
+            return
+
+        if item_id not in SNIPER_WEAPON_IDS:
+            return
+
+        sw = overlay.get_screen_width()
+        sh = overlay.get_screen_height()
+        cx = int(sw * 0.5)
+        cy = int(sh * 0.5)
+        size = 6
+        color = overlay.get_color("white")
+
+        overlay.draw_line(cx - size, cy, cx + size + 1, cy, color, 1.0)
+        overlay.draw_line(cx, cy - size, cx, cy + size + 1, color, 1.0)
 
     def _draw_bomb_timer(self) -> None:
         if not self.draw_bomb_timer:
