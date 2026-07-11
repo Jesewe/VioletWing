@@ -96,9 +96,13 @@ def _create_player_info_section(main_window, parent):
     _make_checkbox(row3, "draw_reloading", main_window, text="Reloading").pack(side="left")
 
     row4 = ctk.CTkFrame(grid, fg_color="transparent")
-    row4.pack(fill="x")
+    row4.pack(fill="x", pady=(0, 10))
     _make_checkbox(row4, "draw_flashed", main_window, text="Flashed").pack(side="left", padx=(0, 20))
     _make_checkbox(row4, "draw_defusing", main_window, text="Defusing").pack(side="left")
+
+    row5 = ctk.CTkFrame(grid, fg_color="transparent")
+    row5.pack(fill="x")
+    _make_checkbox(row5, "draw_distance", main_window, text="Distance").pack(side="left")
 
 def _create_game_info_section(main_window, parent):
     section = create_section_frame(parent)

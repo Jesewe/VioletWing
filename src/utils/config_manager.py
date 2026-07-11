@@ -76,6 +76,7 @@ class ConfigManager:
             "draw_reloading":     False,
             "draw_flashed":       False,
             "draw_defusing":      False,
+            "draw_distance":      False,
         },
         "Bunnyhop": {
             "JumpKey":   "space",

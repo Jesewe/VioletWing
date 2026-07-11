@@ -178,6 +178,7 @@ class CS2Overlay(BaseFeature):
         self.draw_reloading = s.get("draw_reloading", False)
         self.draw_flashed = s.get("draw_flashed", False)
         self.draw_defusing = s.get("draw_defusing", False)
+        self.draw_distance = s.get("draw_distance", False)
         self._resolve_colors()
 
     def update_config(self, config: dict) -> None:
@@ -218,6 +219,7 @@ class CS2Overlay(BaseFeature):
                         self.memory_manager.client_dll_base + self.memory_manager.dwLocalPlayerController
                     )
                     local_ping = 0
+                    local_pos = None
                     if local_ctrl:
                         local_pawn = self.memory_manager.read_longlong(
                             self.memory_manager.client_dll_base + self.memory_manager.dwLocalPlayerPawn
@@ -230,8 +232,13 @@ class CS2Overlay(BaseFeature):
                             local_ping = self.memory_manager.read_int(local_ctrl + self.memory_manager.m_iPing)
                         except Exception:
                             local_ping = 0
+                        try:
+                            local_pos = self.memory_manager.read_vec3(local_pawn + self.memory_manager.m_vOldOrigin) if local_pawn else None
+                        except Exception:
+                            local_pos = None
                     else:
                         self.local_team = None
+                    self.local_pos = local_pos
                     entities = list(self._iterate_entities(local_ctrl))
                 else:
                     entities = []
@@ -555,6 +562,21 @@ class CS2Overlay(BaseFeature):
             # Offset by 10 below if armor is drawn, else 6
             y_offset = br["y"] + (10 if getattr(self, "draw_armor", False) else 6)
             self._draw_custom_text(ent.weapon_name, (tl["x"] + br["x"]) / 2 - ww / 2, y_offset, fs, getattr(self, "_color_weapon", self._color_text))
+
+        if self.draw_distance:
+            local_pos = getattr(self, "local_pos", None)
+            if local_pos and ent.pos:
+                dx = local_pos["x"] - ent.pos["x"]
+                dy = local_pos["y"] - ent.pos["y"]
+                dz = local_pos["z"] - ent.pos["z"]
+                dist_m = ((dx*dx + dy*dy + dz*dz) ** 0.5) / 52.49
+                dist_text = f"{dist_m:.0f}m"
+                fs = 11
+                dw = self._measure_custom_text(dist_text, fs)
+                y_base = br["y"] + (10 if getattr(self, "draw_armor", False) else 6)
+                if self.draw_weapon_names and ent.weapon_name:
+                    y_base += 14
+                self._draw_custom_text(dist_text, (tl["x"] + br["x"]) / 2 - dw / 2, y_base, fs, self._color_text)
             
         # Draw status flags on the right side of the box
         flags = []
