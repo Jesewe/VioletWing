@@ -86,9 +86,19 @@ def _create_player_info_section(main_window, parent):
     _make_checkbox(row1, "draw_weapon_names", main_window, text="Weapons").pack(side="left")
 
     row2 = ctk.CTkFrame(grid, fg_color="transparent")
-    row2.pack(fill="x")
+    row2.pack(fill="x", pady=(0, 10))
     _make_checkbox(row2, "draw_health_numbers", main_window, text="Health").pack(side="left", padx=(0, 20))
     _make_checkbox(row2, "draw_armor", main_window, text="Armor").pack(side="left")
+
+    row3 = ctk.CTkFrame(grid, fg_color="transparent")
+    row3.pack(fill="x", pady=(0, 10))
+    _make_checkbox(row3, "draw_scoped", main_window, text="Scoped").pack(side="left", padx=(0, 20))
+    _make_checkbox(row3, "draw_reloading", main_window, text="Reloading").pack(side="left")
+
+    row4 = ctk.CTkFrame(grid, fg_color="transparent")
+    row4.pack(fill="x")
+    _make_checkbox(row4, "draw_flashed", main_window, text="Flashed").pack(side="left", padx=(0, 20))
+    _make_checkbox(row4, "draw_defusing", main_window, text="Defusing").pack(side="left")
 
 def _create_game_info_section(main_window, parent):
     section = create_section_frame(parent)

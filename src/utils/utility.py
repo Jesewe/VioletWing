@@ -134,6 +134,10 @@ class Utility:
                 "m_bBombDefused":         get_field("C_PlantedC4", "m_bBombDefused"),
                 "m_nBombSite":            get_field("C_PlantedC4", "m_nBombSite"),
                 "m_bBombPlanted":         get_field("C_CSGameRules", "m_bBombPlanted"),
+                "m_bIsDefusing":          get_field("C_CSPlayerPawn", "m_bIsDefusing"),
+                "m_flFlashOverlayAlpha":  get_field("C_CSPlayerPawnBase", "m_flFlashOverlayAlpha"),
+                "m_bIsScoped":            get_field("C_CSPlayerPawn", "m_bIsScoped"),
+                "m_bInReload":            get_field("C_CSWeaponBase", "m_bInReload"),
             }
 
             missing = [k for k, v in extracted.items() if v is None]

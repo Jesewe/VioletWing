@@ -72,6 +72,10 @@ class ConfigManager:
             "weapon_color_hex":   "#FFFFFF",
             "draw_teammates":     False,
             "teammate_color_hex": "#00FFFF",
+            "draw_scoped":        False,
+            "draw_reloading":     False,
+            "draw_flashed":       False,
+            "draw_defusing":      False,
         },
         "Bunnyhop": {
             "JumpKey":   "space",

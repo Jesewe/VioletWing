@@ -55,6 +55,10 @@ class Entity:
         self.dormant: bool = True
         self.all_bones_pos_3d: Optional[Dict[int, Dict[str, float]]] = None
         self.weapon_name: str = ""
+        self.is_scoped: bool = False
+        self.is_reloading: bool = False
+        self.is_flashed: bool = False
+        self.is_defusing: bool = False
 
     def update(self, skeleton_enabled: bool, draw_weapon_names: bool = False) -> bool:
         try:
@@ -71,6 +75,33 @@ class Entity:
             self.name = Utility.transliterate(raw)
             self.all_bones_pos_3d = self._all_bone_pos() if skeleton_enabled else None
             self.weapon_name = self.memory_manager.get_entity_weapon_name(self.pawn_ptr) if draw_weapon_names else ""
+            
+            # Read new status flags
+            try:
+                self.is_defusing = bool(self.memory_manager.pm.read_bytes(self.pawn_ptr + self.memory_manager.m_bIsDefusing, 1)[0])
+            except Exception:
+                self.is_defusing = False
+                
+            try:
+                flashed = struct.unpack('f', self.memory_manager.pm.read_bytes(self.pawn_ptr + self.memory_manager.m_flFlashOverlayAlpha, 4))[0]
+                self.is_flashed = flashed > 0.0
+            except Exception:
+                self.is_flashed = False
+                
+            try:
+                self.is_scoped = bool(self.memory_manager.pm.read_bytes(self.pawn_ptr + self.memory_manager.m_bIsScoped, 1)[0])
+            except Exception:
+                self.is_scoped = False
+                
+            try:
+                weapon_ptr = self.memory_manager.get_entity_weapon_ptr(self.pawn_ptr)
+                if weapon_ptr:
+                    self.is_reloading = bool(self.memory_manager.pm.read_bytes(weapon_ptr + self.memory_manager.m_bInReload, 1)[0])
+                else:
+                    self.is_reloading = False
+            except Exception:
+                self.is_reloading = False
+                
             return True
         except Exception as exc:
             logger.debug("Entity update failed: %s", exc)
@@ -143,6 +174,10 @@ class CS2Overlay(BaseFeature):
         self.draw_teammates = s["draw_teammates"]
         self.teammate_color_hex = s["teammate_color_hex"]
         self.target_fps = int(s["target_fps"])
+        self.draw_scoped = s.get("draw_scoped", False)
+        self.draw_reloading = s.get("draw_reloading", False)
+        self.draw_flashed = s.get("draw_flashed", False)
+        self.draw_defusing = s.get("draw_defusing", False)
         self._resolve_colors()
 
     def update_config(self, config: dict) -> None:
@@ -506,6 +541,25 @@ class CS2Overlay(BaseFeature):
             # Offset by 10 below if armor is drawn, else 6
             y_offset = br["y"] + (10 if getattr(self, "draw_armor", False) else 6)
             self._draw_custom_text(ent.weapon_name, (tl["x"] + br["x"]) / 2 - ww / 2, y_offset, fs, getattr(self, "_color_weapon", self._color_text))
+            
+        # Draw status flags on the right side of the box
+        flags = []
+        if getattr(self, "draw_scoped", False) and ent.is_scoped:
+            flags.append(("[Scoped]", overlay.get_color("#4A90E2")))
+        if getattr(self, "draw_flashed", False) and ent.is_flashed:
+            flags.append(("[Flashed]", overlay.get_color("white")))
+        if getattr(self, "draw_reloading", False) and ent.is_reloading:
+            flags.append(("[Reloading]", overlay.get_color("#4A90E2")))
+        if getattr(self, "draw_defusing", False) and ent.is_defusing:
+            flags.append(("[Defusing]", overlay.get_color("#E24A4A")))
+            
+        if flags:
+            fs = 10
+            x_offset = br["x"] + 4
+            y_offset = tl["y"]
+            for flag_text, flag_color in flags:
+                self._draw_custom_text(flag_text, x_offset, y_offset, fs, flag_color)
+                y_offset += fs + 2
 
     def _render_player_tracers(self, head2d: dict) -> None:
         screen_w = overlay.get_screen_width()
