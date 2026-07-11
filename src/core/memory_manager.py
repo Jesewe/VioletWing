@@ -391,6 +391,28 @@ class MemoryManager:
             logger.debug(f"Failed to get entity weapon name: {e}")
             return ""
 
+    def get_local_crosshair_data(self, local_pawn: int) -> tuple[bool, int]:
+        """Return (is_scoped, item_id) for the local player pawn."""
+        try:
+            if not local_pawn:
+                return False, -1
+
+            is_scoped = bool(self.pm.read_bytes(local_pawn + self.m_bIsScoped, 1)[0])
+
+            weapon_ptr = self.get_entity_weapon_ptr(local_pawn)
+            if not weapon_ptr:
+                return is_scoped, -1
+
+            item_id = self.read_int(
+                weapon_ptr + self.m_AttributeManager + self.m_Item + self.m_iItemDefinitionIndex
+            ) & 0xFFFF
+
+            return is_scoped, item_id
+
+        except Exception as e:
+            logger.debug(f"Failed to get local crosshair data: {e}")
+            return False, -1
+
     def write_float(self, address: int, value: float) -> None:
         """Write a float to memory."""
         try:
