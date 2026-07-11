@@ -82,20 +82,20 @@ def _create_player_info_section(main_window, parent):
 
     row1 = ctk.CTkFrame(grid, fg_color="transparent")
     row1.pack(fill="x", pady=(0, 10))
-    _make_checkbox(row1, "draw_nicknames", main_window, text="Draw Nicknames").pack(side="left", padx=(0, 20))
-    _make_checkbox(row1, "draw_weapon_names", main_window, text="Draw Weapon Names").pack(side="left")
+    _make_checkbox(row1, "draw_nicknames", main_window, text="Nicknames").pack(side="left", padx=(0, 20))
+    _make_checkbox(row1, "draw_weapon_names", main_window, text="Weapons").pack(side="left")
 
     row2 = ctk.CTkFrame(grid, fg_color="transparent")
     row2.pack(fill="x")
-    _make_checkbox(row2, "draw_health_numbers", main_window, text="Draw Health Numbers").pack(side="left", padx=(0, 20))
-    _make_checkbox(row2, "draw_armor", main_window, text="Draw Armor Bar").pack(side="left")
+    _make_checkbox(row2, "draw_health_numbers", main_window, text="Health").pack(side="left", padx=(0, 20))
+    _make_checkbox(row2, "draw_armor", main_window, text="Armor").pack(side="left")
 
 def _create_game_info_section(main_window, parent):
     section = create_section_frame(parent)
     create_section_header(section, "Game Information", "Settings for global game information", icon_file="layer_group_icon.png")
 
     wf = build_item_scaffold(section, "Bomb Timer", "", is_last=True)
-    _make_checkbox(wf, "draw_bomb_timer", main_window, text="Draw Bomb Timer").pack(side="left", padx=(0, 20))
+    _make_checkbox(wf, "draw_bomb_timer", main_window, text="Enabled").pack(side="left", padx=(0, 20))
     _make_combobox(wf, "bomb_timer_position", main_window).pack(side="left")
 
 def _create_colors_and_team_section(main_window, parent):
@@ -109,7 +109,7 @@ def _create_colors_and_team_section(main_window, parent):
     _make_color_picker(wf_wpn, "weapon_color_hex", main_window).pack(side="left")
 
     wf2 = build_item_scaffold(section, "Team ESP", "")
-    _make_checkbox(wf2, "draw_teammates", main_window, text="Draw Teammates").pack(side="left")
+    _make_checkbox(wf2, "draw_teammates", main_window, text="Teammates").pack(side="left")
 
     wf3 = build_item_scaffold(section, "Teammate Color", "", is_last=True)
     _make_color_picker(wf3, "teammate_color_hex", main_window).pack(side="left")
