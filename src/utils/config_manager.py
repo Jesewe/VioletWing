@@ -78,6 +78,10 @@ class ConfigManager:
             "draw_defusing":      False,
             "draw_distance":      False,
             "draw_sniper_crosshair": False,
+            "draw_spectators":    False,
+            "spectators_position": "Center-Right",
+            "spectators_detailed": False,
+            "spectators_self_only": False,
         },
         "Bunnyhop": {
             "JumpKey":   "space",

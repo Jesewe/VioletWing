@@ -139,6 +139,11 @@ class Utility:
                 "m_bIsScoped":            get_field("C_CSPlayerPawn", "m_bIsScoped"),
                 "m_bInReload":            get_field("C_CSWeaponBase", "m_bInReload"),
                 "m_iPing":                get_field("CCSPlayerController", "m_iPing"),
+                "m_hPawn":                get_field("CBasePlayerController", "m_hPawn"),
+                "m_hObserverPawn":        get_field("CCSPlayerController", "m_hObserverPawn"),
+                "m_pObserverServices":    get_field("C_BasePlayerPawn", "m_pObserverServices"),
+                "m_iObserverMode":        get_field("CPlayer_ObserverServices", "m_iObserverMode"),
+                "m_hObserverTarget":      get_field("CPlayer_ObserverServices", "m_hObserverTarget"),
             }
 
             missing = [k for k, v in extracted.items() if v is None]

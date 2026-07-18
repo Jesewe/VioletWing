@@ -88,20 +88,78 @@ class Entity:
         self.is_reloading: bool = False
         self.is_flashed: bool = False
         self.is_defusing: bool = False
+        self.is_alive: bool = False
+        self.observer_mode: int = 0
+        self.observer_target: int = 0
 
     def update(self, skeleton_enabled: bool, draw_weapon_names: bool = False) -> bool:
         try:
-            self.health = self.memory_manager.read_int(self.pawn_ptr + self.memory_manager.m_iHealth)
-            self.armor = self.memory_manager.read_int(self.pawn_ptr + self.memory_manager.m_ArmorValue)
-            if self.health <= 0:
-                return False
             self.dormant = bool(self.memory_manager.read_int(self.pawn_ptr + self.memory_manager.m_bDormant))
             if self.dormant:
                 return False
-            self.team = self.memory_manager.read_int(self.pawn_ptr + self.memory_manager.m_iTeamNum)
-            self.pos = self.memory_manager.read_vec3(self.pawn_ptr + self.memory_manager.m_vOldOrigin)
+
             raw = self.memory_manager.read_string(self.controller_ptr + self.memory_manager.m_iszPlayerName)
             self.name = Utility.transliterate(raw)
+            self.team = self.memory_manager.read_int(self.pawn_ptr + self.memory_manager.m_iTeamNum)
+
+            self.health = self.memory_manager.read_int(self.pawn_ptr + self.memory_manager.m_iHealth)
+            self.is_alive = self.health > 0
+            if not self.is_alive:
+                try:
+                    observer_services = self.memory_manager.read_longlong(self.pawn_ptr + self.memory_manager.m_pObserverServices)
+                    if observer_services:
+                        try:
+                            mode_bytes = self.memory_manager.pm.read_bytes(observer_services + self.memory_manager.m_iObserverMode, 1)
+                            if mode_bytes:
+                                self.observer_mode = mode_bytes[0] & 0xFF
+                            else:
+                                self.observer_mode = 0
+                        except Exception as e:
+                            self.observer_mode = 0
+
+                        try:
+                            target_val = self.memory_manager.pm.read_bytes(observer_services + self.memory_manager.m_hObserverTarget, 4)
+                            self.observer_target = struct.unpack('I', target_val)[0]
+                        except Exception as e:
+                            self.observer_target = 0
+                    else:
+                        # Fallback: if current pawn has no observer services (e.g. it's a ragdoll), check m_hObserverPawn on controller
+                        try:
+                            val_bytes = self.memory_manager.pm.read_bytes(self.controller_ptr + self.memory_manager.m_hObserverPawn, 4)
+                            obs_pawn_handle = struct.unpack('I', val_bytes)[0] if val_bytes else 0xFFFFFFFF
+                            
+                            if obs_pawn_handle != 0xFFFFFFFF and obs_pawn_handle != 0:
+                                target_index = obs_pawn_handle & 0x7FFF
+                                ent_list = self.memory_manager.read_longlong(self.memory_manager.client_dll_base + self.memory_manager.dwEntityList)
+                                list_entry = self.memory_manager.read_longlong(ent_list + 8 * (target_index >> 9) + 16)
+                                if list_entry:
+                                    obs_pawn_ptr = self.memory_manager.read_longlong(list_entry + ENTITY_ENTRY_SIZE * (target_index & 0x1FF))
+                                    if obs_pawn_ptr:
+                                        obs_services = self.memory_manager.read_longlong(obs_pawn_ptr + self.memory_manager.m_pObserverServices)
+                                        if obs_services:
+                                            try:
+                                                m_bytes = self.memory_manager.pm.read_bytes(obs_services + self.memory_manager.m_iObserverMode, 1)
+                                                self.observer_mode = m_bytes[0] & 0xFF if m_bytes else 0
+                                            except Exception:
+                                                self.observer_mode = 0
+                                            try:
+                                                t_val = self.memory_manager.pm.read_bytes(obs_services + self.memory_manager.m_hObserverTarget, 4)
+                                                self.observer_target = struct.unpack('I', t_val)[0] if t_val else 0
+                                            except Exception:
+                                                self.observer_target = 0
+                                            return True
+                        except Exception as e:
+                            logger.debug(f"Fallback observer read failed: {e}")
+                        
+                        self.observer_mode = 0
+                        self.observer_target = 0
+                except Exception as exc:
+                    self.observer_mode = 0
+                    self.observer_target = 0
+                return True
+
+            self.armor = self.memory_manager.read_int(self.pawn_ptr + self.memory_manager.m_ArmorValue)
+            self.pos = self.memory_manager.read_vec3(self.pawn_ptr + self.memory_manager.m_vOldOrigin)
             self.all_bones_pos_3d = self._all_bone_pos() if skeleton_enabled else None
             self.weapon_name = self.memory_manager.get_entity_weapon_name(self.pawn_ptr) if draw_weapon_names else ""
             
@@ -130,7 +188,7 @@ class Entity:
                     self.is_reloading = False
             except Exception:
                 self.is_reloading = False
-                
+
             return True
         except Exception as exc:
             logger.debug("Entity update failed: %s", exc)
@@ -180,6 +238,7 @@ class CS2Overlay(BaseFeature):
         super().__init__(memory_manager)
         self.config = ConfigManager.load_config()
         self.local_team: Optional[int] = None
+        self.local_pawn: Optional[int] = None
         self.screen_width = overlay.get_screen_width()
         self.screen_height = overlay.get_screen_height()
         self.load_configuration()
@@ -209,6 +268,10 @@ class CS2Overlay(BaseFeature):
         self.draw_defusing = s.get("draw_defusing", False)
         self.draw_distance = s.get("draw_distance", False)
         self.draw_sniper_crosshair = s.get("draw_sniper_crosshair", False)
+        self.draw_spectators = s.get("draw_spectators", False)
+        self.spectators_position = s.get("spectators_position", "Center-Right")
+        self.spectators_detailed = s.get("spectators_detailed", False)
+        self.spectators_self_only = s.get("spectators_self_only", False)
         self._resolve_colors()
 
     def update_config(self, config: dict) -> None:
@@ -224,8 +287,9 @@ class CS2Overlay(BaseFeature):
         try:
             overlay.overlay_init("Counter-Strike 2", fps=0)
             try:
-                font_path = Utility.resource_path("assets/fonts/RobotoCondensed-Bold.ttf")
-                self.custom_font = overlay.load_font(font_path, 1)
+                font_path = Utility.resource_path("assets/fonts/Inter-SemiBold.ttf")
+                self.custom_font = 1
+                overlay.load_font(font_path, self.custom_font)
             except Exception:
                 self.custom_font = None
         except Exception as exc:
@@ -239,56 +303,65 @@ class CS2Overlay(BaseFeature):
             frame_time = 1.0 / max(self.target_fps, 1)
             start = time.time()
             try:
+                local_ping = 0
                 game_active = is_game_active()
 
                 if game_active:
-                    vm = self.memory_manager.read_floats(
-                        self.memory_manager.client_dll_base + self.memory_manager.dwViewMatrix, 16
-                    )
-                    local_ctrl = self.memory_manager.read_longlong(
-                        self.memory_manager.client_dll_base + self.memory_manager.dwLocalPlayerController
-                    )
-                    local_ping = 0
-                    local_pos = None
-                    if local_ctrl:
-                        local_pawn = self.memory_manager.read_longlong(
-                            self.memory_manager.client_dll_base + self.memory_manager.dwLocalPlayerPawn
+                    in_match = self.memory_manager.is_in_match()
+                    if in_match:
+                        vm = self.memory_manager.read_floats(
+                            self.memory_manager.client_dll_base + self.memory_manager.dwViewMatrix, 16
                         )
-                        self.local_team = (
-                            self.memory_manager.read_int(local_pawn + self.memory_manager.m_iTeamNum)
-                            if local_pawn else None
+                        local_ctrl = self.memory_manager.read_longlong(
+                            self.memory_manager.client_dll_base + self.memory_manager.dwLocalPlayerController
                         )
-                        try:
-                            local_ping = self.memory_manager.read_int(local_ctrl + self.memory_manager.m_iPing)
-                        except Exception:
-                            local_ping = 0
-                        try:
-                            local_pos = self.memory_manager.read_vec3(local_pawn + self.memory_manager.m_vOldOrigin) if local_pawn else None
-                        except Exception:
-                            local_pos = None
-                        try:
-                            self._local_crosshair = self.memory_manager.get_local_crosshair_data(local_pawn) if local_pawn else (False, -1)
-                        except Exception:
+                        local_pos = None
+                        if local_ctrl:
+                            local_pawn = self.memory_manager.read_longlong(
+                                self.memory_manager.client_dll_base + self.memory_manager.dwLocalPlayerPawn
+                            )
+                            self.local_pawn = local_pawn
+                            self.local_team = (
+                                self.memory_manager.read_int(local_pawn + self.memory_manager.m_iTeamNum)
+                                if local_pawn else None
+                            )
+                            try:
+                                local_ping = self.memory_manager.read_int(local_ctrl + self.memory_manager.m_iPing)
+                            except Exception:
+                                local_ping = 0
+                            try:
+                                local_pos = self.memory_manager.read_vec3(local_pawn + self.memory_manager.m_vOldOrigin) if local_pawn else None
+                            except Exception:
+                                local_pos = None
+                            try:
+                                self._local_crosshair = self.memory_manager.get_local_crosshair_data(local_pawn) if local_pawn else (False, -1)
+                            except Exception:
+                                self._local_crosshair = (False, -1)
+                        else:
+                            self.local_team = None
                             self._local_crosshair = (False, -1)
+                            self.local_pawn = None
+                        self.local_pos = local_pos
+                        entities = list(self._iterate_entities(local_ctrl))
                     else:
-                        self.local_team = None
-                        self._local_crosshair = (False, -1)
-                    self.local_pos = local_pos
-                    entities = list(self._iterate_entities(local_ctrl))
+                        entities = []
                 else:
+                    in_match = False
                     entities = []
 
                 if overlay.overlay_loop():
                     overlay.begin_drawing()
                     if game_active:
                         self._draw_watermark(local_ping)
-                        self._draw_bomb_timer()
-                        self._draw_sniper_crosshair()
-                        for ent in entities:
-                            is_teammate = self.local_team is not None and ent.team == self.local_team
-                            if is_teammate and not self.draw_teammates:
-                                continue
-                            self._draw_entity(ent, vm, is_teammate)
+                        if in_match:
+                            self._draw_bomb_timer()
+                            self._draw_spectator_list(entities)
+                            self._draw_sniper_crosshair()
+                            for ent in entities:
+                                is_teammate = self.local_team is not None and ent.team == self.local_team
+                                if is_teammate and not self.draw_teammates:
+                                    continue
+                                self._draw_entity(ent, vm, is_teammate)
                     overlay.end_drawing()
 
                 elapsed = time.time() - start
@@ -365,8 +438,20 @@ class CS2Overlay(BaseFeature):
                 ctrl = self.memory_manager.read_longlong(entry + ENTITY_ENTRY_SIZE * ent_idx)
                 if not ctrl or ctrl == local_ctrl:
                     continue
-                ctrl_pawn = self.memory_manager.read_longlong(ctrl + self.memory_manager.m_hPlayerPawn)
-                if not ctrl_pawn:
+                try:
+                    val_bytes = self.memory_manager.pm.read_bytes(ctrl + self.memory_manager.m_hPlayerPawn, 4)
+                    ctrl_pawn = struct.unpack('I', val_bytes)[0] if val_bytes else 0xFFFFFFFF
+                except Exception:
+                    ctrl_pawn = 0xFFFFFFFF
+                
+                if ctrl_pawn == 0xFFFFFFFF or ctrl_pawn == 0:
+                    try:
+                        val_bytes = self.memory_manager.pm.read_bytes(ctrl + self.memory_manager.m_hPawn, 4)
+                        ctrl_pawn = struct.unpack('I', val_bytes)[0] if val_bytes else 0xFFFFFFFF
+                    except Exception:
+                        ctrl_pawn = 0xFFFFFFFF
+                        
+                if ctrl_pawn == 0xFFFFFFFF or ctrl_pawn == 0:
                     continue
                 list_entry = self.memory_manager.read_longlong(
                     ent_list + 8 * ((ctrl_pawn & 0x7FFF) >> 9) + 16
@@ -385,10 +470,12 @@ class CS2Overlay(BaseFeature):
                 logger.debug("Failed to read entity %d: %s", i, exc)
 
     def _draw_watermark(self, ping: int = 0) -> None:
-        text = f"VioletWing | {overlay.get_fps()} fps, {ping} ms"
+        map_name = self.memory_manager.get_map_name()
+        map_text = f" | {map_name}" if map_name and map_name != "<empty>" else ""
+        text = f"VioletWing | {overlay.get_fps()} fps, {ping} ms{map_text}"
         size = 16
         pad_x, pad_y = 8, 5
-        w = overlay.measure_text(text, size)
+        w = self._measure_custom_text(text, size)
         sw = overlay.get_screen_width()
         fw = w + pad_x * 2
         fh = size + pad_y * 2
@@ -396,7 +483,7 @@ class CS2Overlay(BaseFeature):
         fy = 8
         overlay.draw_rectangle(fx, fy, fw, fh, self._color_panel_bg)
         overlay.draw_rectangle_lines(fx, fy, fw, fh, self._color_panel_border, 1)
-        overlay.draw_text(text, fx + pad_x, fy + pad_y, size, self._color_text)
+        self._draw_custom_text(text, fx + pad_x, fy + pad_y, size, self._color_text)
 
     def _draw_sniper_crosshair(self) -> None:
         if not self.draw_sniper_crosshair:
@@ -492,6 +579,158 @@ class CS2Overlay(BaseFeature):
         else:
             overlay.draw_text(text, fx + pad_x, fy + pad_y, size, color)
 
+    def _resolve_observer_target_pawn(self, target_handle: int) -> int:
+        target_index = target_handle & 0x7FFF
+        if target_index == 0:
+            return 0
+
+        try:
+            ent_list = self.memory_manager.read_longlong(self.memory_manager.client_dll_base + self.memory_manager.dwEntityList)
+            list_entry = self.memory_manager.read_longlong(ent_list + 8 * (target_index >> 9) + 16)
+            if not list_entry:
+                return 0
+            return self.memory_manager.read_longlong(list_entry + ENTITY_ENTRY_SIZE * (target_index & 0x1FF))
+        except Exception:
+            return 0
+
+    def _get_observer_mode_name(self, mode: int) -> str:
+        if mode == 0: return "None"
+        if mode == 1: return "Deathcam"
+        if mode == 2: return "Freezecam"
+        if mode == 3: return "Fixed"
+        if mode == 4: return "First person"
+        if mode == 5: return "Third person"
+        if mode == 6: return "Free Roam"
+        if mode == 7: return "Directed"
+        return "Unknown"
+
+    def _draw_spectator_list(self, entities: list[Entity]) -> None:
+        if not getattr(self, "draw_spectators", False):
+            return
+
+        spectators = []
+        local_target_pawn = 0
+
+        if self.local_pawn:
+            try:
+                if self.memory_manager.m_hObserverTarget is not None:
+                    observer_services = self.memory_manager.read_longlong(self.local_pawn + self.memory_manager.m_pObserverServices)
+                    if observer_services:
+                        struct_data = self.memory_manager.pm.read_bytes(observer_services, 20)
+                        if struct_data and len(struct_data) >= self.memory_manager.m_hObserverTarget + 4:
+                            target_handle = struct.unpack_from('I', struct_data, self.memory_manager.m_hObserverTarget)[0]
+                            local_target_pawn = self._resolve_observer_target_pawn(target_handle)
+            except Exception as e:
+                logger.debug(f"Error reading local player observer target: {e}")
+                local_target_pawn = 0
+
+        dead_count = 0
+        for ent in entities:
+            if not ent.name or ent.name.strip() == "":
+                continue
+
+            if ent.pawn_ptr == self.local_pawn:
+                continue
+
+            if ent.is_alive:
+                continue
+
+            dead_count += 1
+            target_handle = getattr(ent, "observer_target", 0)
+            if target_handle == 0:
+                continue
+
+            target_pawn = self._resolve_observer_target_pawn(target_handle)
+            is_spectating_us = (target_pawn == self.local_pawn)
+            is_spectating_our_target = (local_target_pawn != 0 and target_pawn == local_target_pawn)
+
+            if getattr(self, "spectators_self_only", False) and not is_spectating_us and not is_spectating_our_target:
+                continue
+
+            mode_val = getattr(ent, "observer_mode", 0)
+            
+            target_name = "Invalid"
+            if target_pawn == self.local_pawn:
+                target_name = "You"
+            elif mode_val == 6: # Free Roam
+                target_name = "No One"
+            else:
+                target_name = next((t.name for t in entities if t.pawn_ptr == target_pawn), "Invalid")
+
+            mode_str = self._get_observer_mode_name(mode_val)
+
+            if target_name == "Invalid":
+                continue
+
+            spectators.append({
+                "name": ent.name,
+                "mode": mode_str,
+                "target": target_name
+            })
+        
+        if not spectators:
+            return
+
+        size = 14
+        pad_x, pad_y = 12, 8
+        line_spacing = 4
+        
+        lines = []
+        lines.append({"text": "Spectators", "color": overlay.get_color("white")})
+
+        for s in spectators:
+            is_watching_me = (s['target'] == "You")
+            color = overlay.get_color("lightgreen") if is_watching_me else self._color_text
+
+            if getattr(self, "spectators_detailed", False):
+                if "Invalid" in s['target'] or s['target'] == "No One" or s['target'] == "Unknown":
+                    lines.append({"text": f"{s['name']} - {s['mode']}", "color": color})
+                else:
+                    lines.append({"text": f"{s['name']} -> {s['target']}", "color": color})
+            else:
+                text = f"{s['name']} (Watching You)" if is_watching_me else s['name']
+                lines.append({"text": text, "color": color})
+
+        sw = overlay.get_screen_width()
+        sh = overlay.get_screen_height()
+        
+        max_w = max(self._measure_custom_text(line["text"], size) for line in lines)
+        fw = max_w + pad_x * 2
+        fh = len(lines) * size + (len(lines) - 1) * line_spacing + pad_y * 2
+        
+        pos = getattr(self, "spectators_position", "Center-Right")
+        
+        bomb_y_offset = 0
+        if self.draw_bomb_timer and pos == getattr(self, "bomb_timer_position", "Center-Left"):
+            try:
+                bomb_info = self.memory_manager.get_bomb_info()
+                if bomb_info and bomb_info["is_planted"]:
+                    bomb_y_offset = (34 / 2) + (fh / 2) + 10
+            except Exception:
+                pass
+        
+        if pos == "Center-Left":
+            fx = 20
+            fy = sh / 2 - fh / 2 + bomb_y_offset
+        elif pos == "Center-Right":
+            fx = sw - fw - 20
+            fy = sh / 2 - fh / 2 + bomb_y_offset
+        elif pos == "Center-Top":
+            fx = sw / 2 - fw / 2
+            fy = 20 + bomb_y_offset
+        elif pos == "Center-Bottom":
+            fx = sw / 2 - fw / 2
+            fy = sh - fh - 20 - bomb_y_offset
+        else:
+            fx = sw - fw - 20
+            fy = sh / 2 - fh / 2 + bomb_y_offset
+        
+        overlay.draw_rectangle(fx, fy, fw, fh, self._color_panel_bg)
+        overlay.draw_rectangle_lines(fx, fy, fw, fh, self._color_panel_border, 1)
+        
+        for i, line in enumerate(lines):
+            self._draw_custom_text(line["text"], fx + pad_x, fy + pad_y + i * (size + line_spacing), size, line["color"])
+
     def _draw_skeleton(self, ent: Entity, vm: list, color: tuple) -> None:
         if not ent.all_bones_pos_3d:
             return
@@ -533,22 +772,38 @@ class CS2Overlay(BaseFeature):
 
     def _draw_custom_text(self, text: str, x: float, y: float, size: int, color: tuple) -> None:
         if getattr(self, "custom_font", None):
-            overlay.draw_font(self.custom_font, text, x, y, size, 1.0, color)
+            try:
+                overlay.draw_font(self.custom_font, text, x, y, size, 1.0, color)
+                return
+            except Exception:
+                # Fall back to draw_text if custom font draw fails
+                pass
         else:
             overlay.draw_text(text, x, y, size, color)
+        # final fallback
+        try:
+            overlay.draw_text(text, x, y, size, color)
+        except Exception:
+            logger.debug("Failed to draw text with both custom font and default draw_text")
 
     def _measure_custom_text(self, text: str, size: int) -> float:
         if getattr(self, "custom_font", None):
             try:
-                # pyMeow doesn't easily expose measure_font, so fallback to default measure_text
-                # It's usually close enough for horizontal centering.
+                return overlay.measure_font(self.custom_font, text, size, 1.0)[0]
+            except Exception:
+                try:
+                    return overlay.measure_text(text, size)
+                except Exception:
+                    return float(len(text) * size / 2)
+        else:
+            try:
                 return overlay.measure_text(text, size)
             except Exception:
-                return overlay.measure_text(text, size)
-        else:
-            return overlay.measure_text(text, size)
+                return float(len(text) * size / 2)
 
     def _draw_entity(self, ent: Entity, vm: list, is_teammate: bool = False) -> None:
+        if not ent.is_alive:
+            return
         try:
             head3d = ent.bone_pos(7)
             pos2d = self._world_to_screen(vm, ent.pos)
