@@ -156,6 +156,11 @@ class MemoryManager:
             self.m_bIsScoped = extracted["m_bIsScoped"]
             self.m_bInReload = extracted["m_bInReload"]
             self.m_iPing = extracted["m_iPing"]
+            self.m_hPawn = extracted["m_hPawn"]
+            self.m_hObserverPawn = extracted["m_hObserverPawn"]
+            self.m_pObserverServices = extracted["m_pObserverServices"]
+            self.m_iObserverMode = extracted["m_iObserverMode"]
+            self.m_hObserverTarget = extracted["m_hObserverTarget"]
         else:
             Logger.error_code(EC.E2005)
 
@@ -248,6 +253,37 @@ class MemoryManager:
         except Exception as e:
             logger.debug(f"Error reading bomb info: {e}")
             return None
+
+    def is_in_match(self) -> bool:
+        """Check if the player is currently in a match (not in the lobby)."""
+        try:
+            if not self.dwGlobalVars:
+                return False
+            global_vars = self.read_longlong(self.client_base + self.dwGlobalVars)
+            if not global_vars:
+                return False
+            # MaxClients is at offset 0x10
+            max_clients = self.read_int(global_vars + 0x10)
+            return max_clients > 1
+        except Exception as e:
+            logger.debug(f"Error checking is_in_match: {e}")
+            return False
+
+    def get_map_name(self) -> str:
+        """Retrieve the current map name from GlobalVars."""
+        try:
+            if not self.dwGlobalVars:
+                return ""
+            global_vars = self.read_longlong(self.client_base + self.dwGlobalVars)
+            if not global_vars:
+                return ""
+            map_name_addr = self.read_longlong(global_vars + 0x0188)
+            if not map_name_addr:
+                return ""
+            map_name = self.read_string(map_name_addr, 64)
+            return map_name.strip() if map_name else ""
+        except Exception:
+            return ""
 
     def get_fire_logic_data(self) -> dict | None:
         """Retrieve data necessary for firing logic."""

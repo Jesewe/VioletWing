@@ -636,7 +636,7 @@ class MainWindow:
             "enable_box", "enable_skeleton", "draw_snaplines", "draw_bomb_timer",
             "draw_health_numbers", "draw_armor", "draw_nicknames", "draw_weapon_names", "draw_teammates",
             "draw_scoped", "draw_reloading", "draw_flashed", "draw_defusing",
-            "draw_distance", "draw_sniper_crosshair",
+            "draw_distance", "draw_sniper_crosshair", "draw_spectators", "spectators_detailed", "spectators_self_only",
         )
         for key in checkboxes:
             val = self.ui_bridge.get_value(key)
@@ -669,6 +669,10 @@ class MainWindow:
         pos = self.ui_bridge.get_value("bomb_timer_position")
         if pos is not None:
             s["bomb_timer_position"] = pos
+            
+        spos = self.ui_bridge.get_value("spectators_position")
+        if spos is not None:
+            s["spectators_position"] = spos
 
     def _save_additional(self, config: dict) -> None:
         bh = config.setdefault("Bunnyhop", {})
@@ -712,7 +716,7 @@ class MainWindow:
             "enable_box", "enable_skeleton", "draw_snaplines", "draw_bomb_timer",
             "draw_health_numbers", "draw_armor", "draw_nicknames", "draw_weapon_names", "draw_teammates",
             "draw_scoped", "draw_reloading", "draw_flashed", "draw_defusing",
-            "draw_distance", "draw_sniper_crosshair",
+            "draw_distance", "draw_sniper_crosshair", "draw_spectators", "spectators_detailed", "spectators_self_only",
         )
         for key in checkboxes:
             self.ui_bridge.set_value(key, s.get(key, False))
@@ -724,6 +728,7 @@ class MainWindow:
             self.ui_bridge.set_value(key, s.get(key, "#FFFFFF").upper())
             
         self.ui_bridge.set_value("bomb_timer_position", s.get("bomb_timer_position", "Center-Left"))
+        self.ui_bridge.set_value("spectators_position", s.get("spectators_position", "Center-Right"))
 
     def _load_additional(self, config: dict) -> None:
         bh = config.get("Bunnyhop", {})

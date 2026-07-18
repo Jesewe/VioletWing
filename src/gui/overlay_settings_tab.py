@@ -106,8 +106,14 @@ def _create_game_info_section(main_window, parent):
     _make_checkbox(wf, "draw_bomb_timer", main_window, text="Enabled").pack(side="left", padx=(0, 20))
     _make_combobox(wf, "bomb_timer_position", main_window).pack(side="left")
 
-    wf2 = build_item_scaffold(section, "Sniper Crosshair", "", is_last=True)
+    wf2 = build_item_scaffold(section, "Sniper Crosshair", "")
     _make_checkbox(wf2, "draw_sniper_crosshair", main_window, text="Enabled").pack(side="left")
+
+    wf3 = build_item_scaffold(section, "Spectator List", "", is_last=True)
+    _make_checkbox(wf3, "draw_spectators", main_window, text="Enabled").pack(side="left", padx=(0, 20))
+    _make_combobox(wf3, "spectators_position", main_window).pack(side="left", padx=(0, 20))
+    _make_checkbox(wf3, "spectators_detailed", main_window, text="Detailed").pack(side="left", padx=(0, 20))
+    _make_checkbox(wf3, "spectators_self_only", main_window, text="Self Only").pack(side="left")
 
 def _create_colors_and_team_section(main_window, parent):
     section = create_section_frame(parent)
@@ -136,12 +142,14 @@ def _make_checkbox(parent, key, main_window, text=""):
     return cb
 
 def _make_combobox(parent, key, main_window):
-    if key == "bomb_timer_position":
+    if key in ("bomb_timer_position", "spectators_position"):
         values = ["Center-Left", "Center-Right", "Center-Top", "Center-Bottom"]
+        default_val = main_window.overlay.config["Overlay"].get(key, "Center-Right" if key == "spectators_position" else "Center-Left")
     else:
         values = ["Option 1", "Option 2"]
+        default_val = values[0]
         
-    initial = main_window.overlay.config["Overlay"].get(key, values[0])
+    initial = main_window.overlay.config["Overlay"].get(key, default_val)
     var = ctk.StringVar(value=initial)
     
     combo = ctk.CTkComboBox(
