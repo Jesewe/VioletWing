@@ -85,7 +85,7 @@ Run the app and test your change in CS2 offline or in a private server. There is
 | TriggerBot | Key bindings, per-weapon delays, toggle mode    |
 | Overlay    | Visual elements, FPS impact, resolution scaling |
 | Bunnyhop   | Timing at different FPS, window focus behavior  |
-| NoFlash    | Suppression strength range, no visual artifacts |
+| NoFlash    | No visual artifacts |
 | GUI        | Config persistence, live reload, window resize  |
 
 Logs write to `%LOCALAPPDATA%\VioletWing\logs\violetwing.log`. Check them before submitting.

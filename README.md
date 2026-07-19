@@ -45,24 +45,25 @@ Fires when your crosshair lands on an enemy. Weapon-specific delays keep the tim
 
 ### ESP Overlay
 
-Draws over the game window. Enemies show boxes, skeletons, snaplines, health bars, and names. Teammates optional.
+Draws over the game window. Only renders while you are in an active match - no spam in the lobby.
 
 - Bounding boxes, skeletons, snaplines
-- Health bars and name display with Cyrillic transliteration
+- Health bars, player names, and weapon names
+- Spectator list showing who watches you or your target
+- Bomb timer with defuse countdown
+- Watermark showing FPS, ping, and current map name
 - Fully customizable colors and line thickness
 
 ### Bunnyhop
 
-Writes jump inputs to memory at a configurable interval so you stop fighting the scroll wheel.
+Simulates scroll-wheel jumps by posting `WM_KEYDOWN`/`WM_KEYUP` events to the CS2 window. Reads `m_fFlags` each tick and only fires when the player is on the ground, so momentum is fully preserved.
 
 - Custom jump key binding
-- Adjustable jump delay
+- No memory writes - pure input simulation
 
 ### NoFlash
 
 Clamps flash duration. Flashbangs still go off - you just stop going blind.
-
-- Adjustable suppression strength (0–100%)
 
 ### GUI
 
