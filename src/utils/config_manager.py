@@ -85,7 +85,6 @@ class ConfigManager:
         },
         "Bunnyhop": {
             "JumpKey":   "space",
-            "JumpDelay": 0.01,
         },
         "NoFlash": {},
         "GitHub": {

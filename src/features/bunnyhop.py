@@ -24,7 +24,6 @@ class CS2Bunnyhop(BaseFeature):
 
     def load_configuration(self) -> None:
         self.jump_key = self.config.get("Bunnyhop", {}).get("JumpKey", "space").lower()
-        self.jump_delay = self.config.get("Bunnyhop", {}).get("JumpDelay", 0.01)
         self.jump_vk = get_vk_code(self.jump_key)
 
     def update_config(self, config: dict) -> None:
@@ -33,18 +32,15 @@ class CS2Bunnyhop(BaseFeature):
         logger.debug("Bunnyhop configuration updated.")
 
     def start(self) -> None:
-        if not self._init_address():
+        if not self._init_address() or not self.memory_manager.dwLocalPlayerPawn or not self.memory_manager.m_fFlags:
             Logger.error_code(EC.E3001)
             return
 
         self.is_running = True
-        # Clear here so stop() can always set it reliably.
         self.stop_event.clear()
 
         sleep = time.sleep
-
-        last_action = 0.0
-        jump_active = False
+        was_jumping = False
 
         while not self.stop_event.is_set():
             try:
@@ -52,23 +48,29 @@ class CS2Bunnyhop(BaseFeature):
                     sleep(MAIN_LOOP_SLEEP)
                     continue
 
-                now = time.time()
                 key_down = bool(ctypes.windll.user32.GetAsyncKeyState(self.jump_vk) & 0x8000)
 
                 if key_down:
-                    if now - last_action >= self.jump_delay:
-                        if not jump_active:
+                    local_pawn = self.memory_manager.read_longlong(
+                        self.memory_manager.client_base + self.memory_manager.dwLocalPlayerPawn
+                    )
+                    
+                    if local_pawn:
+                        flags = self.memory_manager.read_int(local_pawn + self.memory_manager.m_fFlags)
+                        on_ground = (flags & 1) != 0
+                        
+                        if on_ground:
                             self._write_jump(FORCE_JUMP_ACTIVE)
-                            jump_active = True
                         else:
                             self._write_jump(FORCE_JUMP_INACTIVE)
-                            jump_active = False
-                        last_action = now
-                elif jump_active:
-                    self._write_jump(FORCE_JUMP_INACTIVE)
-                    jump_active = False
-
-                sleep(MAIN_LOOP_SLEEP)
+                    
+                    was_jumping = True
+                    sleep(0.001) 
+                else:
+                    if was_jumping:
+                        self._write_jump(FORCE_JUMP_INACTIVE)
+                        was_jumping = False
+                    sleep(MAIN_LOOP_SLEEP)
 
             except Exception:
                 Logger.error_code(EC.E3002, exc_info=True)
