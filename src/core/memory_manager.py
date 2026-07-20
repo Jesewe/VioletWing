@@ -161,6 +161,7 @@ class MemoryManager:
             self.m_pObserverServices = extracted["m_pObserverServices"]
             self.m_iObserverMode = extracted["m_iObserverMode"]
             self.m_hObserverTarget = extracted["m_hObserverTarget"]
+            self.m_fFlags = extracted["m_fFlags"]
         else:
             Logger.error_code(EC.E2005)
 

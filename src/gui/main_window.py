@@ -679,14 +679,6 @@ class MainWindow:
         jk = self.ui_bridge.get_value("JumpKey")
         if jk is not None:
             bh["JumpKey"] = jk.strip()
-        jd = self.ui_bridge.get_value("JumpDelay")
-        if jd is not None:
-            try:
-                bh["JumpDelay"] = float(jd)
-            except ValueError:
-                pass
-
-        nf = config.setdefault("NoFlash", {})
 
     def update_ui_from_config(self) -> None:
         config = ConfigManager.load_config()
@@ -733,8 +725,6 @@ class MainWindow:
     def _load_additional(self, config: dict) -> None:
         bh = config.get("Bunnyhop", {})
         self.ui_bridge.set_value("JumpKey",   bh.get("JumpKey", "space"))
-        self.ui_bridge.set_value("JumpDelay", str(bh.get("JumpDelay", 0.01)))
-
 
     def _validate_inputs(self) -> dict[str, str]:
         errors = {}
@@ -796,17 +786,6 @@ class MainWindow:
         ):
             errors["JumpKey"] = "Cannot match Trigger Key."
             errors["TriggerKey"] = "Cannot match Jump Key."
-
-        raw_jd = self.ui_bridge.get_value("JumpDelay")
-        if raw_jd is not None:
-            try:
-                jd = float(raw_jd)
-                if not (0.01 <= jd <= 0.5):
-                    errors["JumpDelay"] = "Must be between 0.01 and 0.5."
-            except ValueError:
-                errors["JumpDelay"] = "Must be a valid number."
-
-
 
         return errors
 

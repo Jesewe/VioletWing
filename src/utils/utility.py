@@ -144,6 +144,7 @@ class Utility:
                 "m_pObserverServices":    get_field("C_BasePlayerPawn", "m_pObserverServices"),
                 "m_iObserverMode":        get_field("CPlayer_ObserverServices", "m_iObserverMode"),
                 "m_hObserverTarget":      get_field("CPlayer_ObserverServices", "m_hObserverTarget"),
+                "m_fFlags":               get_field("C_BaseEntity", "m_fFlags"),
             }
 
             missing = [k for k, v in extracted.items() if v is None]
