@@ -78,25 +78,18 @@ def _create_player_info_section(main_window, parent):
 
     wf = build_item_scaffold(section, "Details", "", is_last=True)
     grid = ctk.CTkFrame(wf, fg_color="transparent")
-    grid.pack(side="right")
+    grid.pack(side="left", padx=(15, 0))
 
-    row1 = ctk.CTkFrame(grid, fg_color="transparent")
-    row1.pack(fill="x", pady=(0, 10))
-    _make_checkbox(row1, "draw_nicknames",    main_window, text="Nicknames").pack(side="left", padx=(0, 20))
-    _make_checkbox(row1, "draw_weapon_names", main_window, text="Weapons").pack(side="left",   padx=(0, 20))
-    _make_checkbox(row1, "draw_health_numbers", main_window, text="Health").pack(side="left")
+    _make_checkbox(grid, "draw_nicknames",      main_window, text="Nicknames").grid(row=0, column=0, sticky="w", padx=(0, 20), pady=(0, 10))
+    _make_checkbox(grid, "draw_weapon_names",   main_window, text="Weapons").grid(row=0, column=1, sticky="w", padx=(0, 20), pady=(0, 10))
+    _make_checkbox(grid, "draw_health_numbers", main_window, text="Health").grid(row=0, column=2, sticky="w", padx=(0, 20), pady=(0, 10))
+    _make_checkbox(grid, "draw_flashed",        main_window, text="Flashed").grid(row=0, column=3, sticky="w", padx=(0, 20), pady=(0, 10))
+    _make_checkbox(grid, "draw_distance",       main_window, text="Distance").grid(row=0, column=4, sticky="w", pady=(0, 10))
 
-    row2 = ctk.CTkFrame(grid, fg_color="transparent")
-    row2.pack(fill="x", pady=(0, 10))
-    _make_checkbox(row2, "draw_armor",    main_window, text="Armor").pack(side="left",    padx=(0, 20))
-    _make_checkbox(row2, "draw_scoped",   main_window, text="Scoped").pack(side="left",   padx=(0, 20))
-    _make_checkbox(row2, "draw_reloading", main_window, text="Reloading").pack(side="left")
-
-    row3 = ctk.CTkFrame(grid, fg_color="transparent")
-    row3.pack(fill="x")
-    _make_checkbox(row3, "draw_flashed",   main_window, text="Flashed").pack(side="left",   padx=(0, 20))
-    _make_checkbox(row3, "draw_defusing",  main_window, text="Defusing").pack(side="left",  padx=(0, 20))
-    _make_checkbox(row3, "draw_distance",  main_window, text="Distance").pack(side="left")
+    _make_checkbox(grid, "draw_armor",          main_window, text="Armor").grid(row=1, column=0, sticky="w", padx=(0, 20))
+    _make_checkbox(grid, "draw_scoped",         main_window, text="Scoped").grid(row=1, column=1, sticky="w", padx=(0, 20))
+    _make_checkbox(grid, "draw_reloading",      main_window, text="Reloading").grid(row=1, column=2, sticky="w", padx=(0, 20))
+    _make_checkbox(grid, "draw_defusing",       main_window, text="Defusing").grid(row=1, column=3, sticky="w", padx=(0, 20))
 
 def _create_game_info_section(main_window, parent):
     section = create_section_frame(parent)
