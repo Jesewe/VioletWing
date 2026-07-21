@@ -78,6 +78,7 @@ class ConfigManager:
             "draw_flashed":       False,
             "draw_defusing":      False,
             "draw_distance":      False,
+            "draw_money":         False,
             "draw_sniper_crosshair": False,
             "draw_spectators":    False,
             "spectators_position": "Center-Right",

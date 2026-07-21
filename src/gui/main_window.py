@@ -635,7 +635,7 @@ class MainWindow:
         checkboxes = (
             "enable_box", "enable_skeleton", "draw_snaplines", "draw_bomb_timer",
             "draw_health_numbers", "draw_armor", "draw_nicknames", "draw_weapon_names", "draw_teammates",
-            "draw_scoped", "draw_reloading", "draw_flashed", "draw_defusing",
+            "draw_scoped", "draw_reloading", "draw_flashed", "draw_defusing", "draw_money",
             "draw_distance", "draw_sniper_crosshair", "draw_spectators", "spectators_detailed", "spectators_self_only",
         )
         for key in checkboxes:
@@ -711,7 +711,7 @@ class MainWindow:
         checkboxes = (
             "enable_box", "enable_skeleton", "draw_snaplines", "draw_bomb_timer",
             "draw_health_numbers", "draw_armor", "draw_nicknames", "draw_weapon_names", "draw_teammates",
-            "draw_scoped", "draw_reloading", "draw_flashed", "draw_defusing",
+            "draw_scoped", "draw_reloading", "draw_flashed", "draw_defusing", "draw_money",
             "draw_distance", "draw_sniper_crosshair", "draw_spectators", "spectators_detailed", "spectators_self_only",
         )
         for key in checkboxes:

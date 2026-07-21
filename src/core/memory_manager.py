@@ -55,6 +55,8 @@ class MemoryManager:
         self.m_bIsScoped = None
         self.m_bInReload = None
         self.m_iPing = None
+        self.m_pInGameMoneyServices = None
+        self.m_iAccount = None
         self._cached_weapon_handle: int = 0
         self._cached_weapon_type: str = "Rifles"
 
@@ -162,6 +164,8 @@ class MemoryManager:
             self.m_iObserverMode = extracted["m_iObserverMode"]
             self.m_hObserverTarget = extracted["m_hObserverTarget"]
             self.m_fFlags = extracted["m_fFlags"]
+            self.m_pInGameMoneyServices = extracted["m_pInGameMoneyServices"]
+            self.m_iAccount = extracted["m_iAccount"]
         else:
             Logger.error_code(EC.E2005)
 
