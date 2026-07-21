@@ -233,6 +233,16 @@ class Entity:
             and 0 <= pos["y"] <= overlay.get_screen_height()
         )
 
+OVERLAY_FONTS = {
+    "Inter": "Inter-SemiBold.ttf",
+    "JetBrainsMono": "JetBrainsMono-Regular.ttf",
+    "Exo 2": "Exo2-SemiBold.ttf",
+    "Rubik": "Rubik-SemiBold.ttf",
+    "Roboto": "Roboto-Regular.ttf",
+    "Open Sans": "OpenSans-Regular.ttf",
+    "Fira Code": "FiraCode-Regular.ttf",
+}
+
 class CS2Overlay(BaseFeature):
     def __init__(self, memory_manager: MemoryManager) -> None:
         super().__init__(memory_manager)
@@ -241,6 +251,7 @@ class CS2Overlay(BaseFeature):
         self.local_pawn: Optional[int] = None
         self.screen_width = overlay.get_screen_width()
         self.screen_height = overlay.get_screen_height()
+        self.current_loaded_font_name: Optional[str] = None
         self.load_configuration()
 
     def load_configuration(self) -> None:
@@ -272,6 +283,7 @@ class CS2Overlay(BaseFeature):
         self.spectators_position = s.get("spectators_position", "Center-Right")
         self.spectators_detailed = s.get("spectators_detailed", False)
         self.spectators_self_only = s.get("spectators_self_only", False)
+        self.overlay_font = s.get("overlay_font", "Inter")
         self._resolve_colors()
 
     def update_config(self, config: dict) -> None:
@@ -287,11 +299,14 @@ class CS2Overlay(BaseFeature):
         try:
             overlay.overlay_init("Counter-Strike 2", fps=0)
             try:
-                font_path = Utility.resource_path("assets/fonts/Inter-SemiBold.ttf")
                 self.custom_font = 1
+                font_filename = OVERLAY_FONTS.get(self.overlay_font, "Inter-SemiBold.ttf")
+                font_path = Utility.resource_path(f"assets/fonts/{font_filename}")
                 overlay.load_font(font_path, self.custom_font)
+                self.current_loaded_font_name = self.overlay_font
             except Exception:
                 self.custom_font = None
+                self.current_loaded_font_name = None
         except Exception as exc:
             Logger.error_code(EC.E3005, "%s", exc)
             self.is_running = False
@@ -300,6 +315,16 @@ class CS2Overlay(BaseFeature):
         sleep = time.sleep
 
         while not self.stop_event.is_set():
+            if self.current_loaded_font_name != self.overlay_font:
+                try:
+                    font_filename = OVERLAY_FONTS.get(self.overlay_font, "Inter-SemiBold.ttf")
+                    font_path = Utility.resource_path(f"assets/fonts/{font_filename}")
+                    overlay.load_font(font_path, self.custom_font)
+                    self.current_loaded_font_name = self.overlay_font
+                except Exception as e:
+                    logger.warning("Failed to hot-load font %s: %s", self.overlay_font, e)
+                    self.current_loaded_font_name = self.overlay_font # prevent spam
+
             frame_time = 1.0 / max(self.target_fps, 1)
             start = time.time()
             try:

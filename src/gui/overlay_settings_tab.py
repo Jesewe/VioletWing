@@ -122,6 +122,11 @@ def _create_colors_and_team_section(main_window, parent):
     wf = build_item_scaffold(section, "Main Text Color", "")
     _make_color_picker(wf, "text_color_hex", main_window).pack(side="left")
     
+    wf_font = build_item_scaffold(section, "Overlay Font", "")
+    _make_combobox(wf_font, "overlay_font", main_window,
+                   override_values=["Inter", "JetBrainsMono", "Exo 2", "Rubik", "Roboto", "Open Sans", "Fira Code"],
+                   default_val="Inter").pack(side="left")
+    
     wf_wpn = build_item_scaffold(section, "Weapon Text Color", "")
     _make_color_picker(wf_wpn, "weapon_color_hex", main_window).pack(side="left")
 
@@ -141,8 +146,11 @@ def _make_checkbox(parent, key, main_window, text=""):
     main_window.ui_bridge.register(key, var=var)
     return cb
 
-def _make_combobox(parent, key, main_window):
-    if key in ("bomb_timer_position", "spectators_position"):
+def _make_combobox(parent, key, main_window, override_values=None, default_val=None):
+    if override_values is not None:
+        values = override_values
+        default_val = main_window.overlay.config["Overlay"].get(key, default_val if default_val else values[0])
+    elif key in ("bomb_timer_position", "spectators_position"):
         values = ["Center-Left", "Center-Right", "Center-Top", "Center-Bottom"]
         default_val = main_window.overlay.config["Overlay"].get(key, "Center-Right" if key == "spectators_position" else "Center-Left")
     else:

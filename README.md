@@ -53,6 +53,7 @@ Draws over the game window. Only renders while you are in an active match - no s
 - Bomb timer with defuse countdown
 - Watermark showing FPS, ping, and current map name
 - Fully customizable colors and line thickness
+- Selectable overlay typography (all fonts are sourced from [Google Fonts](https://fonts.google.com/))
 
 ### Bunnyhop
 
@@ -130,6 +131,7 @@ More detail in the [wiki](https://github.com/Jesewe/VioletWing/wiki/Troubleshoot
 ## Credits
 
 - [**a2x**](https://github.com/a2x) for [cs2-dumper](https://github.com/a2x/cs2-dumper)
+- All fonts are sourced from [Google Fonts](https://fonts.google.com/)
 - All [contributors](https://github.com/Jesewe/VioletWing/graphs/contributors) who filed issues, submitted PRs, and tested builds
 
 ---
