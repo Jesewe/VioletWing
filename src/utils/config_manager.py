@@ -55,6 +55,7 @@ class ConfigManager:
             },
         },
         "Overlay": {
+            "overlay_font":       "Inter",
             "target_fps":         60,
             "enable_box":         True,
             "enable_skeleton":    False,

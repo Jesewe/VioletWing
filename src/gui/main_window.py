@@ -674,6 +674,10 @@ class MainWindow:
         if spos is not None:
             s["spectators_position"] = spos
 
+        font = self.ui_bridge.get_value("overlay_font")
+        if font is not None:
+            s["overlay_font"] = font
+
     def _save_additional(self, config: dict) -> None:
         bh = config.setdefault("Bunnyhop", {})
         jk = self.ui_bridge.get_value("JumpKey")
@@ -721,6 +725,7 @@ class MainWindow:
             
         self.ui_bridge.set_value("bomb_timer_position", s.get("bomb_timer_position", "Center-Left"))
         self.ui_bridge.set_value("spectators_position", s.get("spectators_position", "Center-Right"))
+        self.ui_bridge.set_value("overlay_font", s.get("overlay_font", "Inter"))
 
     def _load_additional(self, config: dict) -> None:
         bh = config.get("Bunnyhop", {})
