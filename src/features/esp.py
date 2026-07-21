@@ -91,6 +91,7 @@ class Entity:
         self.is_alive: bool = False
         self.observer_mode: int = 0
         self.observer_target: int = 0
+        self.money: int = 0
 
     def update(self, skeleton_enabled: bool, draw_weapon_names: bool = False) -> bool:
         try:
@@ -189,6 +190,16 @@ class Entity:
             except Exception:
                 self.is_reloading = False
 
+            try:
+                # m_pInGameMoneyServices is a pointer on the controller, not the pawn
+                money_services = self.memory_manager.read_longlong(self.controller_ptr + self.memory_manager.m_pInGameMoneyServices)
+                if money_services:
+                    self.money = self.memory_manager.read_int(money_services + self.memory_manager.m_iAccount)
+                else:
+                    self.money = 0
+            except Exception:
+                self.money = 0
+
             return True
         except Exception as exc:
             logger.debug("Entity update failed: %s", exc)
@@ -284,6 +295,7 @@ class CS2Overlay(BaseFeature):
         self.spectators_detailed = s.get("spectators_detailed", False)
         self.spectators_self_only = s.get("spectators_self_only", False)
         self.overlay_font = s.get("overlay_font", "Inter")
+        self.draw_money = s.get("draw_money", False)
         self._resolve_colors()
 
     def update_config(self, config: dict) -> None:
@@ -938,6 +950,8 @@ class CS2Overlay(BaseFeature):
             
         # Draw status flags on the right side of the box
         flags = []
+        if getattr(self, "draw_money", False) and ent.money > 0:
+            flags.append((f"${ent.money}", overlay.get_color("#4AE24A")))
         if getattr(self, "draw_scoped", False) and ent.is_scoped:
             flags.append(("[Scoped]", overlay.get_color("#4A90E2")))
         if getattr(self, "draw_flashed", False) and ent.is_flashed:

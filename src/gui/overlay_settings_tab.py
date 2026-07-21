@@ -90,6 +90,7 @@ def _create_player_info_section(main_window, parent):
     _make_checkbox(grid, "draw_scoped",         main_window, text="Scoped").grid(row=1, column=1, sticky="w", padx=(0, 20))
     _make_checkbox(grid, "draw_reloading",      main_window, text="Reloading").grid(row=1, column=2, sticky="w", padx=(0, 20))
     _make_checkbox(grid, "draw_defusing",       main_window, text="Defusing").grid(row=1, column=3, sticky="w", padx=(0, 20))
+    _make_checkbox(grid, "draw_money",          main_window, text="Money").grid(row=1, column=4, sticky="w")
 
 def _create_game_info_section(main_window, parent):
     section = create_section_frame(parent)
