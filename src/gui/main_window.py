@@ -456,11 +456,33 @@ class MainWindow:
                 font=(FONT_FAMILY_BOLD[0], FONT_SIZE_H4),
                 anchor="w",
             )
-            btn.pack(side="left", fill="x", expand=True, padx=(6, 12))
+            if key == "notifications":
+                btn.pack(side="left", fill="x", expand=True, padx=(6, 4))
+                badge_frame = ctk.CTkFrame(row, width=20, height=20, corner_radius=10, fg_color="#7c3aed")
+                badge_frame.pack_propagate(False)
+                badge_label = ctk.CTkLabel(
+                    badge_frame, text="", font=(FONT_FAMILY_BOLD[0], 10, "bold"), text_color="#ffffff"
+                )
+                badge_label.place(relx=0.5, rely=0.5, anchor="center")
+                self._notification_badge_frame = badge_frame
+                self._notification_badge_label = badge_label
+            else:
+                btn.pack(side="left", fill="x", expand=True, padx=(6, 12))
             self.nav_buttons[key] = btn
             self.nav_indicators[key] = indicator
 
         self.set_active_nav("dashboard")
+
+    def set_notification_badge(self, count: int) -> None:
+        """Update or hide the unread notification badge in the sidebar."""
+        if not hasattr(self, "_notification_badge_frame"):
+            return
+        if count > 0:
+            count_str = str(count) if count <= 99 else "99+"
+            self._notification_badge_label.configure(text=count_str)
+            self._notification_badge_frame.pack(side="right", padx=(0, 10))
+        else:
+            self._notification_badge_frame.pack_forget()
 
     def set_active_nav(self, active_key: str) -> None:
         for key, btn in self.nav_buttons.items():
