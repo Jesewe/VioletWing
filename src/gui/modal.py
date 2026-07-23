@@ -28,9 +28,13 @@ class _AppModalDialog:
         message: str,
         *,
         confirm: bool = False,
+        custom_glyph: str | None = None,
+        confirm_text: str = "Confirm",
+        cancel_text: str = "Cancel",
     ) -> None:
         self._result = False
-        accent, _, glyph = _KIND_PALETTE[kind]
+        accent, _, default_glyph = _KIND_PALETTE[kind]
+        glyph = custom_glyph if custom_glyph is not None else default_glyph
 
         self._win = ctk.CTkToplevel(root)
         self._win.title(title)
@@ -47,7 +51,7 @@ class _AppModalDialog:
         # 200 ms matches the pattern used in changelog_window.py.
         self._win.after(200, self._apply_icon)
 
-        self._build(glyph, accent, title, message, confirm)
+        self._build(glyph, accent, title, message, confirm, confirm_text=confirm_text, cancel_text=cancel_text)
         self._win.grab_set()
         self._win.lift()
         self._win.focus_force()
@@ -59,7 +63,16 @@ class _AppModalDialog:
         except Exception:
             pass
 
-    def _build(self, glyph: str, accent: str, title: str, message: str, confirm: bool) -> None:
+    def _build(
+        self,
+        glyph: str,
+        accent: str,
+        title: str,
+        message: str,
+        confirm: bool,
+        confirm_text: str = "Confirm",
+        cancel_text: str = "Cancel",
+    ) -> None:
         outer = ctk.CTkFrame(self._win, fg_color=COLOR_BACKGROUND, corner_radius=0)
         outer.pack(fill="both", expand=True)
 
@@ -101,7 +114,7 @@ class _AppModalDialog:
         if confirm:
             ctk.CTkButton(
                 btn_row,
-                text="Cancel",
+                text=cancel_text,
                 width=120, height=36, corner_radius=10,
                 fg_color="transparent",
                 hover_color=COLOR_BACKGROUND,
@@ -113,7 +126,7 @@ class _AppModalDialog:
 
             ctk.CTkButton(
                 btn_row,
-                text="Confirm",
+                text=confirm_text,
                 width=120, height=36, corner_radius=10,
                 fg_color=COLOR_ACCENT_FG,
                 hover_color=COLOR_ACCENT_HOVER,
@@ -157,6 +170,17 @@ class AppModal:
         _AppModalDialog(root, "info", title, message)
 
     @staticmethod
-    def confirm(root: ctk.CTk, title: str, message: str) -> bool:
-        dlg = _AppModalDialog(root, "confirm", title, message, confirm=True)
+    def confirm(
+        root: ctk.CTk,
+        title: str,
+        message: str,
+        *,
+        confirm_text: str = "Confirm",
+        cancel_text: str = "Cancel",
+        glyph: str | None = None,
+    ) -> bool:
+        dlg = _AppModalDialog(
+            root, "confirm", title, message, confirm=True,
+            confirm_text=confirm_text, cancel_text=cancel_text, custom_glyph=glyph
+        )
         return dlg._result
