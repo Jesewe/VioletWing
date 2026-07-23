@@ -321,16 +321,23 @@ class MainWindow:
         animate_in(start_x)
 
     def create_update_button(self, parent, is_prerelease: bool) -> None:
-        """Attach the update button to parent. Called from _on_release_fetched on the UI thread."""
+        """Attach the versioned update button to parent header frame on the UI thread."""
         ci = load_icon("update_icon.png")
+        ver = getattr(self.updater, "_latest_version", None)
+        if ver:
+            ver_str = ver if ver.startswith("v") else f"v{ver}"
+            btn_text = f"Update {ver_str}"
+        else:
+            btn_text = "Pre-release Available!" if is_prerelease else "Update Available!"
+
         ctk.CTkButton(
             parent,
-            text="Pre-release Available!" if is_prerelease else "Update Available!",
+            text=btn_text,
             image=ci, compound="left",
             command=self.updater.handle_update,
             height=36, corner_radius=10,
-            fg_color="#f59e0b" if is_prerelease else "#ef4444",
-            hover_color="#d97706" if is_prerelease else "#dc2626",
+            fg_color="#8b5cf6" if is_prerelease else "#7c3aed",
+            hover_color="#7c3aed" if is_prerelease else "#6d28d9",
             border_width=0, text_color="#ffffff",
             font=(FONT_FAMILY_BOLD[0], FONT_SIZE_P, "bold"),
         ).pack(side="left", padx=(8, 0))
