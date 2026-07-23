@@ -28,7 +28,7 @@ from src.gui.theme import (
     COLOR_HEADER_BG,
 )
 
-logger = Logger.get_logger(__name__)\
+logger = Logger.get_logger(__name__)
 
 # Any line that is exclusively badge markup or a bare URL
 _BADGE_LINE_RE = re.compile(
@@ -50,6 +50,11 @@ _FULL_CHANGELOG_RE = re.compile(
 # Bare GitHub PR/issue URL → #NNN; lookbehind avoids matching inside Markdown link syntax
 _GITHUB_PR_RE = re.compile(
     r"(?<!\()https://github\.com/[^/\s]+/[^/\s]+/(?:pull|issues)/(\d+)"
+)
+
+# Duplicate "What's Changed" / "What's New" headers in markdown content
+_HEADER_DUPLICATE_RE = re.compile(
+    r"^\s*#+\s*what'?s\s+(changed|new).*", re.IGNORECASE
 )
 
 # Inline: bare URLs inside text (not already wrapped in Markdown link syntax)
@@ -82,16 +87,25 @@ class ChangelogWindow(ctk.CTkToplevel):
         self._updater = updater
         self._ver = updater._latest_version or "Latest Release"
 
+        if updater.html_url and "/releases" in updater.html_url:
+            self._base_repo_url = updater.html_url.split("/releases")[0]
+        else:
+            self._base_repo_url = "https://github.com/Jesewe/VioletWing"
+
         self.title(f"What's new in {self._ver}")
         self.resizable(False, False)
         self._set_icon()
         self._center(parent)
+
+        self.protocol("WM_DELETE_WINDOW", self._on_close)
+        self.bind("<Escape>", lambda event: self._on_close())
 
         self.lift()
         self.attributes("-topmost", True)
         self.after(300, lambda: self.attributes("-topmost", False))
         self.after(100, self.grab_set)
 
+        self._link_tag_counter = 0
         self._build_ui(updater.html_url or "")
         self._render_markdown(updater.changelog or "")
 
@@ -212,7 +226,7 @@ class ChangelogWindow(ctk.CTkToplevel):
         self._text.grid(row=0, column=0, sticky="nsew")
 
         sb = ctk.CTkScrollbar(outer, command=self._text.yview, width=8)
-        sb.grid(row=0, column=1, sticky="ns", padx=(0, 6))
+        sb.grid(row=0, column=1, sticky="ns", padx=(4, 12), pady=(12, 12))
         self._text.configure(yscrollcommand=sb.set)
 
         self._configure_tags(bg, fg)
@@ -236,30 +250,29 @@ class ChangelogWindow(ctk.CTkToplevel):
             fg_color=self._tc(COLOR_BORDER),
         ).pack(fill="x", side="top")
 
+        # Left action: "Don't show again" checkbox
+        self._dont_show_var = ctk.BooleanVar(value=True)
+        self._dont_show_cb = ctk.CTkCheckBox(
+            footer,
+            text=f"Don't show again for {self._ver}",
+            variable=self._dont_show_var,
+            font=(FONT_FAMILY_BOLD[0], FONT_SIZE_P - 1),
+            text_color=self._tc(COLOR_TEXT_SECONDARY),
+            border_color=self._tc(COLOR_WIDGET_BORDER),
+            hover_color=self._tc(COLOR_VIOLET_HOVER),
+            fg_color=self._ACCENT,
+            checkmark_color="#ffffff",
+        )
+        self._dont_show_cb.pack(side="left", padx=24, pady=14)
+
         btn_row = ctk.CTkFrame(footer, fg_color="transparent")
         btn_row.pack(side="right", padx=24, pady=0, fill="y")
 
-        # Primary action — full violet fill
+        # Secondary action — View release on GitHub
         ctk.CTkButton(
             btn_row,
             text="View on GitHub",
             width=144,
-            height=36,
-            corner_radius=8,
-            fg_color=self._ACCENT,
-            hover_color=self._tc(COLOR_VIOLET_HOVER),
-            border_width=1,
-            border_color=self._ACCENT_DIM,
-            text_color="#ffffff",
-            font=(FONT_FAMILY_BOLD[0], FONT_SIZE_P, "bold"),
-            command=lambda: self._on_view(html_url),
-        ).pack(side="left", padx=(0, 8), pady=14)
-
-        # Secondary action — ghost button, visually recessed
-        ctk.CTkButton(
-            btn_row,
-            text="Close",
-            width=80,
             height=36,
             corner_radius=8,
             fg_color="transparent",
@@ -268,6 +281,22 @@ class ChangelogWindow(ctk.CTkToplevel):
             border_color=self._tc(COLOR_WIDGET_BORDER),
             text_color=self._tc(COLOR_TEXT_SECONDARY),
             font=(FONT_FAMILY_BOLD[0], FONT_SIZE_P),
+            command=lambda: self._on_view(html_url),
+        ).pack(side="left", padx=(0, 8), pady=14)
+
+        # Primary action — Close dialog
+        ctk.CTkButton(
+            btn_row,
+            text="Close",
+            width=80,
+            height=36,
+            corner_radius=8,
+            fg_color=self._ACCENT,
+            hover_color=self._tc(COLOR_VIOLET_HOVER),
+            border_width=1,
+            border_color=self._ACCENT_DIM,
+            text_color="#ffffff",
+            font=(FONT_FAMILY_BOLD[0], FONT_SIZE_P, "bold"),
             command=self._on_close,
         ).pack(side="left", pady=14)
 
@@ -301,7 +330,18 @@ class ChangelogWindow(ctk.CTkToplevel):
         # Violet bullet dot anchors list items to the accent palette
         self._text.tag_configure("bullet_dot", foreground=self._ACCENT, font=(ui, FONT_SIZE_P + 1, "bold"))
 
-    # markdown rendering (logic unchanged — only spacing tweaks)
+    def _bind_link(self, tag_name: str, url: str) -> None:
+        """Bind click and hover events to open target URL in browser."""
+        self._text.tag_bind(tag_name, "<Button-1>", lambda e, u=url: self._open_url(u))
+        self._text.tag_bind(tag_name, "<Enter>", lambda e: self._text.configure(cursor="hand2"))
+        self._text.tag_bind(tag_name, "<Leave>", lambda e: self._text.configure(cursor="arrow"))
+
+    @staticmethod
+    def _open_url(url: str) -> None:
+        if url and url.startswith(("http://", "https://")):
+            webbrowser.open(url)
+
+    # markdown rendering
     def _render_markdown(self, raw: str) -> None:
         lines = self._filter_lines(raw.splitlines())
 
@@ -373,12 +413,13 @@ class ChangelogWindow(ctk.CTkToplevel):
             self._text.insert("end", "\n")
             prev_blank = False
 
+        self._text.insert("end", "\n\n")
         self._text.configure(state="disabled")
 
     @staticmethod
     def _filter_lines(lines: list[str]) -> list[str]:
         """
-        Drop lines that are exclusively badges, bare URLs, or the auto-generated
+        Drop lines that are exclusively badges, bare URLs, duplicate headings, or the auto-generated
         Full Changelog footer - leaving everything else untouched.
         """
         out = []
@@ -387,13 +428,15 @@ class ChangelogWindow(ctk.CTkToplevel):
                 continue
             if _FULL_CHANGELOG_RE.match(ln.strip()):
                 continue
+            if _HEADER_DUPLICATE_RE.match(ln.strip()):
+                continue
             out.append(ln)
 
         # Trim leading/trailing blank lines that may have been left by filtering
         while out and not out[0].strip():
-            out.pop(0)
+          out.pop(0)
         while out and not out[-1].strip():
-            out.pop()
+          out.pop()
 
         return out
 
@@ -405,7 +448,9 @@ class ChangelogWindow(ctk.CTkToplevel):
         cleaned   = _BARE_URL_RE.sub("", converted)
         return re.sub(r"\s{2,}", " ", cleaned).strip()
 
-    _INLINE_RE = re.compile(r"(\*\*(.+?)\*\*|`(.+?)`|\[(.+?)\]\((.+?)\)|#\d+)")
+    _INLINE_RE = re.compile(
+        r"(\*\*(.+?)\*\*|`(.+?)`|\[(.+?)\]\((.+?)\)|#\d+|@[\w-]+)"
+    )
 
     def _insert_inline(self, text: str, base: tuple) -> None:
         cursor = 0
@@ -418,11 +463,46 @@ class ChangelogWindow(ctk.CTkToplevel):
             elif raw.startswith("`"):
                 self._text.insert("end", m.group(3), ("code",))
             elif raw.startswith("#") and raw[1:].isdigit():
-                # PR/issue short form produced by _strip_inline_noise
-                self._text.insert("end", raw, ("pr_num",))
+                self._link_tag_counter += 1
+                tag_name = f"pr_link_{self._link_tag_counter}"
+                num = raw[1:]
+                target_url = f"{self._base_repo_url}/issues/{num}"
+                self._text.tag_configure(
+                    tag_name,
+                    font=(FONT_FAMILY_BOLD[0], FONT_SIZE_P, "bold"),
+                    foreground=self._ACCENT,
+                    underline=True,
+                )
+                self._bind_link(tag_name, target_url)
+                self._text.insert("end", raw, base + (tag_name,))
+            elif raw.startswith("@") and len(raw) > 1:
+                self._link_tag_counter += 1
+                tag_name = f"user_link_{self._link_tag_counter}"
+                username = raw[1:]
+                target_url = f"https://github.com/{username}"
+                self._text.tag_configure(
+                    tag_name,
+                    font=(FONT_FAMILY_BOLD[0], FONT_SIZE_P, "bold"),
+                    foreground=self._ACCENT,
+                    underline=True,
+                )
+                self._bind_link(tag_name, target_url)
+                self._text.insert("end", raw, base + (tag_name,))
+            elif raw.startswith("["):
+                self._link_tag_counter += 1
+                tag_name = f"markdown_link_{self._link_tag_counter}"
+                link_text = m.group(4)
+                target_url = m.group(5)
+                self._text.tag_configure(
+                    tag_name,
+                    font=(FONT_FAMILY_BOLD[0], FONT_SIZE_P, "bold"),
+                    foreground=self._ACCENT,
+                    underline=True,
+                )
+                self._bind_link(tag_name, target_url)
+                self._text.insert("end", link_text, base + (tag_name,))
             else:
-                # Markdown link - render display text only, URL discarded
-                self._text.insert("end", m.group(4), base)
+                self._text.insert("end", raw, base)
             cursor = m.end()
         if cursor < len(text):
             self._text.insert("end", text[cursor:], base)
@@ -448,6 +528,7 @@ class ChangelogWindow(ctk.CTkToplevel):
         self._dismiss()
 
     def _dismiss(self) -> None:
-        self._updater.mark_changelog_seen()
+        if hasattr(self, "_dont_show_var") and self._dont_show_var.get():
+            self._updater.mark_changelog_seen()
         self.grab_release()
         self.destroy()
