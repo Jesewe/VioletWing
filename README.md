@@ -57,10 +57,10 @@ Draws over the game window. Only renders while you are in an active match - no s
 
 ### Bunnyhop
 
-Simulates scroll-wheel jumps by posting `WM_KEYDOWN`/`WM_KEYUP` events to the CS2 window. Reads `m_fFlags` each tick and only fires when the player is on the ground, so momentum is fully preserved.
+Synchronizes player jumps by writing to CS2's jump state (`+jump`) gated by the player's `m_fFlags` ground state. Checks `ON_GROUND` state each tick while the jump key is held to ensure 1-tick jump timing and preserve full momentum.
 
 - Custom jump key binding
-- No memory writes - pure input simulation
+- Precise ground-state (`m_fFlags`) synchronization
 
 ### NoFlash
 

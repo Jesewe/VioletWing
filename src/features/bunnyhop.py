@@ -16,6 +16,14 @@ FORCE_JUMP_ACTIVE = 65537
 FORCE_JUMP_INACTIVE = 256
 
 class CS2Bunnyhop(BaseFeature):
+    """
+    Bunnyhop feature using direct memory state synchronization.
+    
+    Reads player pawn `m_fFlags` to detect `ON_GROUND` (bit 0) while the configured
+    jump key is pressed. Writes `FORCE_JUMP_ACTIVE` (65537) to the `+jump` memory
+    address on ground contact and resets to `FORCE_JUMP_INACTIVE` (256) in the air,
+    ensuring 1-tick jump timing and momentum preservation without input lag.
+    """
     def __init__(self, memory_manager: MemoryManager) -> None:
         super().__init__(memory_manager)
         self.config = ConfigManager.load_config()
