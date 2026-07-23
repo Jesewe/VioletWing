@@ -1,82 +1,140 @@
-import customtkinter as ctk
-from src.gui.components import create_scrollable_frame
-from src.gui.icon_loader import icon_label, load_icon
-import orjson
+import io
 import threading
 import requests
+import orjson
+from PIL import Image, ImageDraw
+import customtkinter as ctk
+
 from src.utils.logger import Logger
 from src.utils.utility import Utility
-from src.gui.theme import (FONT_TITLE, FONT_SUBTITLE, FONT_SECTION_TITLE, FONT_ITEM_LABEL, FONT_ITEM_DESCRIPTION,
-                         FONT_TABULAR, FONT_WIDGET,
-                         COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY, COLOR_BACKGROUND, COLOR_BORDER,
-                         COLOR_WIDGET_BACKGROUND, SECTION_STYLE)
+from src.gui.icon_loader import icon_label, load_icon
+from src.gui.components import create_scrollable_frame
+from src.gui.theme import (
+    FONT_TITLE, FONT_SUBTITLE, FONT_SECTION_TITLE, FONT_ITEM_LABEL, FONT_ITEM_DESCRIPTION,
+    FONT_FAMILY_BOLD,
+    COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY, COLOR_BACKGROUND, COLOR_BORDER,
+    COLOR_WIDGET_BACKGROUND, COLOR_ACCENT_FG, SECTION_STYLE,
+)
 
-# Cache the logger instance
 logger = Logger.get_logger(__name__)
 
-def populate_supporters(main_window, frame):
-    """Populate the Supporters tab with data from a JSON file."""
-    # Main container
-    main_container = ctk.CTkFrame(frame, fg_color="transparent")
-    main_container.pack(fill="both", expand=True, padx=24, pady=24)
+# Global memory cache for loaded Vercel server avatar images
+_AVATAR_CACHE: dict[str, ctk.CTkImage] = {}
 
-    # Scrollable container
-    supporters_container = create_scrollable_frame(main_container, main_window)
 
-    # Hero section
-    hero_frame = ctk.CTkFrame(
+def _load_user_avatar(username: str, main_window, callback) -> None:
+    """Asynchronously fetch avatar image from VioletWing Vercel server."""
+    if username in _AVATAR_CACHE:
+        callback(_AVATAR_CACHE[username])
+        return
+
+    def _fetch():
+        session = Utility.get_http_session()
+        urls = [
+            f"https://violetwing.vercel.app/avatars/{username}.png",
+            f"https://violetwing.vercel.app/data/avatars/{username}.png",
+            f"https://violetwing.vercel.app/avatars/{username.lower()}.png",
+        ]
+        for url in urls:
+            try:
+                resp = session.get(url, timeout=4)
+                if resp.status_code == 200 and resp.content:
+                    raw_img = Image.open(io.BytesIO(resp.content)).convert("RGBA")
+                    ctk_img = ctk.CTkImage(light_image=raw_img, dark_image=raw_img, size=(36, 36))
+                    _AVATAR_CACHE[username] = ctk_img
+
+                    def _safe_cb():
+                        try:
+                            if main_window.root.winfo_exists():
+                                callback(ctk_img)
+                        except Exception:
+                            pass
+
+                    main_window.root.after(0, _safe_cb)
+                    return
+            except Exception as e:
+                logger.debug(f"Failed fetching avatar for {username} from {url}: {e}")
+
+    threading.Thread(target=_fetch, daemon=True).start()
+
+
+def populate_supporters(main_window, frame) -> None:
+    """Populate Supporters tab matching Notifications alignment and padding 1:1."""
+    for widget in frame.winfo_children():
+        widget.destroy()
+
+    supporters_container = create_scrollable_frame(frame, main_window)
+
+    # Top Header section matching Notifications tab 1:1 (no extra inner padding)
+    header_frame = ctk.CTkFrame(
         supporters_container,
-        **SECTION_STYLE
+        fg_color="transparent",
+        height=100
     )
-    hero_frame.pack(fill="x", pady=(0, 48), padx=24)
+    header_frame.pack(fill="x", pady=(0, 35))
+    header_frame.pack_propagate(False)
 
-    # Hero content
-    hero_content = ctk.CTkFrame(hero_frame, fg_color="transparent")
-    hero_content.pack(fill="x", padx=48, pady=48)
+    title_container = ctk.CTkFrame(header_frame, fg_color="transparent")
+    title_container.pack(side="left", fill="y")
 
-    # Title and subtitle
-    _title_row = ctk.CTkFrame(hero_content, fg_color="transparent")
-    _title_row.pack(anchor="w")
-    icon_label(_title_row, "handshake_icon.png", size=(38, 38), padx=(0, 18))
-    ctk.CTkLabel(
-        _title_row, text="Project Supporters", font=FONT_TITLE,
+    _icon_row = ctk.CTkFrame(title_container, fg_color="transparent")
+    _icon_row.pack(anchor="w", pady=(10, 0))
+    icon_label(_icon_row, "handshake_icon.png", size=(32, 32), padx=(0, 14))
+    title_label = ctk.CTkLabel(
+        _icon_row,
+        text="Project Supporters",
+        font=FONT_TITLE,
         text_color=COLOR_TEXT_PRIMARY
-    ).pack(side="left")
-    ctk.CTkLabel(
-        hero_content, text="Celebrating our incredible community members who fuel this project's growth",
-        font=FONT_SUBTITLE, text_color=COLOR_TEXT_SECONDARY, wraplength=800
-    ).pack(anchor="w", pady=(20, 0))
-
-    # Stats frame
-    stats_frame = ctk.CTkFrame(hero_content, fg_color="transparent")
-    stats_frame.pack(fill="x", pady=(40, 0))
-
-    # Content frame
-    content_frame = ctk.CTkFrame(supporters_container, fg_color="transparent")
-    content_frame.pack(fill="x", padx=24)
-
-    # Loading container
-    loading_container = ctk.CTkFrame(
-        content_frame,
-        **SECTION_STYLE
     )
-    loading_container.pack(pady=24)
+    title_label.pack(side="left")
 
-    # Loading content
-    loading_content = ctk.CTkFrame(loading_container, fg_color="transparent")
-    loading_content.pack(padx=48, pady=36)
-
-    # Loading indicator and message
-    ctk.CTkFrame(
-        loading_content, width=48, height=48, corner_radius=24,
-        fg_color=("#3B82F6", "#60A5FA")
-    ).pack()
-    ctk.CTkLabel(
-        loading_content, text="Loading supporters data...", font=FONT_ITEM_LABEL,
+    subtitle_label = ctk.CTkLabel(
+        title_container,
+        text="Celebrating our incredible community members and contributors who fuel VioletWing's growth.",
+        font=FONT_SUBTITLE,
         text_color=COLOR_TEXT_SECONDARY
-    ).pack(pady=(20, 0))
-    
-    # Fetch supporter data in a background thread
+    )
+    subtitle_label.pack(anchor="w", pady=(8, 0))
+
+    # Horizontal Stat Chips Bar
+    stats_bar = ctk.CTkFrame(supporters_container, fg_color="transparent")
+    stats_bar.pack(fill="x", pady=(0, 28))
+
+    # Main content frame
+    content_frame = ctk.CTkFrame(supporters_container, fg_color="transparent")
+    content_frame.pack(fill="x")
+
+    # Loading state card
+    loading_container = ctk.CTkFrame(content_frame, **SECTION_STYLE)
+    loading_container.pack(fill="x", pady=(0, 24))
+
+    loading_content = ctk.CTkFrame(loading_container, fg_color="transparent")
+    loading_content.pack(padx=40, pady=28)
+
+    indicator = ctk.CTkFrame(
+        loading_content,
+        width=48,
+        height=48,
+        corner_radius=24,
+        fg_color=COLOR_ACCENT_FG
+    )
+    indicator.pack()
+
+    _spin_icon = load_icon("rotate_icon.png", size=(24, 24))
+    ctk.CTkLabel(
+        indicator,
+        text="" if _spin_icon else "...",
+        image=_spin_icon,
+        text_color="#ffffff"
+    ).place(relx=0.5, rely=0.5, anchor="center")
+
+    ctk.CTkLabel(
+        loading_content,
+        text="Loading community supporters...",
+        font=FONT_ITEM_LABEL,
+        text_color=COLOR_TEXT_SECONDARY
+    ).pack(pady=(16, 0))
+
     def fetch_supporters():
         def safe_after(func):
             try:
@@ -86,356 +144,275 @@ def populate_supporters(main_window, frame):
                 pass
 
         try:
-            # Fetch JSON data from GitHub with a timeout using the shared session pool
             session = Utility.get_http_session()
             response = session.get('https://violetwing.vercel.app/data/supporters.json', timeout=10)
             response.raise_for_status()
             data = orjson.loads(response.content)
-            safe_after(lambda: update_supporters_ui(data, loading_container, stats_frame))
+            safe_after(lambda: update_supporters_ui(data, loading_container, stats_bar))
         except requests.exceptions.RequestException as e:
-            safe_after(lambda: show_error(loading_container, f"Failed to fetch supporters data: {e}"))
+            safe_after(lambda: show_error(loading_container, f"Failed to fetch data: {str(e)}"))
             logger.error(f"Failed to fetch supporters data: {e}")
         except orjson.JSONDecodeError as e:
             safe_after(lambda: show_error(loading_container, "Invalid JSON data received"))
             logger.error(f"Invalid JSON data: {e}")
         except Exception as e:
-            safe_after(lambda: show_error(loading_container, str(e)))
+            safe_after(lambda: show_error(loading_container, f"Unexpected error: {str(e)}"))
             logger.error(f"Unexpected error: {e}")
-    
-    def update_supporters_ui(data, loading_container, stats_frame):
-        """Update the UI with fetched supporter data."""
-        # Remove loading container
-        loading_container.destroy()
-        
-        # Get data from new structure
-        general_data = data.get('general', {})
+
+    def update_supporters_ui(data, loading_card, stats_bar_frame):
+        if loading_card.winfo_exists():
+            loading_card.destroy()
+
+        general_data = data.get('general', {}) if isinstance(data, dict) else {}
         developers = general_data.get('developers', [])
         supporters = general_data.get('supporter', [])
-        total_count = len(developers) + len(supporters)
-        
-        # Update stats display
-        create_stats_display(stats_frame, total_count, len(developers), len(supporters))
-        
-        # Create sections
+
+        render_stat_chips(stats_bar_frame, len(developers) + len(supporters), len(developers), len(supporters))
+
         if developers:
-            create_developers_section(content_frame, developers)
-        
+            render_participant_section(
+                content_frame,
+                title="Core Developers",
+                subtitle="Core engineering team maintaining the codebase and offsets",
+                icon_file="rocket_icon.png",
+                role_label="Developer",
+                role_color="#10b981",  # Emerald Green
+                items=developers
+            )
+
         if supporters:
-            create_supporters_section(content_frame, supporters)
-        
+            render_participant_section(
+                content_frame,
+                title="Community Supporters",
+                subtitle="Valued community members supporting project operations and testing",
+                icon_file="heart_icon.png",
+                role_label="Supporter",
+                role_color="#f59e0b",  # Amber / Gold
+                items=supporters
+            )
+
         if not developers and not supporters:
             show_no_supporters(content_frame)
-    
-    def create_stats_display(stats_frame, total_count, developers_count, supporters_count):
-        """Create statistics display in hero section."""
-        # Clear existing stats widgets
-        for widget in stats_frame.winfo_children():
-            widget.destroy()
 
-        # Stats container
-        container = ctk.CTkFrame(stats_frame, fg_color="transparent")
-        container.pack(fill="x", pady=8)
+    def render_stat_chips(parent_frame, total_count, dev_count, sup_count):
+        for w in parent_frame.winfo_children():
+            w.destroy()
 
-        # Card configuration
-        card_config = {'corner_radius': 16, 'width': 200, 'height': 120, 'border_width': 2}
-        
-        # Theme configurations
-        themes = [
-            {
-                'fg_color': ("#E0F2FE", "#0F172A"),
-                'border_color': ("#0EA5E9", "#0284C7"),
-                'number_color': ("#0C4A6E", "#38BDF8"),
-                'label_color': ("#0369A1", "#0EA5E9"),
-                'value': total_count,
-                'label': "Total Contributors"
-            },
-            {
-                'fg_color': ("#F0FDF4", "#0F172A"),
-                'border_color': ("#22C55E", "#16A34A"),
-                'number_color': ("#15803D", "#4ADE80"),
-                'label_color': ("#16A34A", "#22C55E"),
-                'value': developers_count,
-                'label': "Developers"
-            },
-            {
-                'fg_color': ("#FEF3C7", "#0F172A"),
-                'border_color': ("#F59E0B", "#D97706"),
-                'number_color': ("#92400E", "#FCD34D"),
-                'label_color': ("#D97706", "#F59E0B"),
-                'value': supporters_count,
-                'label': "Supporters"
-            }
+        chip_data = [
+            ("Total Contributors", total_count, "#7c3aed"),
+            ("Developers", dev_count, "#10b981"),
+            ("Supporters", sup_count, "#f59e0b"),
         ]
 
-        # Create stat cards
-        for i, theme in enumerate(themes):
-            # Card frame
-            card = ctk.CTkFrame(container, fg_color=theme['fg_color'], border_color=theme['border_color'], **card_config)
-            card.pack(side="left", padx=(0, 32 if i < len(themes) - 1 else 0))
-            card.pack_propagate(False)
+        for label, count, color in chip_data:
+            chip = ctk.CTkFrame(
+                parent_frame,
+                fg_color=COLOR_WIDGET_BACKGROUND,
+                border_width=1,
+                border_color=COLOR_BORDER,
+                corner_radius=10,
+                height=34
+            )
+            chip.pack(side="left", padx=(0, 10))
 
-            # Content frame
-            content = ctk.CTkFrame(card, fg_color="transparent")
-            content.pack(expand=True, fill="both", padx=16, pady=16)
+            dot = ctk.CTkFrame(chip, width=8, height=8, corner_radius=4, fg_color=color)
+            dot.pack(side="left", padx=(10, 6), pady=13)
 
-            # Value label
-            ctk.CTkLabel(content, text=f"{theme['value']:,}", font=FONT_TITLE,
-                        text_color=theme['number_color']).pack(expand=True, pady=(8, 0))
+            ctk.CTkLabel(
+                chip,
+                text=f"{label}:",
+                font=FONT_ITEM_DESCRIPTION,
+                text_color=COLOR_TEXT_SECONDARY
+            ).pack(side="left", padx=(0, 4))
 
-            # Description label
-            ctk.CTkLabel(content, text=theme['label'], font=FONT_ITEM_DESCRIPTION,
-                        text_color=theme['label_color']).pack(pady=(0, 8))
-    
-    def create_developers_section(container, developers):
-        """Create the developers section with a grid of developer cards."""
-        # Section wrapper
-        section = ctk.CTkFrame(container, fg_color="transparent")
-        section.pack(fill="x", pady=(0, 48))
+            ctk.CTkLabel(
+                chip,
+                text=str(count),
+                font=(FONT_FAMILY_BOLD[0], 11, "bold"),
+                text_color=COLOR_TEXT_PRIMARY
+            ).pack(side="left", padx=(0, 10))
 
-        # Header frame
-        header = ctk.CTkFrame(
-            section,
-            **SECTION_STYLE
-        )
-        header.pack(fill="x", pady=(0, 32))
+    def render_participant_section(container, title, subtitle, icon_file, role_label, role_color, items):
+        section_wrapper = ctk.CTkFrame(container, fg_color="transparent")
+        section_wrapper.pack(fill="x", pady=(0, 32))
 
-        # Header content
-        content = ctk.CTkFrame(header, fg_color="transparent")
-        content.pack(fill="x", padx=40, pady=32)
+        # Section Header Row - aligned at x=0 vertically matching top Project Supporters header icon
+        _head_title_row = ctk.CTkFrame(section_wrapper, fg_color="transparent")
+        _head_title_row.pack(anchor="w")
+        icon_label(_head_title_row, icon_file, size=(24, 24), padx=(0, 12))
 
-        # Title accent bar
-        ctk.CTkFrame(
-            content, height=4, width=100, corner_radius=2, 
-            fg_color=("#22C55E", "#16A34A")
-        ).pack(anchor="w", pady=(0, 16))
-        
-        # Title
-        _dev_title_row = ctk.CTkFrame(content, fg_color="transparent")
-        _dev_title_row.pack(anchor="w")
-        icon_label(_dev_title_row, "rocket_icon.png", size=(20, 20), padx=(0, 10))
         ctk.CTkLabel(
-            _dev_title_row, text="Developers", font=FONT_SECTION_TITLE, 
+            _head_title_row,
+            text=title,
+            font=FONT_SECTION_TITLE,
             text_color=COLOR_TEXT_PRIMARY
         ).pack(side="left")
-        
-        # Description
+
         ctk.CTkLabel(
-            content, text="Core developers building and maintaining this project", 
-            font=FONT_SUBTITLE, text_color=COLOR_TEXT_SECONDARY
-        ).pack(anchor="w", pady=(12, 0))
-
-        # Member count badge
-        badge = ctk.CTkFrame(
-            content, corner_radius=24, fg_color=COLOR_WIDGET_BACKGROUND, 
-            height=40, border_width=1, border_color=("#22C55E", "#16A34A")
-        )
-        badge.pack(anchor="w", pady=(20, 0))
-        ctk.CTkLabel(
-            badge, text=f"{len(developers)} {'developer' if len(developers) == 1 else 'developers'}", 
-            font=FONT_ITEM_LABEL, text_color=("#15803D", "#22C55E")
-        ).pack(padx=20, pady=8)
-
-        # Developers grid
-        grid = ctk.CTkFrame(section, fg_color="transparent")
-        grid.pack(fill="x")
-        
-        # Calculate optimal columns (2-4 columns based on number of developers)
-        columns = min(4, max(2, len(developers)))
-
-        for i, username in enumerate(developers):
-            # Developer card
-            card = ctk.CTkFrame(
-                grid, corner_radius=12, fg_color=COLOR_WIDGET_BACKGROUND, 
-                border_width=1, border_color=COLOR_BORDER, height=70
-            )
-            card.grid(
-                row=i // columns, column=i % columns, 
-                padx=(0 if i % columns == 0 else 12, 0 if i % columns == columns - 1 else 12), 
-                pady=(0, 16), sticky="ew"
-            )
-            card.grid_propagate(False)
-            
-            # Configure grid columns to expand equally
-            for c in range(columns):
-                grid.grid_columnconfigure(c, weight=1)
-
-            # Card content
-            card_content = ctk.CTkFrame(card, fg_color="transparent")
-            card_content.pack(fill="both", expand=True, padx=24, pady=20)
-            
-            # Developer indicator dot
-            ctk.CTkFrame(
-                card_content, width=12, height=12, corner_radius=6, 
-                fg_color=("#22C55E", "#16A34A")
-            ).pack(side="left")
-            
-            # Username label
-            ctk.CTkLabel(
-                card_content, text=username, font=FONT_ITEM_LABEL, 
-                text_color=COLOR_TEXT_PRIMARY
-            ).pack(side="left", padx=(16, 0))
-    
-    def create_supporters_section(container, supporters):
-        """Create the supporters section with a grid of supporter cards."""
-        # Section wrapper
-        section = ctk.CTkFrame(container, fg_color="transparent")
-        section.pack(fill="x", pady=(0, 48))
-
-        # Header frame
-        header = ctk.CTkFrame(
-            section,
-            **SECTION_STYLE
-        )
-        header.pack(fill="x", pady=(0, 32))
-
-        # Header content
-        content = ctk.CTkFrame(header, fg_color="transparent")
-        content.pack(fill="x", padx=40, pady=32)
-
-        # Title accent bar
-        ctk.CTkFrame(
-            content, height=4, width=100, corner_radius=2, 
-            fg_color=("#F59E0B", "#D97706")
-        ).pack(anchor="w", pady=(0, 16))
-        
-        # Title
-        _com_title_row = ctk.CTkFrame(content, fg_color="transparent")
-        _com_title_row.pack(anchor="w")
-        icon_label(_com_title_row, "heart_icon.png", size=(20, 20), padx=(0, 10))
-        ctk.CTkLabel(
-            _com_title_row, text="Community Supporters", font=FONT_SECTION_TITLE, 
-            text_color=COLOR_TEXT_PRIMARY
-        ).pack(anchor="w")
-        
-        # Description
-        ctk.CTkLabel(
-            content, text="Amazing community members supporting this project", 
-            font=FONT_SUBTITLE, text_color=COLOR_TEXT_SECONDARY
-        ).pack(anchor="w", pady=(12, 0))
-
-        # Member count badge
-        badge = ctk.CTkFrame(
-            content, corner_radius=24, fg_color=COLOR_WIDGET_BACKGROUND, 
-            height=40, border_width=1, border_color=("#F59E0B", "#D97706")
-        )
-        badge.pack(anchor="w", pady=(20, 0))
-        ctk.CTkLabel(
-            badge, text=f"{len(supporters)} {'member' if len(supporters) == 1 else 'members'}", 
-            font=FONT_ITEM_LABEL, text_color=("#92400E", "#F59E0B")
-        ).pack(padx=20, pady=8)
-
-        # Supporters grid
-        grid = ctk.CTkFrame(section, fg_color="transparent")
-        grid.pack(fill="x")
-        
-        # Calculate optimal columns (2-4 columns based on number of supporters)
-        columns = min(4, max(2, len(supporters)))
-
-        for i, username in enumerate(supporters):
-            # Supporter card
-            card = ctk.CTkFrame(
-                grid, corner_radius=12, fg_color=COLOR_WIDGET_BACKGROUND, 
-                border_width=1, border_color=COLOR_BORDER, height=70
-            )
-            card.grid(
-                row=i // columns, column=i % columns, 
-                padx=(0 if i % columns == 0 else 12, 0 if i % columns == columns - 1 else 12), 
-                pady=(0, 16), sticky="ew"
-            )
-            card.grid_propagate(False)
-            
-            # Configure grid columns to expand equally
-            for c in range(columns):
-                grid.grid_columnconfigure(c, weight=1)
-
-            # Card content
-            card_content = ctk.CTkFrame(card, fg_color="transparent")
-            card_content.pack(fill="both", expand=True, padx=24, pady=20)
-            
-            # Supporter indicator dot
-            ctk.CTkFrame(
-                card_content, width=12, height=12, corner_radius=6, 
-                fg_color=("#F59E0B", "#D97706")
-            ).pack(side="left")
-            
-            # Username label
-            ctk.CTkLabel(
-                card_content, text=username, font=FONT_ITEM_LABEL, 
-                text_color=COLOR_TEXT_PRIMARY
-            ).pack(side="left", padx=(16, 0))
-    
-    def show_no_supporters(container):
-        """Display a message when no supporters are found."""
-        # No supporters message frame
-        message_frame = ctk.CTkFrame(
-            container,
-            **SECTION_STYLE
-        )
-        message_frame.pack(pady=24)
-
-        # Message content
-        content = ctk.CTkFrame(message_frame, fg_color="transparent")
-        content.pack(padx=48, pady=36)
-
-        # Icon
-        icon = ctk.CTkFrame(
-            content, width=56, height=56, corner_radius=28, 
-            fg_color=("#64748B", "#94A3B8")
-        )
-        icon.pack()
-        ctk.CTkLabel(
-            icon, text="", image=load_icon("users_icon.png", size=(28,28)), font=("Chivo", 24), text_color=("#FFFFFF", "#FFFFFF")
-        ).pack(expand=True)
-
-        # Message
-        ctk.CTkLabel(
-            content, text="No Supporters Yet", font=FONT_SECTION_TITLE, 
+            section_wrapper,
+            text=subtitle,
+            font=FONT_ITEM_DESCRIPTION,
             text_color=COLOR_TEXT_SECONDARY
-        ).pack(pady=(20, 8))
-        ctk.CTkLabel(
-            content, text="Be the first to support this amazing project!", 
-            font=FONT_SUBTITLE, text_color=COLOR_TEXT_SECONDARY
-        ).pack()
-    
-    def show_error(loading_container, error_msg):
-        """Display an error message if data fetch fails."""
-        loading_container.destroy()
+        ).pack(anchor="w", pady=(4, 16))
 
-        # Error frame
-        error_frame = ctk.CTkFrame(
-            content_frame, corner_radius=16, fg_color=("#FEF2F2", "#1F1715"), 
-            border_width=2, border_color=("#FCA5A5", "#7F1D1D")
+        # Card Grid Container (Left-aligned, 3 columns max, expanded 260x64 cards)
+        grid_frame = ctk.CTkFrame(section_wrapper, fg_color="transparent")
+        grid_frame.pack(anchor="w", pady=(0, 12))
+
+        max_columns = 3
+
+        for i, item in enumerate(items):
+            username = item.get("username", str(item)) if isinstance(item, dict) else str(item)
+            item_role = item.get("role", role_label) if isinstance(item, dict) else role_label
+
+            create_participant_card(
+                grid_frame,
+                username=username,
+                role_text=item_role,
+                accent_color=role_color,
+                row=i // max_columns,
+                col=i % max_columns
+            )
+
+    def create_participant_card(parent_grid, username, role_text, accent_color, row, col):
+        # Expanded fixed dimensions: width=260, height=64
+        card = ctk.CTkFrame(
+            parent_grid,
+            fg_color=COLOR_WIDGET_BACKGROUND,
+            border_width=1,
+            border_color=COLOR_BORDER,
+            corner_radius=12,
+            width=260,
+            height=64
         )
-        error_frame.pack(pady=24)
+        card.grid(row=row, column=col, padx=(0, 16), pady=(0, 14), sticky="w")
+        card.grid_propagate(False)
+        card.pack_propagate(False)
 
-        # Error content
-        content = ctk.CTkFrame(error_frame, fg_color="transparent")
-        content.pack(padx=48, pady=36)
+        body = ctk.CTkFrame(card, fg_color="transparent")
+        body.pack(fill="both", expand=True, padx=12, pady=12)
 
-        # Error icon
-        icon = ctk.CTkFrame(
-            content, width=56, height=56, corner_radius=28, 
-            fg_color=("#DC2626", "#7F1D1D")
+        # Avatar Frame on Left (circular 50% border radius)
+        avatar_frame = ctk.CTkFrame(
+            body,
+            width=36,
+            height=36,
+            corner_radius=18,
+            fg_color=accent_color
         )
-        icon.pack()
-        ctk.CTkLabel(
-            icon, text="", image=load_icon("circle_xmark_icon.png", size=(28,28)), font=("Chivo", 24, "bold"), 
-            text_color=("#FFFFFF", "#FFFFFF")
-        ).pack(expand=True)
+        avatar_frame.pack(side="left", padx=(0, 10))
+        avatar_frame.pack_propagate(False)
 
-        # Error message
+        initial = username[0].upper() if username else "?"
+        avatar_lbl = ctk.CTkLabel(
+            avatar_frame,
+            text=initial,
+            font=(FONT_FAMILY_BOLD[0], 13, "bold"),
+            text_color="#ffffff"
+        )
+        avatar_lbl.place(relx=0.5, rely=0.5, anchor="center")
+
+        # Async fetch avatar image from Vercel server and crop 50% circular mask
+        def _apply_avatar_image(ctk_img):
+            if avatar_lbl.winfo_exists():
+                avatar_lbl.configure(text="", image=ctk_img)
+
+        _load_user_avatar(username, main_window, _apply_avatar_image)
+
+        # Nickname in center/left
+        name_label = ctk.CTkLabel(
+            body,
+            text=username,
+            font=FONT_ITEM_LABEL,
+            text_color=COLOR_TEXT_PRIMARY,
+            anchor="w"
+        )
+        name_label.pack(side="left", fill="x", expand=True)
+
+        # Role Pill Badge on Right
+        role_pill = ctk.CTkFrame(body, fg_color=COLOR_BACKGROUND, corner_radius=6)
+        role_pill.pack(side="right")
+
         ctk.CTkLabel(
-            content, text="Failed to Load Data", font=FONT_SECTION_TITLE,
-            text_color=("#DC2626", "#F87171")
-        ).pack(pady=(20, 8))
+            role_pill,
+            text=role_text,
+            font=(FONT_FAMILY_BOLD[0], 9, "bold"),
+            text_color=accent_color
+        ).pack(padx=6, pady=2)
+
+        # Smooth hover effect
+        def _on_enter(e):
+            card.configure(
+                border_color="#7c3aed",
+                fg_color=("#e5e7eb", "#1f1838")
+            )
+
+        def _on_leave(e):
+            card.configure(
+                border_color=COLOR_BORDER,
+                fg_color=COLOR_WIDGET_BACKGROUND
+            )
+
+        card.bind("<Enter>", _on_enter)
+        card.bind("<Leave>", _on_leave)
+        body.bind("<Enter>", _on_enter)
+        body.bind("<Leave>", _on_leave)
+
+    def show_no_supporters(container):
+        card = ctk.CTkFrame(container, **SECTION_STYLE)
+        card.pack(fill="x", pady=20)
+
+        content = ctk.CTkFrame(card, fg_color="transparent")
+        content.pack(padx=40, pady=32)
+
+        icon_frame = ctk.CTkFrame(
+            content, width=56, height=56, corner_radius=28, fg_color=COLOR_BORDER
+        )
+        icon_frame.pack()
+        _users_icon = load_icon("users_icon.png", size=(26, 26))
         ctk.CTkLabel(
-            content, text=error_msg, font=FONT_ITEM_LABEL,
-            text_color=("#991B1B", "#EF4444"), wraplength=500
+            icon_frame,
+            text="" if _users_icon else "...",
+            image=_users_icon,
+            text_color=COLOR_TEXT_SECONDARY
+        ).place(relx=0.5, rely=0.5, anchor="center")
+
+        ctk.CTkLabel(
+            content,
+            text="No Supporters Found",
+            font=FONT_SECTION_TITLE,
+            text_color=COLOR_TEXT_SECONDARY
+        ).pack(pady=(16, 6))
+
+        ctk.CTkLabel(
+            content,
+            text="Be the first to join and support the VioletWing community!",
+            font=FONT_SUBTITLE,
+            text_color=COLOR_TEXT_SECONDARY
         ).pack()
+
+    def show_error(loading_card, error_msg):
+        if loading_card.winfo_exists():
+            loading_card.destroy()
+
+        err_card = ctk.CTkFrame(content_frame, **SECTION_STYLE)
+        err_card.pack(fill="x", pady=20)
+
+        content = ctk.CTkFrame(err_card, fg_color="transparent")
+        content.pack(padx=40, pady=32)
+
         ctk.CTkLabel(
-            content, text="Please check your internet connection and try again",
-            font=FONT_ITEM_DESCRIPTION, text_color=("#B91C1C", "#FCA5A5")
-        ).pack(pady=(12, 0))
-    
-    # Start fetching supporters data
+            content,
+            text="Failed to Load Supporters",
+            font=FONT_SECTION_TITLE,
+            text_color="#ef4444"
+        ).pack(pady=(0, 8))
+
+        ctk.CTkLabel(
+            content,
+            text=error_msg,
+            font=FONT_ITEM_DESCRIPTION,
+            text_color=COLOR_TEXT_SECONDARY
+        ).pack()
+
     threading.Thread(target=fetch_supporters, daemon=True).start()
