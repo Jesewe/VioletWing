@@ -33,6 +33,7 @@ class ConfigManager:
     DEFAULT_CONFIG = {
         "user_id": None,
         "seen_changelog_version": None,
+        "read_notifications": [],
         "General": {
             "Trigger":      False,
             "Overlay":      False,
