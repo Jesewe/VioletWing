@@ -2,7 +2,7 @@ import customtkinter as ctk
 from src.gui.icon_loader import icon_label, load_icon
 from src.utils.config_manager import ConfigManager
 import src.utils.profile_manager as ProfileManager
-from src.gui.components import create_section_frame, create_section_header, build_item_scaffold
+from src.gui.components import create_section_frame, create_section_header, build_item_scaffold, create_scrollable_frame
 from src.gui.modal import AppModal
 from src.gui.theme import (
     COLOR_BACKGROUND,
@@ -13,14 +13,7 @@ from src.gui.theme import (
 )
 
 def populate_general_settings(main_window, frame):
-    settings = ctk.CTkScrollableFrame(
-        frame, fg_color=COLOR_BACKGROUND,
-        scrollbar_button_color=COLOR_BACKGROUND,
-        scrollbar_button_hover_color=COLOR_BACKGROUND,
-        scrollbar_fg_color=COLOR_BACKGROUND
-    )
-    settings.pack(fill="both", expand=True, padx=40, pady=40)
-    settings._parent_canvas.configure(yscrollincrement=5)
+    settings = create_scrollable_frame(frame, main_window)
 
     title_frame = ctk.CTkFrame(settings, fg_color="transparent")
     title_frame.pack(fill="x", pady=(0, 40))

@@ -1,4 +1,5 @@
 import customtkinter as ctk
+from src.gui.components import create_scrollable_frame
 from src.gui.icon_loader import icon_label, load_icon
 import orjson
 import threading
@@ -20,16 +21,7 @@ def populate_supporters(main_window, frame):
     main_container.pack(fill="both", expand=True, padx=24, pady=24)
 
     # Scrollable container
-    supporters_container = ctk.CTkScrollableFrame(
-        main_container, fg_color=COLOR_BACKGROUND,
-        scrollbar_button_color=COLOR_BACKGROUND,
-        scrollbar_button_hover_color=COLOR_BACKGROUND,
-        scrollbar_fg_color=COLOR_BACKGROUND
-    )
-    supporters_container.pack(fill="both", expand=True)
-    
-    # Configure faster scroll speed by modifying canvas
-    supporters_container._parent_canvas.configure(yscrollincrement=5)
+    supporters_container = create_scrollable_frame(main_container, main_window)
 
     # Hero section
     hero_frame = ctk.CTkFrame(

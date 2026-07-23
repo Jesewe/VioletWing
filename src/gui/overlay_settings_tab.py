@@ -3,7 +3,7 @@ import customtkinter as ctk
 from src.gui.icon_loader import icon_label
 from src.utils.config_manager import COLOR_CHOICES
 from src.utils.utility import Utility
-from src.gui.components import create_section_frame, create_section_header, build_item_scaffold
+from src.gui.components import create_section_frame, create_section_header, build_item_scaffold, create_scrollable_frame
 from src.gui.theme import (
     COLOR_BACKGROUND,
     CHECKBOX_STYLE, COMBOBOX_STYLE, ENTRY_STYLE, SLIDER_STYLE,
@@ -18,14 +18,7 @@ _COMBO_VALUES = list(COLOR_CHOICES.keys()) + ["Custom"]
 
 def populate_overlay_settings(main_window, frame):
     """Populate the Overlay Settings tab."""
-    settings = ctk.CTkScrollableFrame(
-        frame, fg_color=COLOR_BACKGROUND,
-        scrollbar_button_color=COLOR_BACKGROUND,
-        scrollbar_button_hover_color=COLOR_BACKGROUND,
-        scrollbar_fg_color=COLOR_BACKGROUND
-    )
-    settings.pack(fill="both", expand=True, padx=40, pady=40)
-    settings._parent_canvas.configure(yscrollincrement=5)
+    settings = create_scrollable_frame(frame, main_window)
 
     create_title_section(settings)
 

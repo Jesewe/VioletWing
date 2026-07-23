@@ -1,6 +1,6 @@
 import customtkinter as ctk
 from src.gui.icon_loader import icon_label
-from src.gui.components import create_section_frame, create_section_header, build_item_scaffold
+from src.gui.components import create_section_frame, create_section_header, build_item_scaffold, create_scrollable_frame
 from src.gui.keybind_recorder import KeybindRecorder
 from src.gui.theme import (
     COLOR_BACKGROUND,
@@ -11,18 +11,7 @@ from src.gui.theme import (
 
 def populate_additional_settings(main_window, frame):
     """Populate the additional settings frame with configuration options for Bunnyhop."""
-    # Create a scrollable container for settings
-    settings = ctk.CTkScrollableFrame(
-        frame,
-        fg_color=COLOR_BACKGROUND,
-        scrollbar_button_color=COLOR_BACKGROUND,
-        scrollbar_button_hover_color=COLOR_BACKGROUND,
-        scrollbar_fg_color=COLOR_BACKGROUND
-    )
-    settings.pack(fill="both", expand=True, padx=40, pady=40)
-    
-    # Configure faster scroll speed by modifying canvas
-    settings._parent_canvas.configure(yscrollincrement=5)
+    settings = create_scrollable_frame(frame, main_window)
     
     # Frame for page title and subtitle
     title_frame = ctk.CTkFrame(settings, fg_color="transparent")

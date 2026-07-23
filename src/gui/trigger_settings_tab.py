@@ -1,6 +1,6 @@
 import customtkinter as ctk
 from src.gui.icon_loader import icon_label
-from src.gui.components import create_section_frame, create_section_header, build_item_scaffold
+from src.gui.components import create_section_frame, create_section_header, build_item_scaffold, create_scrollable_frame
 from src.gui.keybind_recorder import KeybindRecorder
 from src.gui.theme import (
     COLOR_BACKGROUND,
@@ -14,16 +14,7 @@ def populate_trigger_settings(main_window, frame):
     """Populate the settings frame with configuration options."""
     main_window.trigger_settings_frame = frame
     
-    settings = ctk.CTkScrollableFrame(
-        frame, fg_color=COLOR_BACKGROUND,
-        scrollbar_button_color=COLOR_BACKGROUND,
-        scrollbar_button_hover_color=COLOR_BACKGROUND,
-        scrollbar_fg_color=COLOR_BACKGROUND
-    )
-    settings.pack(fill="both", expand=True, padx=40, pady=40)
-    
-    # Configure faster scroll speed by modifying canvas
-    settings._parent_canvas.configure(yscrollincrement=5)
+    settings = create_scrollable_frame(frame, main_window)
     
     create_title_section(settings)
     create_trigger_config_section(main_window, settings)
