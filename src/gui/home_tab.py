@@ -8,6 +8,7 @@ from src.gui.icon_loader import icon_label, load_icon
 from src.utils.logger import Logger
 from src.utils.config_manager import ConfigManager
 from src.core.process_monitor import ProcessMonitor
+from src.gui.components import create_scrollable_frame
 from src.gui.theme import (
     COLOR_BACKGROUND,
     FONT_TITLE, FONT_SUBTITLE, FONT_SECTION_TITLE, FONT_SECTION_DESCRIPTION,
@@ -28,14 +29,7 @@ logger = Logger.get_logger(__name__)
 
 def populate_dashboard(main_window, frame):
     """Populate the dashboard frame."""
-    dashboard = ctk.CTkScrollableFrame(
-        frame, fg_color=COLOR_BACKGROUND,
-        scrollbar_button_color=COLOR_BACKGROUND,
-        scrollbar_button_hover_color=COLOR_BACKGROUND,
-        scrollbar_fg_color=COLOR_BACKGROUND
-    )
-    dashboard.pack(fill="both", expand=True, padx=40, pady=40)
-    dashboard._parent_canvas.configure(yscrollincrement=5)
+    dashboard = create_scrollable_frame(frame, main_window)
 
     title_frame = ctk.CTkFrame(dashboard, fg_color="transparent")
     title_frame.pack(fill="x", pady=(0, 30))

@@ -1,4 +1,5 @@
 import customtkinter as ctk
+from src.gui.components import create_scrollable_frame
 from src.gui.icon_loader import icon_label, load_icon
 from src.gui.theme import (
     COLOR_BACKGROUND,
@@ -113,17 +114,7 @@ def populate_faq(main_window, frame):
         widget.destroy()
     
     # Scrollable container for FAQ content
-    faq_container = ctk.CTkScrollableFrame(
-        frame,
-        fg_color=COLOR_BACKGROUND,
-        scrollbar_button_color=COLOR_BACKGROUND,
-        scrollbar_button_hover_color=COLOR_BACKGROUND,
-        scrollbar_fg_color=COLOR_BACKGROUND
-    )
-    faq_container.pack(fill="both", expand=True, padx=40, pady=40)
-    
-    # Configure faster scroll speed by modifying canvas
-    faq_container._parent_canvas.configure(yscrollincrement=5)
+    faq_container = create_scrollable_frame(frame, main_window)
     
     # Header section with fixed height
     header_frame = ctk.CTkFrame(

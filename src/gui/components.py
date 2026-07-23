@@ -3,9 +3,55 @@ from src.gui.icon_loader import icon_label
 from src.gui.theme import (
     FONT_SECTION_TITLE, FONT_SECTION_DESCRIPTION,
     FONT_ITEM_LABEL, FONT_ITEM_DESCRIPTION,
-    COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY,
+    COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY, COLOR_BACKGROUND,
     SECTION_STYLE, SETTING_ITEM_STYLE,
 )
+
+def create_scrollable_frame(parent, main_window=None) -> ctk.CTkScrollableFrame:
+    """Create and configure a standard CTkScrollableFrame with focus-recovery scroll bindings.
+    
+    Ensures mouse wheel scrolling remains active after Alt-Tabbing or switching focus,
+    and applies a sleek dark-theme scrollbar thumb for visual feedback.
+    """
+    scroll_frame = ctk.CTkScrollableFrame(
+        parent,
+        fg_color=COLOR_BACKGROUND,
+        scrollbar_button_color="#2a1d4e",
+        scrollbar_button_hover_color="#7c3aed",
+        scrollbar_fg_color=COLOR_BACKGROUND,
+    )
+    scroll_frame.pack(fill="both", expand=True, padx=40, pady=40)
+
+    canvas = scroll_frame._parent_canvas
+    canvas.configure(yscrollincrement=20)
+
+    def _on_mouse_wheel(event):
+        try:
+            if not canvas.winfo_exists():
+                return
+            if event.delta:
+                direction = -1 if event.delta > 0 else 1
+                canvas.yview_scroll(direction * 3, "units")
+        except Exception:
+            pass
+
+    def _ensure_bindings(event=None):
+        try:
+            if canvas.winfo_exists():
+                canvas.bind_all("<MouseWheel>", _on_mouse_wheel)
+        except Exception:
+            pass
+
+    canvas.bind("<MouseWheel>", _on_mouse_wheel)
+    scroll_frame.bind("<MouseWheel>", _on_mouse_wheel)
+    scroll_frame.bind("<Enter>", _ensure_bindings, add="+")
+    scroll_frame.bind("<Motion>", _ensure_bindings, add="+")
+
+    root = getattr(main_window, "root", None) if main_window else None
+    if root:
+        root.bind("<FocusIn>", _ensure_bindings, add="+")
+
+    return scroll_frame
 
 def create_section_frame(parent) -> ctk.CTkFrame:
     """Create and pack a standard section card. Returns the frame."""

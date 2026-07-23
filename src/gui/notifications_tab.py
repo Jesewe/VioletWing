@@ -8,6 +8,7 @@ import customtkinter as ctk
 from src.utils.logger import Logger
 from src.utils.utility import Utility
 from src.utils.config_manager import ConfigManager
+from src.gui.components import create_scrollable_frame
 from src.gui.icon_loader import icon_label, load_icon
 from src.gui.theme import (
     FONT_TITLE, FONT_SUBTITLE, FONT_SECTION_TITLE, FONT_ITEM_LABEL, FONT_ITEM_DESCRIPTION,
@@ -115,15 +116,7 @@ def populate_notifications(main_window, frame) -> None:
     for widget in frame.winfo_children():
         widget.destroy()
 
-    notifications_container = ctk.CTkScrollableFrame(
-        frame,
-        fg_color=COLOR_BACKGROUND,
-        scrollbar_button_color=COLOR_BACKGROUND,
-        scrollbar_button_hover_color=COLOR_BACKGROUND,
-        scrollbar_fg_color=COLOR_BACKGROUND
-    )
-    notifications_container.pack(fill="both", expand=True, padx=40, pady=40)
-    notifications_container._parent_canvas.configure(yscrollincrement=5)
+    notifications_container = create_scrollable_frame(frame, main_window)
 
     # Header section
     header_frame = ctk.CTkFrame(
